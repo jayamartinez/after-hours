@@ -1,0 +1,50 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# build output
+dist/
+build/
+.expo/
+.expo-shared/
+web-build/
+ios/
+android/
+*.tsbuildinfo
+coverage/
+
+# local data — never commit real conversations or generated media
+*.db
+*.sqlite
+*.sqlite3
+supabase/.temp/
+supabase/.branches/
+local-data/
+media-cache/
+apps/imessage-bridge/state/
+config/*.local.json
+private-assets/
+**/private-assets/
+apps/mobile/assets/companions/private/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

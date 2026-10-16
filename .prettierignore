@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+**/dist/
+**/.expo/
+**/web-build/
+packages/companions/assets/
+.mcp.json
+# Prose docs are hand-formatted.
+*.md
+packages/companions/character.schema.json
+**/expo-env.d.ts

@@ -1,0 +1,42 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+
+# Added by pnpm: versions newer than the minimum release age, required by Expo SDK 58.
+minimumReleaseAgeExclude:
+  - '@expo/cli@58.1.9'
+  - '@expo/metro-config@58.0.14'
+  - '@expo/package-manager@1.14.2'
+  - '@expo/prebuild-config@58.0.14'
+  - '@expo/router-server@58.0.14'
+  - '@react-native/asset-utils@0.88.0'
+  - '@react-native/babel-plugin-codegen@0.88.0'
+  - '@react-native/codegen@0.88.0'
+  - '@react-native/community-cli-plugin@0.88.0'
+  - '@react-native/debugger-frontend@0.88.0'
+  - '@react-native/debugger-shell@0.88.0'
+  - '@react-native/dev-middleware@0.88.0'
+  - '@react-native/gradle-plugin@0.88.0'
+  - '@react-native/js-polyfills@0.88.0'
+  - '@react-native/normalize-colors@0.88.0'
+  - '@react-native/virtualized-lists@0.88.0'
+  - '@tanstack/query-core@5.104.3'
+  - '@tanstack/react-query@5.104.3'
+  - '@vitest/mocker@5.0.5'
+  - '@vitest/spy@5.0.5'
+  - babel-preset-expo@58.0.15
+  - expo-asset@58.0.16
+  - expo-image@58.0.15
+  - expo-modules-core@58.0.19
+  - expo-modules-jsi@58.0.14
+  - expo-router@58.0.20
+  - expo-system-ui@58.0.6
+  - expo@58.0.11
+  - react-native@0.88.0
+  - vitest@5.0.5
+
+# Expo + React Native resolve most reliably from a flat node_modules in a pnpm monorepo.
+nodeLinker: hoisted

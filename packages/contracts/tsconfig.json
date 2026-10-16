@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Shared by Node and React Native; only web-standard globals (URL) are used.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src"]
+}

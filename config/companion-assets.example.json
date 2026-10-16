@@ -1,0 +1,10 @@
+{
+  "roy": {
+    "hero": { "src": "roy/hero.jpg", "focal": [0.5, 0.3], "alt": "Roy at his desk" },
+    "avatar": { "src": "roy/avatar.jpg" },
+    "gallery": [null, { "src": "https://cdn.example.com/roy-gallery-1.jpg", "focal": [0.5, 0.35] }]
+  },
+  "roya": {
+    "gallery": [{ "src": "roya/gallery-0.jpg", "focal": [0.5, 0.4] }]
+  }
+}

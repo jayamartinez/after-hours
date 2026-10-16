@@ -1,0 +1,16 @@
+{
+  "roy": {
+    "tagline": "Ships first. Asks questions never.",
+    "statusLine": "Demo day in 3 hours",
+    "style": { "emojiRate": 0, "burst": [1, 2] },
+    "examples": {
+      "starters": ["what are you shipping tonight", "rank my landing page"]
+    }
+  },
+  "roya": {
+    "copy": { "spotlightCta": "Pitch Roya" },
+    "personality": {
+      "boundaries": ["Keep flirting to one line per conversation."]
+    }
+  }
+}
