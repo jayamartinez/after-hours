@@ -168,7 +168,7 @@ File: "after hours" (fileId `01M51A6HFBBNMJYXYPHQBK9S99`).
 9. Memory explained
 10. Matching moment (brass full-bleed)
 11. Reveal (companion introduction, AI disclosure)
-12. First message
+12. First message (the real Lamplight chat; 2 free messages, then the paywall; D-021)
 13. Paywall (demo state, labeled as demo)
 14. Confirmed
 Plus: replay entry in settings, and a debug sheet for design review.

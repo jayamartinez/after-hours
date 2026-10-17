@@ -5,6 +5,7 @@ import { OnboardingButton } from '@/components/onboarding/buttons';
 import { CheckIcon } from '@/components/onboarding/icons';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label, QuestionTitle } from '@/components/onboarding/text';
 import { VoiceSample } from '@/components/onboarding/voice-sample';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
@@ -25,43 +26,47 @@ export default function VoiceScreen() {
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS.voice ?? 0} />
       <ScrollView style={styles.scroll}>
-        <View style={styles.titleBlock}>
+        <StaggerIn order={0} style={styles.titleBlock}>
           <QuestionTitle
             size={44}
             title="Voice, or just texts?"
             subtitle="You can change this anytime. Nothing plays out loud unless you tap it."
           />
-        </View>
+        </StaggerIn>
         <View style={styles.cards}>
-          <ChoiceCard
-            value="text"
-            selected={voice === 'text'}
-            onSelect={setVoice}
-            title="Mostly texts"
-            detail="Short messages, read on your time."
-            art={
-              <View style={styles.miniBubbles}>
-                <View style={[styles.miniBubble, { width: 64 }]} />
-                <View style={[styles.miniBubble, { width: 40 }]} />
+          <StaggerIn order={1} from="right">
+            <ChoiceCard
+              value="text"
+              selected={voice === 'text'}
+              onSelect={setVoice}
+              title="Mostly texts"
+              detail="Short messages, read on your time."
+              art={
+                <View style={styles.miniBubbles}>
+                  <View style={[styles.miniBubble, { width: 64 }]} />
+                  <View style={[styles.miniBubble, { width: 40 }]} />
+                </View>
+              }
+            />
+          </StaggerIn>
+          <StaggerIn order={2} from="right">
+            <ChoiceCard
+              value="voice"
+              selected={voice === 'voice'}
+              onSelect={setVoice}
+              title="Voice notes too"
+              detail="Texts, plus the odd voice note when words need a tone."
+            >
+              <View style={styles.sample}>
+                <VoiceSample />
+                <Label style={styles.sampleCaption}>
+                  Example voice note{companion ? ` · ${companion.name}` : ''} · coming soon
+                </Label>
               </View>
-            }
-          />
-          <ChoiceCard
-            value="voice"
-            selected={voice === 'voice'}
-            onSelect={setVoice}
-            title="Voice notes too"
-            detail="Texts, plus the odd voice note when words need a tone."
-          >
-            <View style={styles.sample}>
-              <VoiceSample />
-              <Label style={styles.sampleCaption}>
-                Example voice note{companion ? ` · ${companion.name}` : ''} · coming soon
-              </Label>
-            </View>
-          </ChoiceCard>
+            </ChoiceCard>
+          </StaggerIn>
         </View>
-        <View style={styles.callRow}>
+        <StaggerIn order={3} style={styles.callRow}>
           <View style={styles.callText}>
             <Text style={styles.callTitle}>Let them call me sometimes</Text>
             <Text style={styles.callDetail}>You'll always be asked first. No surprise rings.</Text>
@@ -74,10 +79,12 @@ export default function VoiceScreen() {
             thumbColor={allowCalls ? colors.text : colors.textMuted}
             ios_backgroundColor={colors.surfaceRaised}
           />
-        </View>
+        </StaggerIn>
       </ScrollView>
       <View style={styles.footer}>
-        <OnboardingButton label="Continue" onPress={() => goToNext('voice')} />
+        <StaggerIn order={4}>
+          <OnboardingButton label="Continue" onPress={() => goToNext('voice')} />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

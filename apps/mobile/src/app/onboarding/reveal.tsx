@@ -8,6 +8,7 @@ import { Fade } from '@/components/onboarding/fade';
 import { ChevronRight } from '@/components/onboarding/icons';
 import { gradient } from '@/components/onboarding/palette';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { TopBar } from '@/components/onboarding/top-bar';
 import { goToNext } from '@/onboarding/flow';
@@ -31,7 +32,7 @@ export default function RevealScreen() {
     <OnboardingScreen>
       <TopBar center={<Label style={styles.kicker}>Your match</Label>} />
       <View style={styles.cardArea}>
-        <View style={styles.card}>
+        <StaggerIn order={0} style={styles.card}>
           <CompanionImage companion={companion} slot="hero" style={StyleSheet.absoluteFill} />
           <Fade
             color={colors.bg}
@@ -42,8 +43,8 @@ export default function RevealScreen() {
             ]}
             style={styles.fade}
           />
-        </View>
-        <View style={styles.nameBlock}>
+        </StaggerIn>
+        <StaggerIn order={1} style={styles.nameBlock}>
           <View style={styles.nameRow}>
             <Text accessibilityRole="header" style={styles.headline}>
               {companion.copy.revealHeadline}
@@ -55,28 +56,32 @@ export default function RevealScreen() {
           <Text style={styles.subline}>
             {companion.age} · {companion.copy.revealSubline}
           </Text>
-        </View>
+        </StaggerIn>
       </View>
       <View style={styles.bottom}>
-        <View style={styles.why}>
+        <StaggerIn order={2} style={styles.why}>
           <Label>Why {companion.name} · from your answers</Label>
           <View style={styles.reasons}>
             {companion.copy.matchReasons.map((reason) => (
               <BrassPill key={reason}>{reason}</BrassPill>
             ))}
           </View>
-        </View>
-        <OnboardingButton label={companion.copy.revealCta} onPress={() => goToNext('reveal')} />
+        </StaggerIn>
+        <StaggerIn order={3}>
+          <OnboardingButton label={companion.copy.revealCta} onPress={() => goToNext('reveal')} />
+        </StaggerIn>
         {other ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onboardingStore.getState().setMatchedCompanion(other.id)}
-            hitSlop={8}
-            style={styles.switch}
-          >
-            <Text style={styles.switchText}>Not feeling it? See {other.name}</Text>
-            <ChevronRight size={14} color={colors.textMuted} />
-          </Pressable>
+          <StaggerIn order={4}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onboardingStore.getState().setMatchedCompanion(other.id)}
+              hitSlop={8}
+              style={styles.switch}
+            >
+              <Text style={styles.switchText}>Not feeling it? See {other.name}</Text>
+              <ChevronRight size={14} color={colors.textMuted} />
+            </Pressable>
+          </StaggerIn>
         ) : null}
       </View>
     </OnboardingScreen>

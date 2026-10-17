@@ -4,6 +4,7 @@ import { OnboardingButton } from '@/components/onboarding/buttons';
 import { DynamicPad } from '@/components/onboarding/dynamic-pad';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label, QuestionTitle } from '@/components/onboarding/text';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
 import { QUADRANTS, quadrantFor } from '@/onboarding/readouts';
@@ -19,22 +20,24 @@ export default function DynamicScreen() {
   return (
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS.dynamic ?? 0} />
-      <View style={styles.titleBlock}>
+      <StaggerIn order={0} style={styles.titleBlock}>
         <QuestionTitle
           size={44}
           title="Pick a dynamic."
           subtitle="Drag the light to where it feels right. Nothing here is permanent."
         />
-      </View>
-      <View style={styles.padArea}>
+      </StaggerIn>
+      <StaggerIn order={1} style={styles.padArea}>
         <DynamicPad value={dynamic} onChange={setDynamic} />
-      </View>
-      <View style={styles.readout} accessibilityLiveRegion="polite">
+      </StaggerIn>
+      <StaggerIn order={2} style={styles.readout} accessibilityLiveRegion="polite">
         <Label>Your dynamic · {quadrant.label}</Label>
         <Text style={styles.line}>{quadrant.line}</Text>
-      </View>
+      </StaggerIn>
       <View style={styles.footer}>
-        <OnboardingButton label="Continue" onPress={() => goToNext('dynamic')} />
+        <StaggerIn order={3}>
+          <OnboardingButton label="Continue" onPress={() => goToNext('dynamic')} />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

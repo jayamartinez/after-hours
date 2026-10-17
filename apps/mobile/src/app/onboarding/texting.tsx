@@ -5,6 +5,7 @@ import { OnboardingButton } from '@/components/onboarding/buttons';
 import { gradient } from '@/components/onboarding/palette';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { StepSlider } from '@/components/onboarding/step-slider';
 import { Label, QuestionTitle } from '@/components/onboarding/text';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
@@ -20,34 +21,40 @@ export default function TextingScreen() {
   return (
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS.texting ?? 0} />
-      <View style={styles.titleBlock}>
+      <StaggerIn order={0} style={styles.titleBlock}>
         <QuestionTitle
           size={44}
           title="How do you text?"
           subtitle="They’ll meet you where you are. Watch the preview change."
         />
-      </View>
+      </StaggerIn>
       <View style={styles.sliders}>
-        <StepSlider
-          minLabel="Short & quick"
-          maxLabel="Long & thoughtful"
-          value={texting.length}
-          onChange={(length) => setTexting({ length })}
-        />
-        <StepSlider
-          minLabel="Plain"
-          maxLabel="Expressive"
-          value={texting.expressiveness}
-          onChange={(expressiveness) => setTexting({ expressiveness })}
-        />
-        <StepSlider
-          minLabel="Slow replies OK"
-          maxLabel="Instant"
-          value={texting.pace}
-          onChange={(pace) => setTexting({ pace })}
-        />
+        <StaggerIn order={1} from="right">
+          <StepSlider
+            minLabel="Short & quick"
+            maxLabel="Long & thoughtful"
+            value={texting.length}
+            onChange={(length) => setTexting({ length })}
+          />
+        </StaggerIn>
+        <StaggerIn order={2} from="right">
+          <StepSlider
+            minLabel="Plain"
+            maxLabel="Expressive"
+            value={texting.expressiveness}
+            onChange={(expressiveness) => setTexting({ expressiveness })}
+          />
+        </StaggerIn>
+        <StaggerIn order={3} from="right">
+          <StepSlider
+            minLabel="Slow replies OK"
+            maxLabel="Instant"
+            value={texting.pace}
+            onChange={(pace) => setTexting({ pace })}
+          />
+        </StaggerIn>
       </View>
-      <View style={styles.previewArea}>
+      <StaggerIn order={4} style={styles.previewArea}>
         <View style={styles.preview} accessibilityLiveRegion="polite">
           <View style={styles.previewHeader}>
             <Label>Preview</Label>
@@ -58,9 +65,11 @@ export default function TextingScreen() {
           ))}
           <Text style={styles.caption}>{textingCaption(texting)}</Text>
         </View>
-      </View>
+      </StaggerIn>
       <View style={styles.footer}>
-        <OnboardingButton label="Continue" onPress={() => goToNext('texting')} />
+        <StaggerIn order={5}>
+          <OnboardingButton label="Continue" onPress={() => goToNext('texting')} />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

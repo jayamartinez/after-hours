@@ -17,6 +17,7 @@ import { withAlpha } from '@/components/onboarding/color';
 import { rotatedFromTopLeft } from '@/components/onboarding/geometry';
 import { gradient } from '@/components/onboarding/palette';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { stepHref } from '@/onboarding/flow';
 import { matchCompanion } from '@/onboarding/match';
@@ -122,9 +123,15 @@ export default function MatchingScreen() {
         </View>
       </View>
       <View style={styles.bottom} accessibilityLiveRegion="polite">
-        <Label style={styles.kicker}>One moment</Label>
-        <Text style={styles.headline}>Matching your answers{'\n'}to a companion…</Text>
-        <LoadingDots />
+        <StaggerIn order={0}>
+          <Label style={styles.kicker}>One moment</Label>
+        </StaggerIn>
+        <StaggerIn order={1}>
+          <Text style={styles.headline}>Matching your answers{'\n'}to a companion…</Text>
+        </StaggerIn>
+        <StaggerIn order={2}>
+          <LoadingDots />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

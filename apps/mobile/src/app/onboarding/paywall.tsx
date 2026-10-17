@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OnboardingButton } from '@/components/onboarding/buttons';
 import { DemoPill } from '@/components/onboarding/demo-pill';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { TopBar } from '@/components/onboarding/top-bar';
 import { DEMO_PLANS, PLUS_FEATURES, type DemoPlanOption } from '@/onboarding/demo-data';
@@ -32,13 +33,13 @@ export default function PaywallScreen() {
     <OnboardingScreen>
       <TopBar icon="close" onPress={notNow} right={<DemoPill label="Demo · no real charge" />} />
       <ScrollView style={styles.scroll}>
-        <View style={styles.titleBlock}>
+        <StaggerIn order={0} style={styles.titleBlock}>
           <Label style={styles.kicker}>After Hours Plus</Label>
           <Text accessibilityRole="header" style={styles.title}>
             Stay a little longer.
           </Text>
-        </View>
-        <View style={styles.features}>
+        </StaggerIn>
+        <StaggerIn order={1} style={styles.features}>
           {PLUS_FEATURES.map((feature, i) => (
             <View
               key={feature}
@@ -48,8 +49,8 @@ export default function PaywallScreen() {
               <Text style={styles.featureText}>{feature.replace('{names}', names)}</Text>
             </View>
           ))}
-        </View>
-        <View style={styles.plans} accessibilityRole="radiogroup">
+        </StaggerIn>
+        <StaggerIn order={2} from="right" style={styles.plans} accessibilityRole="radiogroup">
           {DEMO_PLANS.map((p) => (
             <PlanCard
               key={p.id}
@@ -58,25 +59,31 @@ export default function PaywallScreen() {
               onPress={() => setPlanId(p.id)}
             />
           ))}
-        </View>
+        </StaggerIn>
       </ScrollView>
       <View style={styles.footer}>
-        <Text style={styles.finePrint}>{plan?.finePrint}</Text>
-        <OnboardingButton
-          label="Start 7-day free trial"
-          accessibilityHint="Demo only. Turns on Plus locally; no payment is taken."
-          onPress={purchase}
-        />
-        <Pressable accessibilityRole="button" onPress={notNow} hitSlop={6} style={styles.notNow}>
-          <Text style={styles.notNowText}>Not now</Text>
-        </Pressable>
-        <View style={styles.links}>
+        <StaggerIn order={3}>
+          <Text style={styles.finePrint}>{plan?.finePrint}</Text>
+        </StaggerIn>
+        <StaggerIn order={4} style={styles.cta}>
+          <OnboardingButton
+            label="Start 7-day free trial"
+            accessibilityHint="Demo only. Turns on Plus locally; no payment is taken."
+            onPress={purchase}
+          />
+        </StaggerIn>
+        <StaggerIn order={5}>
+          <Pressable accessibilityRole="button" onPress={notNow} hitSlop={6} style={styles.notNow}>
+            <Text style={styles.notNowText}>Not now</Text>
+          </Pressable>
+        </StaggerIn>
+        <StaggerIn order={6} style={styles.links}>
           {['Restore', 'Terms', 'Privacy'].map((link) => (
             <Text key={link} style={styles.link}>
               {link}
             </Text>
           ))}
-        </View>
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );
@@ -210,6 +217,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.lg,
   },
+  // The footer centers its text; the button still spans the full width.
+  cta: { alignSelf: 'stretch' },
   finePrint: {
     fontFamily: fonts.regular,
     fontSize: 13,

@@ -4,6 +4,7 @@ import { OnboardingButton } from '@/components/onboarding/buttons';
 import { ChoiceChip } from '@/components/onboarding/chip';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label, QuestionTitle } from '@/components/onboarding/text';
 import { TimeDial } from '@/components/onboarding/time-dial';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
@@ -22,18 +23,20 @@ export default function TalkTimeScreen() {
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS['talk-time'] ?? 0} />
       <View style={styles.body}>
-        <View style={styles.titleBlock}>
+        <StaggerIn order={0} style={styles.titleBlock}>
           <QuestionTitle
             title="When do you usually want to talk?"
             subtitle="Drag the ends of the window."
           />
-        </View>
-        <View style={styles.dialArea}>
+        </StaggerIn>
+        <StaggerIn order={1} style={styles.dialArea}>
           <TimeDial value={window} onChange={setWindow} />
-        </View>
+        </StaggerIn>
         <View style={styles.rhythms}>
-          <Label>Or pick a rhythm</Label>
-          <View style={styles.chips}>
+          <StaggerIn order={2}>
+            <Label>Or pick a rhythm</Label>
+          </StaggerIn>
+          <StaggerIn order={3} from="right" style={styles.chips}>
             {RHYTHMS.map((r) => (
               <ChoiceChip
                 key={r.id}
@@ -42,14 +45,18 @@ export default function TalkTimeScreen() {
                 onPress={() => setWindow(r.window)}
               />
             ))}
-          </View>
+          </StaggerIn>
         </View>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.note}>
-          Your companion will keep similar hours. You can change this anytime.
-        </Text>
-        <OnboardingButton label="Continue" onPress={() => goToNext('talk-time')} />
+        <StaggerIn order={4}>
+          <Text style={styles.note}>
+            Your companion will keep similar hours. You can change this anytime.
+          </Text>
+        </StaggerIn>
+        <StaggerIn order={5}>
+          <OnboardingButton label="Continue" onPress={() => goToNext('talk-time')} />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

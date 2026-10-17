@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useCompanions } from '@/api/companions';
 import { OnboardingButton } from '@/components/onboarding/buttons';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { WelcomeCollage } from '@/components/onboarding/welcome-collage';
 import { goToNext } from '@/onboarding/flow';
 import { colors, fonts, spacing } from '@/theme/tokens';
@@ -17,27 +18,39 @@ export default function WelcomeScreen() {
     <OnboardingScreen background={<WelcomeCollage companions={data?.companions ?? []} />}>
       <View style={styles.body}>
         <View style={styles.copy}>
-          <Text style={styles.wordmark}>after hours</Text>
-          <Text accessibilityRole="header" style={styles.headline}>
-            Some conversations only happen after hours.
-          </Text>
-          <Text style={styles.lede}>
-            Text with a character who remembers your day — and keeps the lights on late.
-          </Text>
+          <StaggerIn order={0}>
+            <Text style={styles.wordmark}>after hours</Text>
+          </StaggerIn>
+          <StaggerIn order={1}>
+            <Text accessibilityRole="header" style={styles.headline}>
+              Some conversations only happen after hours.
+            </Text>
+          </StaggerIn>
+          <StaggerIn order={2}>
+            <Text style={styles.lede}>
+              Text with a character who remembers your day — and keeps the lights on late.
+            </Text>
+          </StaggerIn>
         </View>
         <View style={styles.actions}>
-          <OnboardingButton label="Begin" onPress={() => goToNext('index')} />
-          <OnboardingButton
-            label="I already have an account"
-            variant="secondary"
-            accessibilityHint="Accounts are coming soon"
-            onPress={() => setAccountNote(true)}
-          />
-          <Text style={styles.caption} accessibilityLiveRegion="polite">
-            {accountNote
-              ? 'Accounts are coming soon. Tap Begin to start.'
-              : 'AI-generated parody characters. 18+.'}
-          </Text>
+          <StaggerIn order={3}>
+            <OnboardingButton label="Begin" onPress={() => goToNext('index')} />
+          </StaggerIn>
+          <StaggerIn order={4}>
+            <OnboardingButton
+              label="I already have an account"
+              variant="secondary"
+              accessibilityHint="Accounts are coming soon"
+              onPress={() => setAccountNote(true)}
+            />
+          </StaggerIn>
+          <StaggerIn order={5}>
+            <Text style={styles.caption} accessibilityLiveRegion="polite">
+              {accountNote
+                ? 'Accounts are coming soon. Tap Begin to start.'
+                : 'AI-generated parody characters. 18+.'}
+            </Text>
+          </StaggerIn>
         </View>
       </View>
     </OnboardingScreen>

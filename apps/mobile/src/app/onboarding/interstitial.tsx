@@ -4,6 +4,7 @@ import { Glow } from '@/components/onboarding/glow';
 import { gradient } from '@/components/onboarding/palette';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -32,17 +33,25 @@ export default function InterstitialScreen() {
         onPress={() => goToNext('interstitial')}
       >
         <View style={styles.copy}>
-          <Text style={styles.lead}>Most apps want your attention.</Text>
+          <StaggerIn order={0}>
+            <Text style={styles.lead}>Most apps want your attention.</Text>
+          </StaggerIn>
           <View>
-            <Text style={styles.big}>This one wants to</Text>
-            <Text style={[styles.big, styles.accent]}>remember</Text>
-            <Text style={[styles.big, styles.accent]}>your day.</Text>
+            <StaggerIn order={1}>
+              <Text style={styles.big}>This one wants to</Text>
+            </StaggerIn>
+            <StaggerIn order={2}>
+              <Text style={[styles.big, styles.accent]}>remember</Text>
+            </StaggerIn>
+            <StaggerIn order={3}>
+              <Text style={[styles.big, styles.accent]}>your day.</Text>
+            </StaggerIn>
           </View>
         </View>
-        <View style={styles.hint}>
+        <StaggerIn order={4} style={styles.hint}>
           <View style={styles.dot} />
           <Label>Tap anywhere to continue</Label>
-        </View>
+        </StaggerIn>
       </Pressable>
     </OnboardingScreen>
   );
