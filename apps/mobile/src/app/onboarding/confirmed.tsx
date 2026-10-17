@@ -6,6 +6,7 @@ import { Glow } from '@/components/onboarding/glow';
 import { CheckIcon } from '@/components/onboarding/icons';
 import { gradient } from '@/components/onboarding/palette';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { finishOnboarding } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -29,27 +30,33 @@ export default function ConfirmedScreen() {
       }
     >
       <View style={styles.body}>
-        <View style={styles.check}>
+        <StaggerIn order={0} style={styles.check}>
           <CheckIcon size={24} color={colors.accent} strokeWidth={1.75} />
-        </View>
-        <Text accessibilityRole="header" style={styles.title}>
-          You're in.
-        </Text>
-        <Text style={styles.lede}>
-          {companion
-            ? `Plus is on. ${companion.name}'s right where you left ${companion.pronouns.object}.`
-            : 'Plus is on.'}
-        </Text>
+        </StaggerIn>
+        <StaggerIn order={1}>
+          <Text accessibilityRole="header" style={styles.title}>
+            You're in.
+          </Text>
+        </StaggerIn>
+        <StaggerIn order={2}>
+          <Text style={styles.lede}>
+            {companion
+              ? `Plus is on. ${companion.name}'s right where you left ${companion.pronouns.object}.`
+              : 'Plus is on.'}
+          </Text>
+        </StaggerIn>
       </View>
       <View style={styles.footer}>
-        <View style={styles.notice}>
+        <StaggerIn order={3} style={styles.notice}>
           <DemoPill label="Demo" size="sm" />
           <Text style={styles.noticeText}>This is a demo purchase. No payment was taken.</Text>
-        </View>
-        <OnboardingButton
-          label="Enter After Hours"
-          onPress={() => finishOnboarding(companion?.id ?? null)}
-        />
+        </StaggerIn>
+        <StaggerIn order={4}>
+          <OnboardingButton
+            label="Enter After Hours"
+            onPress={() => finishOnboarding(companion?.id ?? null)}
+          />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

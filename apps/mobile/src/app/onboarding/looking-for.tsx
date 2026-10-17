@@ -11,6 +11,7 @@ import {
 import { OptionCard } from '@/components/onboarding/option-card';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { QuestionTitle } from '@/components/onboarding/text';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
 import { LOOKING_FOR, type LookingFor } from '@/onboarding/preferences';
@@ -35,34 +36,39 @@ export default function LookingForScreen() {
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS['looking-for'] ?? 0} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.titleBlock}>
+        <StaggerIn order={0} style={styles.titleBlock}>
           <QuestionTitle
             title="What are you looking for tonight?"
             subtitle="Pick as many as feel true tonight."
           />
-        </View>
+        </StaggerIn>
         <View style={styles.options}>
-          {LOOKING_FOR.map((option) => (
-            <OptionCard
-              key={option.id}
-              title={option.title}
-              detail={option.detail}
-              Icon={ICONS[option.id]}
-              selected={selected.includes(option.id)}
-              onPress={() => toggle(option.id)}
-            />
+          {LOOKING_FOR.map((option, i) => (
+            <StaggerIn key={option.id} order={1 + i} from="right">
+              <OptionCard
+                title={option.title}
+                detail={option.detail}
+                Icon={ICONS[option.id]}
+                selected={selected.includes(option.id)}
+                onPress={() => toggle(option.id)}
+              />
+            </StaggerIn>
           ))}
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <Text style={styles.count}>
-          {count === 0 ? 'Pick at least one' : `${count} selected`} · change anytime in Settings
-        </Text>
-        <OnboardingButton
-          label="Continue"
-          disabled={count === 0}
-          onPress={() => goToNext('looking-for')}
-        />
+        <StaggerIn order={6}>
+          <Text style={styles.count}>
+            {count === 0 ? 'Pick at least one' : `${count} selected`} · change anytime in Settings
+          </Text>
+        </StaggerIn>
+        <StaggerIn order={7}>
+          <OnboardingButton
+            label="Continue"
+            disabled={count === 0}
+            onPress={() => goToNext('looking-for')}
+          />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

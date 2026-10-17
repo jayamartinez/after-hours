@@ -6,6 +6,7 @@ import { LockIcon } from '@/components/onboarding/icons';
 import { MemoryCard } from '@/components/onboarding/memory-card';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { EXAMPLE_MEMORIES } from '@/onboarding/demo-data';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
@@ -19,43 +20,48 @@ export default function MemoryScreen() {
   return (
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS.memory ?? 0} />
-      <View style={styles.titleBlock}>
+      <StaggerIn order={0} style={styles.titleBlock}>
         <Text accessibilityRole="header" style={styles.title}>
           It remembers{'\n'}what matters.
         </Text>
         <Text style={[styles.title, styles.accent]}>You decide what stays.</Text>
-      </View>
+      </StaggerIn>
       <View style={styles.list}>
-        <View style={styles.listHeader}>
+        <StaggerIn order={1} style={styles.listHeader}>
           <Label>What they remember</Label>
           <Label>
             {notes.length} {notes.length === 1 ? 'note' : 'notes'}
           </Label>
-        </View>
-        {notes.map((note) => (
-          <MemoryCard
-            key={note.id}
-            text={note.text}
-            source={note.source}
-            initiallyOpen={note.id === EXAMPLE_MEMORIES[1]?.id}
-            onForget={() => forget(note.id)}
-          />
+        </StaggerIn>
+        {notes.map((note, i) => (
+          <StaggerIn key={note.id} order={2 + i} from="right">
+            <MemoryCard
+              text={note.text}
+              source={note.source}
+              initiallyOpen={note.id === EXAMPLE_MEMORIES[1]?.id}
+              onForget={() => forget(note.id)}
+            />
+          </StaggerIn>
         ))}
-        <Text style={styles.hint}>
-          {notes.length > 0
-            ? 'Swipe or tap × and it’s gone — no hard feelings.'
-            : 'All gone. That’s how easy it is.'}
-        </Text>
+        <StaggerIn order={5}>
+          <Text style={styles.hint}>
+            {notes.length > 0
+              ? 'Swipe or tap × and it’s gone — no hard feelings.'
+              : 'All gone. That’s how easy it is.'}
+          </Text>
+        </StaggerIn>
       </View>
       <View style={styles.footer}>
-        <View style={styles.privacy}>
+        <StaggerIn order={6} style={styles.privacy}>
           <LockIcon size={16} color={colors.textMuted} />
           <Text style={styles.privacyText}>
             Memories will be stored with your account. View, edit, or delete them anytime in
             Settings. Memory is coming soon; these notes are examples.
           </Text>
-        </View>
-        <OnboardingButton label="Sounds fair" onPress={() => goToNext('memory')} />
+        </StaggerIn>
+        <StaggerIn order={7}>
+          <OnboardingButton label="Sounds fair" onPress={() => goToNext('memory')} />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );

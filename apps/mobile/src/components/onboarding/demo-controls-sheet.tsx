@@ -3,7 +3,7 @@ import type { ComponentType } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { companionLandingHref, stepHref } from '@/onboarding/flow';
+import { openLandingChat, stepHref } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
 import { onboardingStore, useOnboarding } from '@/onboarding/use-onboarding';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -35,7 +35,7 @@ export function DemoControlsSheet({ visible, onClose }: DemoControlsSheetProps) 
     const state = onboardingStore.getState();
     if (companion && !state.matchedCompanionId) state.setMatchedCompanion(companion.id);
     state.skip();
-    router.replace(companion ? companionLandingHref(companion.id) : '/');
+    openLandingChat(companion?.id ?? null);
   };
   const resetPurchase = () => {
     onClose();

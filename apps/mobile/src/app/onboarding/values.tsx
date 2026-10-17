@@ -4,6 +4,7 @@ import { OnboardingButton } from '@/components/onboarding/buttons';
 import { ChoiceChip } from '@/components/onboarding/chip';
 import { QuestionHeader } from '@/components/onboarding/question-header';
 import { OnboardingScreen } from '@/components/onboarding/screen';
+import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label, QuestionTitle } from '@/components/onboarding/text';
 import { goToNext, PROGRESS } from '@/onboarding/flow';
 import { MAX_VALUES, VALUES } from '@/onboarding/preferences';
@@ -22,13 +23,13 @@ export default function ValuesScreen() {
     <OnboardingScreen>
       <QuestionHeader progress={PROGRESS.values ?? 0} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.titleBlock}>
+        <StaggerIn order={0} style={styles.titleBlock}>
           <QuestionTitle
             title="What matters most in a companion?"
             subtitle="Pick up to three, in order."
           />
-        </View>
-        <View style={styles.chips}>
+        </StaggerIn>
+        <StaggerIn order={1} from="right" style={styles.chips}>
           {VALUES.map((v) => {
             const rank = picks.indexOf(v.id);
             return (
@@ -43,9 +44,9 @@ export default function ValuesScreen() {
               />
             );
           })}
-        </View>
+        </StaggerIn>
       </ScrollView>
-      <View style={styles.summaryArea}>
+      <StaggerIn order={2} style={styles.summaryArea}>
         <View style={styles.summary}>
           <View style={styles.summaryHeader}>
             <Label>Your top three</Label>
@@ -65,18 +66,22 @@ export default function ValuesScreen() {
             );
           })}
         </View>
-      </View>
+      </StaggerIn>
       <View style={styles.footer}>
-        <Text style={styles.note}>
-          {full
-            ? 'Tap a pick to drop it and choose another.'
-            : 'Tap to pick. Tap again to drop it.'}
-        </Text>
-        <OnboardingButton
-          label="Continue"
-          disabled={picks.length === 0}
-          onPress={() => goToNext('values')}
-        />
+        <StaggerIn order={3}>
+          <Text style={styles.note}>
+            {full
+              ? 'Tap a pick to drop it and choose another.'
+              : 'Tap to pick. Tap again to drop it.'}
+          </Text>
+        </StaggerIn>
+        <StaggerIn order={4}>
+          <OnboardingButton
+            label="Continue"
+            disabled={picks.length === 0}
+            onPress={() => goToNext('values')}
+          />
+        </StaggerIn>
       </View>
     </OnboardingScreen>
   );
