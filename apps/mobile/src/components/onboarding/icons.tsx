@@ -82,13 +82,6 @@ export const LockIcon = strokeIcon((p) => (
     {line('M8 11V8a4 4 0 0 1 8 0v3')(p)}
   </>
 ));
-export const MicIcon = strokeIcon((p) => (
-  <>
-    <Rect x="9" y="3" width="6" height="11" rx="3" stroke={p.color} strokeWidth={p.strokeWidth} />
-    {line('M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21')(p)}
-  </>
-));
-export const ArrowUpIcon = strokeIcon(line('M12 19V5M6 11l6-6 6 6'));
 export const ReplayIcon = strokeIcon(line('M4 12a8 8 0 1 0 2.5-5.8M4 4v4h4'));
 export const SkipEndIcon = strokeIcon(line('M5 5l8 7-8 7M15 5v14'));
 export const CardIcon = strokeIcon((p) => (

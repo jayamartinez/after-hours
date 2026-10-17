@@ -64,12 +64,10 @@ describe('onboarding store', () => {
   it('skip completes with default answers', () => {
     const store = createOnboardingStore(memoryStorage().storage);
     store.getState().toggleValue('flirty');
-    store.getState().setFirstReply('hey');
     store.getState().skip();
     const s = store.getState();
     expect(s.completed).toBe(true);
     expect(s.preferences).toEqual(DEFAULT_PREFERENCES);
-    expect(s.firstReply).toBeNull();
   });
 
   it('replay clears answers and completion but keeps the demo purchase', () => {

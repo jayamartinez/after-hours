@@ -14,6 +14,11 @@ export interface ConversationSource {
   subscribe(companionId: string, listener: () => void): () => void;
   /** Load history once (idempotent). */
   load(companion: PublicCharacter): void;
+  /**
+   * Open a brand-new conversation: the companion types its opening lines. No-op when
+   * history is already loaded, so a later `load` keeps what was said here.
+   */
+  start(companion: PublicCharacter): void;
   send(companion: PublicCharacter, text: string): void;
   toggleReaction(companionId: string, messageId: string, reaction: Reaction): void;
 }

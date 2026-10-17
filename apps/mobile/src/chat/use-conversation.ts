@@ -12,14 +12,24 @@ import type { Reaction } from './types';
  */
 const source: ConversationSource = createDemoConversationSource();
 
+interface ConversationOptions {
+  /** Begin a new conversation with only the companion's opening lines (onboarding). */
+  fresh?: boolean;
+}
+
 /** One conversation with a companion: messages (oldest first), status flags, and actions. */
-export function useConversation(companionId: string | undefined) {
+export function useConversation(
+  companionId: string | undefined,
+  { fresh = false }: ConversationOptions = {},
+) {
   const { companion, isPending: companionPending } = useCompanion(companionId);
   const id = companion?.id ?? '';
 
   useEffect(() => {
-    if (companion) source.load(companion);
-  }, [companion]);
+    if (!companion) return;
+    if (fresh) source.start(companion);
+    else source.load(companion);
+  }, [companion, fresh]);
 
   const subscribe = useCallback((listener: () => void) => source.subscribe(id, listener), [id]);
   const getSnapshot = useCallback(() => source.getSnapshot(id), [id]);

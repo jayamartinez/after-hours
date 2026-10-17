@@ -24,8 +24,6 @@ export interface OnboardingData {
   completed: boolean;
   /** Companion picked by matching (or by "See the other one") for the reveal and first chat. */
   matchedCompanionId: string | null;
-  /** Quick reply or typed opener from the first-message screen, handed to the chat. */
-  firstReply: string | null;
   /** Local mock entitlement. No payment is ever taken. */
   demoPurchase: { plan: DemoPlan; purchasedAt: string } | null;
 }
@@ -40,7 +38,6 @@ export interface OnboardingActions {
   setVoice: (voice: VoicePreference) => void;
   setAllowCalls: (allow: boolean) => void;
   setMatchedCompanion: (id: string | null) => void;
-  setFirstReply: (text: string | null) => void;
   /** Finish onboarding with the current answers. */
   complete: () => void;
   /** Skip: finish onboarding with default answers. Keeps any match already made. */
@@ -59,7 +56,6 @@ export const initialOnboardingData = (): OnboardingData => ({
   preferences: defaultPreferences(),
   completed: false,
   matchedCompanionId: null,
-  firstReply: null,
   demoPurchase: null,
 });
 
@@ -91,9 +87,8 @@ export function createOnboardingStore(storage: StateStorage) {
           setVoice: (voice) => updatePrefs(() => ({ voice })),
           setAllowCalls: (allowCalls) => updatePrefs(() => ({ allowCalls })),
           setMatchedCompanion: (matchedCompanionId) => set({ matchedCompanionId }),
-          setFirstReply: (text) => set({ firstReply: text?.trim() ? text.trim() : null }),
           complete: () => set({ completed: true }),
-          skip: () => set({ completed: true, preferences: defaultPreferences(), firstReply: null }),
+          skip: () => set({ completed: true, preferences: defaultPreferences() }),
           replay: () => set((s) => ({ ...initialOnboardingData(), demoPurchase: s.demoPurchase })),
           purchaseDemo: (plan, now = new Date()) =>
             set({ demoPurchase: { plan, purchasedAt: now.toISOString() } }),
@@ -108,7 +103,6 @@ export function createOnboardingStore(storage: StateStorage) {
           preferences: s.preferences,
           completed: s.completed,
           matchedCompanionId: s.matchedCompanionId,
-          firstReply: s.firstReply,
           demoPurchase: s.demoPurchase,
         }),
         // Fill in fields added after a user's data was saved.

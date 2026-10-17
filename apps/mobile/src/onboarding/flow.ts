@@ -53,18 +53,19 @@ export function skipToApp() {
 }
 
 /**
- * Where a finished onboarding lands: the companion's chat. The first reply (if any) rides
- * along as a `draft` search param for the chat screen to pick up.
+ * Leave onboarding for the companion's chat, which continues the first-message conversation.
+ * The Chats tab goes underneath so Back lands on the conversation list like any other chat.
  */
-export function companionLandingHref(companionId: string, draft?: string | null): Href {
-  return {
-    pathname: '/chat/[id]',
-    params: { id: companionId, ...(draft ? { draft } : {}) },
-  };
+export function openLandingChat(companionId: string | null) {
+  if (!companionId) {
+    router.replace('/');
+    return;
+  }
+  router.replace('/chats');
+  router.push({ pathname: '/chat/[id]', params: { id: companionId } });
 }
 
 export function finishOnboarding(companionId: string | null) {
-  const { complete, firstReply } = onboardingStore.getState();
-  complete();
-  router.replace(companionId ? companionLandingHref(companionId, firstReply) : '/');
+  onboardingStore.getState().complete();
+  openLandingChat(companionId);
 }

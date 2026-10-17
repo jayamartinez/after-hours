@@ -36,6 +36,8 @@ interface Conversation {
   /** Pending timers for the current reply cycle; a new send restarts the cycle. */
   replyTimers: ReturnType<typeof setTimeout>[];
   turns: number;
+  /** When `start`'s opening lines finish; replies wait until then. */
+  openingEndsAt: number;
 }
 
 /**
@@ -52,7 +54,13 @@ export function createDemoConversationSource(options: DemoSourceOptions = {}): C
   const conversation = (companionId: string): Conversation => {
     let entry = conversations.get(companionId);
     if (!entry) {
-      entry = { state: EMPTY_CONVERSATION, listeners: new Set(), replyTimers: [], turns: 0 };
+      entry = {
+        state: EMPTY_CONVERSATION,
+        listeners: new Set(),
+        replyTimers: [],
+        turns: 0,
+        openingEndsAt: 0,
+      };
       conversations.set(companionId, entry);
     }
     return entry;
@@ -81,16 +89,14 @@ export function createDemoConversationSource(options: DemoSourceOptions = {}): C
     const entry = conversation(companion.id);
     entry.replyTimers.forEach(clearTimeout);
     const reply = demoReply(companion, entry.turns);
-    const typingFor = Math.min(
-      timing.typingMax,
-      timing.typingBase + timing.typingPerChar * reply.length,
-    );
+    const typingFor = typingTime(reply);
     const at = (delay: number, run: () => void) => entry.replyTimers.push(setTimeout(run, delay));
+    const wait = Math.max(0, entry.openingEndsAt - now());
 
     at(timing.sent, () => dispatch(companion.id, { type: 'status', id: sentId, status: 'sent' }));
-    at(timing.read, () => dispatch(companion.id, { type: 'readAll' }));
-    at(timing.typingStart, () => dispatch(companion.id, { type: 'typing', typing: true }));
-    at(timing.typingStart + typingFor, () => {
+    at(wait + timing.read, () => dispatch(companion.id, { type: 'readAll' }));
+    at(wait + timing.typingStart, () => dispatch(companion.id, { type: 'typing', typing: true }));
+    at(wait + timing.typingStart + typingFor, () => {
       entry.turns += 1;
       entry.replyTimers = [];
       dispatch(companion.id, {
@@ -99,6 +105,9 @@ export function createDemoConversationSource(options: DemoSourceOptions = {}): C
       });
     });
   };
+
+  const typingTime = (text: string) =>
+    Math.min(timing.typingMax, timing.typingBase + timing.typingPerChar * text.length);
 
   const load = (companion: PublicCharacter) => {
     if (conversation(companion.id).state.loaded) return;
@@ -117,6 +126,28 @@ export function createDemoConversationSource(options: DemoSourceOptions = {}): C
     },
 
     load,
+
+    start(companion) {
+      const entry = conversation(companion.id);
+      if (entry.state.loaded) return;
+      dispatch(companion.id, { type: 'loaded', messages: [] });
+      // Not reply timers: an early send must not cancel the opening lines.
+      let at = timing.typingStart;
+      for (const content of companion.copy.firstMessage) {
+        setTimeout(() => dispatch(companion.id, { type: 'typing', typing: true }), at);
+        at += typingTime(content);
+        setTimeout(
+          () =>
+            dispatch(companion.id, {
+              type: 'receive',
+              message: makeMessage(companion.id, { role: 'assistant', content, status: 'sent' }),
+            }),
+          at,
+        );
+        at += timing.read;
+      }
+      entry.openingEndsAt = now() + at - timing.read;
+    },
 
     send(companion, text) {
       const content = text.trim();

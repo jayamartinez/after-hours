@@ -69,6 +69,44 @@ describe('demo conversation source', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it('start opens a fresh thread with only the opening lines, typed one by one', () => {
+    const { source, state } = setup();
+    source.start(roy);
+    expect(state()).toMatchObject({ loaded: true, messages: [], typing: false });
+
+    vi.advanceTimersByTime(TIMING.typingStart);
+    expect(state().typing).toBe(true);
+
+    vi.runAllTimers();
+    expect(state().typing).toBe(false);
+    expect(state().messages.map((m) => [m.role, m.content])).toEqual(
+      roy.copy.firstMessage.map((line) => ['assistant', line]),
+    );
+  });
+
+  it('start keeps existing history, and a later load keeps the started thread', () => {
+    const { source, state } = setup();
+    source.load(roy);
+    const seeded = state();
+    source.start(roy);
+    expect(state()).toBe(seeded);
+
+    source.start(roya);
+    vi.runAllTimers();
+    const started = source.getSnapshot(roya.id);
+    source.load(roya);
+    expect(source.getSnapshot(roya.id)).toBe(started);
+  });
+
+  it('a send during the opening lines does not cancel them', () => {
+    const { source, state } = setup();
+    source.start(roy);
+    source.send(roy, 'hey');
+    vi.runAllTimers();
+    const assistant = state().messages.filter((m) => m.role === 'assistant');
+    expect(assistant.map((m) => m.content)).toEqual([...roy.copy.firstMessage, demoReply(roy, 0)]);
+  });
+
   it('keeps conversations independent per companion', () => {
     const { source } = setup();
     source.load(roy);
