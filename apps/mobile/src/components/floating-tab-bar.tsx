@@ -51,6 +51,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Override TabList's row + space-between, which pins the pill to the left edge.
+    flexDirection: 'column',
     alignItems: 'center',
     paddingHorizontal: spacing.gutter,
   },
