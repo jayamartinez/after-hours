@@ -1,3 +1,4 @@
+import { MAX_MESSAGE_CHARS } from '@after-hours/contracts';
 import { useState } from 'react';
 import {
   Platform,
@@ -73,6 +74,7 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
             accessibilityLabel={`Message ${companionName}`}
             multiline
             rows={1}
+            maxLength={MAX_MESSAGE_CHARS}
             onContentSizeChange={(event) => {
               if (Platform.OS === 'web') setWebHeight(event.nativeEvent.contentSize.height);
             }}

@@ -22,44 +22,53 @@ export function defaultCharacterImages(character: CharacterConfig): CompanionIma
 }
 
 /**
- * Public projection. Built field by field (no spreading) so a new server-only field can
- * never leak by accident.
+ * Public projection: identity, `publicProfile`, the proactive default, and images. Built
+ * field by field (no spreading) so a new server-only field can never leak by accident.
  */
 export function toPublicCharacter(
   character: CharacterConfig,
   images: CompanionImages = defaultCharacterImages(character),
 ): PublicCharacter {
+  const { pronouns, disclosure, publicProfile: profile } = character;
+  const { copy } = profile;
   return {
     id: character.id,
     name: character.name,
     age: character.age,
-    pronouns: { ...character.pronouns },
-    tagline: character.tagline,
-    statusLine: character.statusLine,
-    location: character.location,
-    locationShort: character.locationShort,
-    blurb: character.blurb,
+    pronouns: {
+      subject: pronouns.subject,
+      object: pronouns.object,
+      possessive: pronouns.possessive,
+    },
     tint: character.tint,
-    bio: character.bio,
-    backstory: character.backstory,
-    interests: [...character.interests],
-    chips: [...character.chips],
-    talkStyle: [...character.talkStyle],
-    meters: { ...character.meters },
-    disclosure: { badge: character.disclosure.badge, note: character.disclosure.note },
-    personality: { traits: [...character.personality.traits] },
-    examples: {
-      starters: [...character.examples.starters],
-      signatureLines: [...character.examples.signatureLines],
+    disclosure: { badge: disclosure.badge, note: disclosure.note },
+    publicProfile: {
+      chips: [...profile.chips],
+      meters: {
+        banter: profile.meters.banter,
+        depth: profile.meters.depth,
+        pace: profile.meters.pace,
+      },
+      voiceSummary: profile.voiceSummary,
+      matchTags: [...profile.matchTags],
+      starters: [...profile.starters],
+      about: profile.about,
+      copy: {
+        spotlightCta: copy.spotlightCta,
+        revealHeadline: copy.revealHeadline,
+        revealSubline: copy.revealSubline,
+        revealCta: copy.revealCta,
+        matchReasons: [...copy.matchReasons],
+        firstMessage: [...copy.firstMessage],
+        sampleOpener: copy.sampleOpener,
+        voiceLabel: copy.voiceLabel,
+        profileSections: {
+          remembers: copy.profileSections.remembers,
+          photos: copy.profileSections.photos,
+        },
+      },
     },
-    voice: { description: character.voice.description, summary: character.voice.summary },
     proactiveByDefault: character.proactive.enabledByDefault,
-    copy: {
-      ...character.copy,
-      matchReasons: [...character.copy.matchReasons],
-      firstMessage: [...character.copy.firstMessage],
-      profileSections: { ...character.copy.profileSections },
-    },
     images,
   };
 }

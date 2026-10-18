@@ -5,14 +5,39 @@ import { cors } from 'hono/cors';
 import { createManifestLoader, type Warn } from './assets/manifest';
 import { createCharacterStore } from './characters/store';
 import type { ServerConfig } from './config';
+import type { Db } from './db/client';
+import type { ChatModel } from './providers/types';
 import { companionRoutes, createPublicProjector } from './routes/companions';
+import { conversationRoutes } from './routes/conversations';
 import { devCompanionRoutes, type DevCompanionRoutesOptions } from './routes/dev-companions';
 import { healthRoutes } from './routes/health';
 import { privateAssetRoutes } from './routes/private-assets';
+import { sessionRoutes } from './routes/session';
+
+/** Persistence and the chat model. Without them only the read-only routes exist. */
+export interface ChatServices {
+  db: Db;
+  model: ChatModel;
+  sessionSecret: string;
+}
 
 export interface AppOverrides {
   /** Tests inject the client address for the dev editor's localhost gate. */
   remoteAddress?: DevCompanionRoutesOptions['remoteAddress'];
+  chat?: ChatServices;
+  /** Chat failure logging (default console.warn). */
+  log?: (message: string) => void;
+}
+
+const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
+
+/** Configured origins, plus any localhost port in development. */
+function corsOrigin(config: ServerConfig) {
+  return (origin: string) =>
+    config.corsOrigins.includes(origin) ||
+    (config.allowLocalhostOrigins && LOCALHOST_ORIGIN.test(origin))
+      ? origin
+      : null;
 }
 
 export function createApp(
@@ -32,8 +57,8 @@ export function createApp(
     warn,
   });
 
-  return new Hono()
-    .use('*', cors({ origin: config.corsOrigins }))
+  const app = new Hono()
+    .use('*', cors({ origin: corsOrigin(config) }))
     .route('/', healthRoutes)
     .route('/', companionRoutes(store, toPublic))
     .route(
@@ -46,4 +71,21 @@ export function createApp(
       }),
     )
     .route('/', privateAssetRoutes(config.privateAssetsDir));
+
+  if (overrides.chat) {
+    const { db, model, sessionSecret } = overrides.chat;
+    app.route('/', sessionRoutes(db, sessionSecret)).route(
+      '/',
+      conversationRoutes({
+        db,
+        store,
+        model,
+        sessionSecret,
+        killSwitch: config.killSwitch,
+        rateLimitPerMin: config.rateLimitPerMin,
+        log: overrides.log,
+      }),
+    );
+  }
+  return app;
 }

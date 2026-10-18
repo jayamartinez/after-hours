@@ -2,9 +2,8 @@ import type { PublicCharacter } from '@after-hours/contracts';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CompanionImage } from '@/components/companion-image';
-import { colors, fonts, radius, tints, tones, type } from '@/theme/tokens';
+import { colors, fonts, radius, tints, tones } from '@/theme/tokens';
 
-import { statusWithPlace } from './companion-copy';
 import { ParodyBadge } from './parody-badge';
 import { Scrim, SCRIMS } from './scrim';
 import { VoicePill } from './voice';
@@ -29,7 +28,7 @@ export function SpotlightCard({ companion, width, height, onOpen }: SpotlightCar
     <Pressable
       onPress={onOpen}
       accessibilityRole="button"
-      accessibilityLabel={`${companion.name}, ${companion.age}. ${companion.tagline}`}
+      accessibilityLabel={`${companion.name}, ${companion.age}`}
       accessibilityHint="Opens the profile"
       style={[styles.card, { width, height: cardHeight, backgroundColor: tint.ground }]}
     >
@@ -40,9 +39,6 @@ export function SpotlightCard({ companion, width, height, onOpen }: SpotlightCar
       />
       <View style={styles.info}>
         <VoicePill companion={companion} />
-        <Text style={[type.label, styles.status, { color: tint.label }]} numberOfLines={1}>
-          {statusWithPlace(companion)}
-        </Text>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
             {companion.name}
@@ -52,9 +48,8 @@ export function SpotlightCard({ companion, width, height, onOpen }: SpotlightCar
             <ParodyBadge label={companion.disclosure.badge} variant="art" />
           </View>
         </View>
-        <Text style={styles.tagline}>{companion.tagline}</Text>
         <View style={styles.chips}>
-          {companion.chips.map((chip) => (
+          {companion.publicProfile.chips.map((chip) => (
             <View key={chip} style={styles.chip}>
               <Text style={styles.chipText}>{chip}</Text>
             </View>
@@ -82,7 +77,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingBottom: 24,
   },
-  status: { lineHeight: 14 },
   nameRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   name: {
     flexShrink: 1,
@@ -94,7 +88,6 @@ const styles = StyleSheet.create({
   },
   nameMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
   age: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.text },
-  tagline: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: tones.textOnArt },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 4 },
   chip: {
     height: 36,

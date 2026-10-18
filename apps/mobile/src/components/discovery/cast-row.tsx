@@ -36,20 +36,13 @@ export function CastRow({
   const header = (
     <View style={styles.labelRow}>
       <Text style={[styles.number, { color: tint.label }]}>{castNumber(index)}</Text>
-      <View style={styles.status}>
-        <View style={[styles.dot, { backgroundColor: tint.strong }]} />
-        <Text style={styles.statusText} numberOfLines={1}>
-          {companion.statusLine}
-        </Text>
-      </View>
     </View>
   );
   const text = (
     <View style={styles.text}>
       <NameRow companion={companion} size={36} />
-      <Text style={styles.blurb}>{companion.blurb}</Text>
       <View style={styles.meters}>
-        <Meters meters={companion.meters} gap={18} />
+        <Meters meters={companion.publicProfile.meters} gap={18} />
       </View>
     </View>
   );
@@ -60,7 +53,7 @@ export function CastRow({
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded: false }}
-        accessibilityLabel={`${companion.name}, ${companion.statusLine}`}
+        accessibilityLabel={companion.name}
         accessibilityHint="Shows more"
         style={({ pressed }) => [styles.row, dimmed && styles.dimmed, pressed && styles.pressed]}
       >
@@ -80,7 +73,7 @@ export function CastRow({
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded: true }}
-        accessibilityLabel={`${companion.name}, ${companion.statusLine}`}
+        accessibilityLabel={companion.name}
         accessibilityHint="Shows less"
       >
         {header}
@@ -111,7 +104,7 @@ export function CastRow({
           <WaveGlyphIcon color={colors.textMuted} />
         </View>
         <PrimaryButton
-          label={companion.copy.spotlightCta}
+          label={companion.publicProfile.copy.spotlightCta}
           accessibilityHint="Opens the chat"
           onPress={onStartChat}
           style={styles.cta}
@@ -120,7 +113,7 @@ export function CastRow({
       <View style={styles.voiceCaption}>
         <Text style={[type.label, styles.voiceCaptionLabel]}>{voiceLabel}</Text>
         <Text style={styles.voiceCaptionText} numberOfLines={1}>
-          {companion.voice.summary}
+          {companion.publicProfile.voiceSummary}
         </Text>
       </View>
     </View>
@@ -147,15 +140,11 @@ const styles = StyleSheet.create({
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   number: { fontFamily: fonts.displayItalic, fontSize: 17, lineHeight: 20 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  dot: { width: 6, height: 6, borderRadius: radius.pill },
-  statusText: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.text },
   body: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   expandedBody: { gap: 16 },
   thumb: { width: 92, height: 120, borderRadius: radius.md },
   banner: { width: '100%', height: 150, borderRadius: radius.md },
   text: { flex: 1, minWidth: 0, gap: 8 },
-  blurb: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.textMuted },
   meters: { paddingTop: 6 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 4 },
   voiceButton: {

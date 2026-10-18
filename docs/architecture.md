@@ -1,6 +1,6 @@
 # After Hours — Architecture
 
-Status: **Milestone 1 scaffolded** (workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell) plus the configurable character system (presets, local overrides, prompt assembly, dev editor). Everything else is proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
+Status: **Milestone 3 built**: workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell, configurable character system (presets, overrides, prompt assembly, dev editor), and real chat (anonymous sessions, Postgres/PGlite persistence, streamed replies over SSE; D-023). Memory extraction, media, voice, the fallback provider, and the bridge are still proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
 
 ## Overview
 
@@ -9,7 +9,7 @@ Status: **Milestone 1 scaffolded** (workspace, contracts, companions, server `/h
  │ apps/mobile (Expo Router)│        │ apps/imessage-bridge     │
  │ iOS app + static web     │        │ macOS process (optional) │
  └────────────┬─────────────┘        └────────────┬─────────────┘
-   HTTPS + SSE│ Supabase JWT            HTTPS     │ bridge token
+   HTTPS + SSE│ session token           HTTPS     │ bridge token
               ▼                                   ▼
  ┌─────────────────────────────────────────────────────────────┐
  │ apps/server (Hono on Node)                                  │
@@ -17,7 +17,7 @@ Status: **Milestone 1 scaffolded** (workspace, contracts, companions, server `/h
  │ providers/: ChatModel ImageModel SpeechToText TextToSpeech   │
  │             WebSearch  (env-selected implementations)        │
  └──────┬───────────────────────────────┬──────────────────────┘
-        │ Drizzle (service role)        │ provider HTTPS
+        │ Drizzle (table owner)         │ provider HTTPS
         ▼                               ▼
  ┌──────────────────────────┐   ┌───────────────────────────────┐
  │ Supabase                 │   │ LLM / image / STT / TTS / search│
@@ -42,9 +42,10 @@ Status: **Milestone 1 scaffolded** (workspace, contracts, companions, server `/h
 - **Routing:** Expo Router. Main areas: onboarding, companion list, chat, profile, memories, gallery, settings, paywall.
 - **Server state:** TanStack Query for conversations, messages, memories, gallery, entitlements. Optimistic inserts for sent messages.
 - **Client state:** one small Zustand store for UI-only state (onboarding progress, composer drafts, active stream, demo flags). No server data duplicated there.
-- **Streaming:** `expo/fetch` with SSE parsing on iOS and web. Events are typed in `packages/contracts`: `typing`, `delta`, `message` (final, with id), `tool` (e.g., image pending), `error`, `done`.
+- **Streaming:** `expo/fetch` (streaming `response.body` on iOS; the browser's fetch on web) with an incremental SSE parser (`apps/mobile/src/chat/sse.ts`). Events are typed in `packages/contracts/src/chat.ts`: `ack`, `typing`, `delta`, `bubble`, `done`, `error` (later: `tool`).
+- **Conversations:** `useConversation` reads one `ConversationSource`. The server-backed source (`chat/api-source.ts`) loads history, inserts the user message optimistically (`sending` → `sent` on `ack` → `read` when the reply starts), shows the typing indicator, and paces reply bubbles with a short typing pause between them. A failed send shows "Not delivered · Retry" under the message; retry resends the same `clientId`. If the API cannot be reached at all, the labeled demo source (`demo-source.ts`, "Demo data · canned replies") takes over. Reactions are local only for now.
 - **Web:** `expo export --platform web` produces a static bundle served by any static host or by the server. Features that need native APIs (haptics, mic) degrade with feature checks.
-- **Auth:** Supabase client for session only (anonymous sign-in, later email linking). The JWT is sent to the server; the app does not query tables directly.
+- **Auth:** anonymous device session (D-023). On first API use the app calls `POST /session`, stores the token in AsyncStorage (iOS and web; Keychain via expo-secure-store is a later hardening step), and sends `Authorization: Bearer`. A 401 drops the token and creates a new session once. The app never queries tables directly.
 
 ## Server
 
@@ -52,14 +53,17 @@ Hono on Node, deployed as a **single Node service** (*open:* Fly.io, Render, or 
 
 ### Chat pipeline
 
-1. Request (`POST /conversations/:id/messages`) validated against contracts.
-2. Auth: verify Supabase JWT; resolve `userId`; confirm conversation ownership.
-3. Rate and budget check against `usage_ledger` and in-memory/token-bucket limits; global kill switch.
-4. Persist user message (`status: sent`); emit `typing`.
-5. Assemble prompt (`apps/server/src/chat/prompt.ts`): fixed safety preamble + character identity, instructions, boundaries, style block, signature lines, examples + user preferences + top-k memories + recent message window.
-6. Stream from primary `ChatModel`. If it fails **before the first token**, retry once, then fall back to the secondary provider. After the first token, errors end the stream with a typed `error` event and a retry action.
-7. Handle tool calls (allowlist below), then persist the assistant message(s), split into bursts per style params.
-8. Async (after response): memory extraction with a cheap model, usage ledger write, receipts update.
+Built in Milestone 3 (`apps/server/src/routes/conversations.ts`):
+
+1. `KILL_SWITCH` → 503. The body `{ text, clientId, timeZone? }` is validated with `SendMessageRequestSchema` (max 2,000 characters).
+2. Auth: verify the session token (`auth/session.ts`) and that the user row exists; resolve `userId`. Conversations are addressed by companion id and always looked up through `userId`, so ownership is structural. Unknown companion → 404.
+3. Per-user rate limit (in-memory fixed window, `RATE_LIMIT_PER_MIN`, default 20) → 429.
+4. Get or create the conversation (a new one starts with the companion's `copy.firstMessage`). Persist the user message, idempotent on `(conversation, clientId)`: resending an answered message replays the stored reply without calling the model; resending a failed one generates again. Emit `ack`, then `typing`.
+5. Build the request with `buildChatRequest`: the last 30 stored messages (failed ones dropped, consecutive same-side messages merged), this user's memories for this companion only, and the device time zone.
+6. Stream from the `ChatModel`. Deltas feed an incremental bubble splitter (`createBubbleSplitter`, same result as `splitBubbles`); each finished bubble is stored as its own assistant message (`reply_to` = the user message) and emitted as `bubble`. A retryable failure before the first token is retried once. No fallback provider yet.
+7. `done` with the stored ids; the user message becomes `read`. On failure, `error { code, message, retryable }`: a refusal is non-retryable (message `read`); a provider error before any bubble is retryable (message `failed`); a failure after some bubbles keeps them and is non-retryable. A client disconnect does not stop generation, so the reply is still saved. Logs never include message content.
+
+Later: tool calls, fallback provider, memory extraction and the usage ledger after each turn, persisted reactions and read pointers.
 
 ### Memory
 
@@ -97,7 +101,11 @@ Defined in `apps/server/src/providers/types.ts`; implementation chosen by env at
 
 ## Persistence
 
-Supabase Postgres + Auth + Storage. Drizzle ORM for queries and schema; SQL migrations committed and applied with `pnpm db:migrate`. RLS on every user-owned table (`user_id = auth.uid()`); the server also filters by `userId` explicitly and both are tested.
+Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL migrations generated by drizzle-kit into `apps/server/drizzle/` (`pnpm db:generate`) and applied with `pnpm db:migrate`.
+
+- **Targets:** `DATABASE_URL` set → node-postgres (hosted Supabase, session pooler URI). Unset → PGlite (in-process Postgres, no Docker) persisted to `PGLITE_DIR` (default `local-data/pglite`, git-ignored) and migrated at server startup. Tests use in-memory PGlite. PGlite is single-process; a pid `.lock` file next to the directory stops a second process (e.g. `db:migrate` during `pnpm dev`) from opening it.
+- **Scoping:** every query filters by `userId` (or a conversation id resolved through it). RLS is enabled on every table with no policies: the server connects as the table owner, and Supabase's public PostgREST roles see nothing. Route tests prove two users and two companions stay isolated.
+- **Built now:** `users` (id, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated/deleted_at; CRUD helpers in `db/memories.ts`, retrieval wired into chat, extraction in Milestone 4). The rest of the table below is proposed.
 
 | Table | Key columns |
 | --- | --- |
@@ -129,8 +137,8 @@ Supabase Postgres + Auth + Storage. Drizzle ORM for queries and schema; SQL migr
 ## Security
 
 - All secrets server-side, from env. `.env.example` lists every variable with placeholders. `EXPO_PUBLIC_*` is public.
-- JWT verification on every route; ownership checks per conversation; RLS as a second layer.
-- Supabase service-role key used only by the server, never by the app or bridge.
+- Session-token verification on every chat route; conversations resolved through the user; RLS enabled (no policies) so the public Supabase API cannot read tables.
+- `DATABASE_URL` and `SESSION_SECRET` are server-only, never in the app or bridge.
 - Storage buckets private; media served by short-lived signed URLs.
 - Zod validation on all inputs, tool arguments, model JSON outputs, and bridge payloads.
 - Rate limits per user and per IP; daily budgets from `usage_ledger`; global spend kill switch.
@@ -173,14 +181,15 @@ Each slot has a focal point `[x, y]` (0 to 1). Rendering uses `object-fit: cover
 Reference: `docs/companions.md`.
 
 - **Sources:** presets in `packages/companions/presets/*.json` (committed), deep-merged with the git-ignored overrides file `COMPANIONS_CONFIG` (default `config/companions.local.json`). Objects merge and arrays replace. The merged result is validated against `CharacterConfigSchema`. An invalid override logs the Zod issues and falls back to the preset. The file is re-read when its mtime or size changes, using the same cached loader as the image manifest (`apps/server/src/files/cached-file.ts`).
-- **Server is the source of truth:** `GET /companions` returns `PublicCharacter[]` (`packages/contracts`) with image slots resolved by the asset manifest. Prompt-only and feature fields (instructions, boundaries, example exchanges, style, memory, proactive, voice ids, appearance) never leave the server.
+- **Shape:** `CharacterConfig` groups identity at the top level (`id`, `name`, `age`, `pronouns`, `tint`, `disclosure`, `images`), `publicProfile` (chips, meters, voice summary, match tags, starters, UI copy: the only character content the app may display or use), `persona` (backstory, interests, personality, style, examples: server-only prompt material), and server-only feature config (`voice`, `memory`, `proactive`, `appearance`).
+- **Server is the source of truth:** `GET /companions` returns `PublicCharacter[]` (`packages/contracts`): identity, `publicProfile`, `proactiveByDefault`, and image slots resolved by the asset manifest. `toPublicCharacter` (`packages/companions/src/public.ts`) copies those fields one by one, so `persona` and feature config never leave the server; a test checks that no persona text appears in the serialized result.
 - **Client:** every screen reads companions through one hook, `useCompanions()` / `useCompanion(id)` (`apps/mobile/src/api/companions.ts`). No component hardcodes a companion's name, copy, or image.
 - **Loading on iOS and web:** both platforms run the same code path.
   - Online: the app fetches `${EXPO_PUBLIC_API_URL}/companions`. The web build reaches `localhost:8787` directly; CORS allows `CORS_ORIGINS`. The iOS Simulator can also use `localhost`. A physical device needs the computer's LAN IP in `EXPO_PUBLIC_API_URL` (and in `PUBLIC_SERVER_URL` so private-asset URLs work).
   - Offline or invalid response: the app falls back to the bundled presets. Metro inlines the preset JSON imports at build time on iOS and web, and the app projects them to `PublicCharacter`. Images then come from bundled defaults via static `require()`. Local overrides are never bundled; they arrive only through the server.
   - Images: bundled defaults are static `require()` (iOS and web). Overrides are http(s) URLs served by the server or hosted elsewhere (iOS and web). The client never reads arbitrary filesystem paths.
   - The whole preset file is in the bundle (the repo is public anyway), so presets must never hold secrets.
-- **Prompt assembly:** `buildSystemPrompt(character, prefs?, memories?)` puts the app-level safety preamble (`chat/safety.ts`, not configurable) first, then renders config. Onboarding preferences can lower flirtation or roast levels, never raise them. Unit tests prove that config changes alter the prompt and that config cannot remove the preamble.
+- **Prompt assembly:** `buildChatRequest(character, { history, memories, prefs, now })` (`chat/request.ts`) is the one path from config to a model request. `buildSystemPrompt(character, prefs?)` puts the app-level safety preamble (`chat/safety.ts`, not configurable) first, then renders identity and `persona` plus the app-level conversation and memory rules (including: never claim accomplishments, companies, famous acquaintances, or past events as facts); it is byte-stable and sent as the cached system block. `buildTurnContext` (`chat/context.ts`) adds the volatile part (current time, this companion's memories only) as a second system block. `ChatModel` (`providers/types.ts`, Anthropic implementation in `providers/anthropic.ts`) streams the reply; `splitBubbles` / `createBubbleSplitter` turn blank-line-separated texts into bubbles. Onboarding preferences can lower flirtation or roast levels, never raise them. Unit tests prove that config changes alter the request and that config cannot remove the preamble. The chat route (see "Chat pipeline") uses this path; `pnpm --filter @after-hours/server eval` exercises it against the real model.
 - **Dev editor:** `GET`/`PUT /dev/companions/:id` exists only with `DEV_EDITOR=true` and only for loopback connections to a local host name with no proxy headers. It writes only the overrides file, atomically (temp file + rename). The mobile route `/dev/companions` redirects home unless `EXPO_PUBLIC_DEV_EDITOR=true` at bundle time.
 
 ## Environment variables
@@ -191,31 +200,31 @@ Names only. "Degrades" describes behavior when unset.
 | --- | --- | --- |
 | `PORT` | No | Default 8787 |
 | `PUBLIC_SERVER_URL` | No | Private-asset URLs use the request's own origin |
-| `CORS_ORIGINS` | No | `http://localhost:8081` (Expo web dev server) |
+| `CORS_ORIGINS` | No | `http://localhost:8081` (Expo web dev server). Outside `NODE_ENV=production`, any `http://localhost:<port>` or `127.0.0.1` origin is also allowed. |
 | `COMPANION_ASSET_MANIFEST` | No | Defaults to `config/companion-assets.local.json` (git-ignored). Missing file uses bundled default art. |
 | `COMPANIONS_CONFIG` | No | Defaults to `config/companions.local.json` (git-ignored). Missing file: presets only. |
 | `DEV_EDITOR` | No | `false`: `/dev/companions` routes return 404. Never enable on a deployed server. |
 | `EXPO_PUBLIC_DEV_EDITOR` | No | `false`: the app's `/dev/companions` route redirects home. |
 | `PRIVATE_ASSETS_DIR` | No | Defaults to `private-assets/` at the repo root (git-ignored). Relative `src` values whose file is missing fall back to defaults. |
-| `DATABASE_URL` | Yes | — |
-| `SUPABASE_URL` | Yes | — |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | — |
-| `SUPABASE_JWT_SECRET` | Yes | — |
-| `EXPO_PUBLIC_SUPABASE_URL` | Yes | — |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes | — |
-| `EXPO_PUBLIC_API_URL` | Yes | — |
-| `CHAT_PRIMARY_PROVIDER`, `CHAT_PRIMARY_MODEL` | Yes | — |
+| `DATABASE_URL` | No | Local PGlite in `PGLITE_DIR`. For hosted Postgres, the Supabase session pooler URI. |
+| `PGLITE_DIR` | No | `local-data/pglite` (git-ignored) |
+| `SESSION_SECRET` | With `DATABASE_URL` | PGlite only: a random secret is generated once into `local-data/session-secret`. 32+ characters. |
+| `NODE_ENV` | No | `development` (any-localhost CORS allowed); set `production` when deployed |
+| `EXPO_PUBLIC_API_URL` | No | `http://localhost:8787` |
+| `CHAT_PRIMARY_PROVIDER`, `CHAT_PRIMARY_MODEL` | No | `anthropic`, `claude-opus-5-5` |
 | `ANTHROPIC_API_KEY` | If primary is Anthropic | Chat unavailable |
 | `CHAT_FALLBACK_BASE_URL`, `CHAT_FALLBACK_API_KEY`, `CHAT_FALLBACK_MODEL` | No | No fallback; primary errors surface to user |
-| `MEMORY_MODEL` | No | Uses primary model for extraction |
+| `MEMORY_MODEL` | No | `claude-haiku-5-5` (memory extraction, eval judge) |
+| `CHAT_EFFORT` | No | `low` (reasoning effort for chat replies) |
 | `LOCAL_LLM_BASE_URL` | No | Local provider unavailable |
 | `EMBEDDINGS_PROVIDER`, `EMBEDDINGS_API_KEY` | No | Keyword + recency retrieval only |
 | `IMAGE_PROVIDER`, `IMAGE_API_KEY` | No | Image tool not offered; gallery hidden |
 | `STT_PROVIDER`, `STT_API_KEY` | No | Mic button hidden |
 | `TTS_PROVIDER`, `TTS_API_KEY` | No | Companions reply in text only |
 | `WEB_SEARCH_PROVIDER`, `WEB_SEARCH_API_KEY` | No | Web search tool not offered |
-| `RATE_LIMIT_PER_MIN`, `DAILY_TOKEN_BUDGET`, `DAILY_IMAGE_BUDGET`, `DAILY_AUDIO_SECONDS` | No | Conservative defaults |
-| `GLOBAL_DAILY_SPEND_CAP_USD`, `KILL_SWITCH` | No (required for public demo) | No global cap |
+| `RATE_LIMIT_PER_MIN` | No | 20 chat messages per user per minute (in-memory) |
+| `KILL_SWITCH` | No (public demo emergency stop) | `false`; `true` makes chat sends return 503 |
+| `DAILY_TOKEN_BUDGET`, `DAILY_IMAGE_BUDGET`, `DAILY_AUDIO_SECONDS`, `GLOBAL_DAILY_SPEND_CAP_USD` | No | Not implemented yet |
 | `MAX_TOOL_CALLS_PER_TURN` | No | Default 2 |
 | `BRIDGE_TOKENS` | No | Bridge API disabled |
 | `LOG_LEVEL` | No | `info` |
@@ -224,16 +233,16 @@ Bridge-side: `BRIDGE_SERVER_URL`, `BRIDGE_TOKEN`, `BRIDGE_POLL_MS`.
 
 ## Local development and self-hosting
 
-- `pnpm install`; `pnpm dev` runs server + Expo web; `pnpm dev:ios` for the Simulator (macOS). From Milestone 3: set the hosted Supabase variables in `.env`, then `pnpm db:migrate` and seed companions.
-- The database is a hosted Supabase project (D-019). Docker is optional and never required; the Supabase CLI local stack (`supabase start`) is only an alternative for developers who already run Docker.
-- Minimum to chat: Supabase variables + one chat provider key. Everything else is optional and hides its feature when absent.
+- `pnpm install`; `pnpm dev` runs server + Expo web; `pnpm dev:ios` for the Simulator (macOS). With no `DATABASE_URL` the server uses local PGlite and migrates it on startup: nothing else to set up.
+- Hosted database (D-019, D-023): put the Supabase **session pooler** URI in `DATABASE_URL` and a 32+ character `SESSION_SECRET` in `.env`, run `pnpm db:migrate` once (and after each new migration), then `pnpm dev`. Docker is never required.
+- Minimum to chat: `ANTHROPIC_API_KEY`. Everything else is optional and hides its feature when absent.
 - Self-hosting: deploy the server as one Node service, the web export to any static host, and point both at a Supabase project (hosted or self-hosted). The bridge runs separately on a Mac.
 
 ## Testing strategy
 
 - **Unit:** prompt assembly (per companion and preferences), memory extraction parsing/dedupe/merge, retrieval scoring, provider fallback (pre/post first token), rate/budget logic, tool allowlist and caps, bridge dedup and loop prevention, contract schemas.
-- **Integration:** Hono routes against a real local database: PGlite (in-process Postgres, no Docker) once persistence lands; route tests today use Hono's in-memory `app.request`; third-party providers mocked at the HTTP layer; RLS tests prove user A cannot read user B's conversations, memories, or media.
-- **Streaming:** SSE event sequence tests, including mid-stream failure.
+- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table.
+- **Streaming:** SSE event sequence tests, including mid-stream failure; client SSE parser and API source tests (`apps/mobile/src/chat/*.test.ts`).
 - **Persona regression:** fixed transcript prompts per companion checked for style params (casing, length, bursts) with a mocked or recorded model.
 - **UI:** verify on web and iOS Simulator; screenshots for meaningful visual changes.
 
@@ -251,5 +260,5 @@ Bridge-side: `BRIDGE_SERVER_URL`, `BRIDGE_TOKEN`, `BRIDGE_POLL_MS`.
 3. Image provider and consistency method (D-011).
 4. STT and TTS providers; eager vs. on-play TTS (D-011).
 5. Whether embeddings (pgvector) ship in P0 or keyword retrieval suffices.
-6. Rate-limit store: in-process vs. Postgres-backed (matters if scaled beyond one instance).
+6. Rate-limit store: in-process today (D-023); Postgres-backed if scaled beyond one instance.
 7. Voice call stack (LiveKit vs. realtime speech API).

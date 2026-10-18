@@ -20,7 +20,7 @@ beforeAll(() => {
   writeFileSync(config.manifestPath, JSON.stringify({ roy: { hero: { src: 'roy/hero.jpg' } } }));
   writeFileSync(
     config.companionsConfigPath,
-    JSON.stringify({ roy: { name: 'Roy (test)', tagline: 'Overridden tagline' } }),
+    JSON.stringify({ roy: { name: 'Roy (test)', publicProfile: { starters: ['Overridden'] } } }),
   );
   app = createApp(config, () => {});
 });
@@ -40,7 +40,7 @@ describe('server routes', () => {
     expect(body.companions.map((c) => c.id)).toEqual(['roy', 'roya']);
     const [roy, roya] = body.companions;
     expect(roy?.name).toBe('Roy (test)');
-    expect(roy?.tagline).toBe('Overridden tagline');
+    expect(roy?.publicProfile.starters).toEqual(['Overridden']);
     expect(roy?.images.hero.uri).toBe('http://api.test/assets/private/roy/hero.jpg');
     expect(roya?.name).toBe('Roya');
     const json = JSON.stringify(body);
@@ -48,6 +48,7 @@ describe('server routes', () => {
       '"instructions"',
       '"boundaries"',
       '"style"',
+      '"persona"',
       '"voiceIdEnv"',
       '"proactive"',
     ]) {

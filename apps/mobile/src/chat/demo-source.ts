@@ -133,7 +133,7 @@ export function createDemoConversationSource(options: DemoSourceOptions = {}): C
       dispatch(companion.id, { type: 'loaded', messages: [] });
       // Not reply timers: an early send must not cancel the opening lines.
       let at = timing.typingStart;
-      for (const content of companion.copy.firstMessage) {
+      for (const content of companion.publicProfile.copy.firstMessage) {
         setTimeout(() => dispatch(companion.id, { type: 'typing', typing: true }), at);
         at += typingTime(content);
         setTimeout(
@@ -157,6 +157,9 @@ export function createDemoConversationSource(options: DemoSourceOptions = {}): C
       dispatch(companion.id, { type: 'send', message });
       scheduleReply(companion, message.id);
     },
+
+    // Demo sends never fail.
+    retry() {},
 
     toggleReaction(companionId, messageId, reaction) {
       dispatch(companionId, { type: 'toggleReaction', id: messageId, reaction });

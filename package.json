@@ -15,6 +15,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "pnpm -r --if-present run test",
+    "db:migrate": "pnpm --filter @after-hours/server run db:migrate",
+    "db:generate": "pnpm --filter @after-hours/server run db:generate",
     "format:check": "prettier --check .",
     "companions:schema": "pnpm --filter @after-hours/companions run schema"
   },

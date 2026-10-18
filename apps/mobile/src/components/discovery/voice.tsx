@@ -13,7 +13,7 @@ import { PlayIcon, Waveform, WAVES } from './icons';
 
 /** Glass pill on the Spotlight card: "Hear his voice · coming soon". */
 export function VoicePill({ companion }: { companion: PublicCharacter }) {
-  const label = `${companion.copy.voiceLabel} · ${LABELS.comingSoon}`;
+  const label = `${companion.publicProfile.copy.voiceLabel} · ${LABELS.comingSoon}`;
   return (
     <View style={styles.pill} accessible accessibilityLabel={label}>
       <View style={[styles.play, styles.playSmall]}>
@@ -31,14 +31,18 @@ export function VoicePill({ companion }: { companion: PublicCharacter }) {
 export function VoiceSampleRow({ companion }: { companion: PublicCharacter }) {
   const label = `${LABELS.voiceSample} · ${LABELS.comingSoon}`;
   return (
-    <View style={styles.row} accessible accessibilityLabel={`${label}. ${companion.voice.summary}`}>
+    <View
+      style={styles.row}
+      accessible
+      accessibilityLabel={`${label}. ${companion.publicProfile.voiceSummary}`}
+    >
       <View style={[styles.play, styles.playLarge]}>
         <PlayIcon size={12} />
       </View>
       <View style={styles.rowText}>
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowSummary} numberOfLines={1}>
-          {companion.voice.summary}
+          {companion.publicProfile.voiceSummary}
         </Text>
       </View>
       <Waveform width={64} height={20} d={WAVES.sheet} color={tints[companion.tint].strong} />

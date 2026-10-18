@@ -41,4 +41,10 @@ describe('firstChatPhase', () => {
     expect(firstChatPhase([...used, them()], true, 2).phase).toBe('waiting');
     expect(firstChatPhase([...used, them()], false, 2)).toEqual({ phase: 'answered', left: 0 });
   });
+
+  it('an existing conversation keeps its free messages and skips the opener', () => {
+    const history = [them(), them(), you(), them(), you(), them()];
+    expect(firstChatPhase(history, false, 2, 2)).toEqual({ phase: 'open', left: 2 });
+    expect(firstChatPhase([...history, you()], true, 2, 2)).toEqual({ phase: 'open', left: 1 });
+  });
 });

@@ -46,99 +46,12 @@
       ],
       "additionalProperties": false
     },
-    "tagline": {
-      "type": "string",
-      "minLength": 1
-    },
-    "statusLine": {
-      "type": "string",
-      "minLength": 1
-    },
-    "location": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Fictional place"
-    },
-    "locationShort": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Short place label for status lines, e.g. \"South Calder\""
-    },
-    "blurb": {
-      "type": "string",
-      "minLength": 1,
-      "description": "One or two sentences for discovery cards and the cast list"
-    },
     "tint": {
       "type": "string",
       "enum": [
         "window",
         "lamplight"
       ]
-    },
-    "bio": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Short; profile \"About\""
-    },
-    "backstory": {
-      "type": "string",
-      "minLength": 1
-    },
-    "interests": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "chips": {
-      "minItems": 3,
-      "maxItems": 3,
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "talkStyle": {
-      "minItems": 1,
-      "maxItems": 6,
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      },
-      "description": "Profile \"How they talk\" chips"
-    },
-    "meters": {
-      "type": "object",
-      "properties": {
-        "banter": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 5
-        },
-        "depth": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 5
-        },
-        "pace": {
-          "type": "string",
-          "enum": [
-            "easy",
-            "quick",
-            "instant"
-          ]
-        }
-      },
-      "required": [
-        "banter",
-        "depth",
-        "pace"
-      ],
-      "additionalProperties": false
     },
     "disclosure": {
       "type": "object",
@@ -157,384 +70,6 @@
       "required": [
         "badge",
         "note"
-      ],
-      "additionalProperties": false
-    },
-    "personality": {
-      "type": "object",
-      "properties": {
-        "traits": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "instructions": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Behavioral instructions for the system prompt, second person"
-        },
-        "boundaries": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": "Character-specific do-nots. The app-level safety preamble always applies too."
-        }
-      },
-      "required": [
-        "traits",
-        "instructions",
-        "boundaries"
-      ],
-      "additionalProperties": false
-    },
-    "style": {
-      "type": "object",
-      "properties": {
-        "casing": {
-          "type": "string",
-          "enum": [
-            "lower",
-            "sentence"
-          ]
-        },
-        "bubbleLength": {
-          "type": "string",
-          "enum": [
-            "short",
-            "medium",
-            "long"
-          ]
-        },
-        "burst": {
-          "type": "array",
-          "prefixItems": [
-            {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 4
-            },
-            {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 4
-            }
-          ],
-          "items": false,
-          "minItems": 2,
-          "maxItems": 2,
-          "description": "Bubbles per turn, [min, max]"
-        },
-        "emojiRate": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "questionRate": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "flirtation": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 3,
-          "description": "0 none, 1 light, 2 playful, 3 bold (always PG-13)"
-        },
-        "roast": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 3,
-          "description": "0 none, 1 gentle, 2 teasing, 3 blunt (excuses and ideas only)"
-        }
-      },
-      "required": [
-        "casing",
-        "bubbleLength",
-        "burst",
-        "emojiRate",
-        "questionRate",
-        "flirtation",
-        "roast"
-      ],
-      "additionalProperties": false
-    },
-    "examples": {
-      "type": "object",
-      "properties": {
-        "messages": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "user": {
-                "type": "string",
-                "minLength": 1
-              },
-              "companion": {
-                "minItems": 1,
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "description": "Reply bubbles"
-              }
-            },
-            "required": [
-              "companion"
-            ],
-            "additionalProperties": false
-          },
-          "description": "Few-shot exchanges for the prompt"
-        },
-        "starters": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": "Conversation starters / quick replies"
-        },
-        "signatureLines": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "required": [
-        "messages",
-        "starters",
-        "signatureLines"
-      ],
-      "additionalProperties": false
-    },
-    "voice": {
-      "type": "object",
-      "properties": {
-        "description": {
-          "type": "string",
-          "minLength": 1
-        },
-        "summary": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Short form of the description for compact rows, e.g. \"Fast, bright tenor\""
-        },
-        "provider": {
-          "type": "string",
-          "minLength": 1
-        },
-        "voiceId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "voiceIdEnv": {
-          "description": "Name of the env var holding the TTS voice id",
-          "type": "string",
-          "pattern": "^[A-Z][A-Z0-9_]*$"
-        },
-        "speed": {
-          "type": "number",
-          "minimum": 0.5,
-          "maximum": 2
-        }
-      },
-      "required": [
-        "description",
-        "summary"
-      ],
-      "additionalProperties": false
-    },
-    "memory": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "focus": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "maxRetrieved": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 20
-        }
-      },
-      "required": [
-        "enabled",
-        "focus",
-        "maxRetrieved"
-      ],
-      "additionalProperties": false
-    },
-    "proactive": {
-      "type": "object",
-      "properties": {
-        "enabledByDefault": {
-          "type": "boolean"
-        },
-        "quietHours": {
-          "type": "object",
-          "properties": {
-            "start": {
-              "type": "string",
-              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-            },
-            "end": {
-              "type": "string",
-              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-            }
-          },
-          "required": [
-            "start",
-            "end"
-          ],
-          "additionalProperties": false
-        },
-        "maxPerDay": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 5
-        },
-        "openers": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "required": [
-        "enabledByDefault",
-        "quietHours",
-        "maxPerDay",
-        "openers"
-      ],
-      "additionalProperties": false
-    },
-    "copy": {
-      "type": "object",
-      "properties": {
-        "spotlightCta": {
-          "type": "string",
-          "minLength": 1
-        },
-        "revealHeadline": {
-          "type": "string",
-          "minLength": 1
-        },
-        "revealSubline": {
-          "type": "string",
-          "minLength": 1
-        },
-        "revealCta": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Reveal screen primary button, e.g. \"Say hi\""
-        },
-        "matchReasons": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "firstMessage": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": "Opening bubbles"
-        },
-        "profileSections": {
-          "type": "object",
-          "properties": {
-            "about": {
-              "type": "string",
-              "minLength": 1
-            },
-            "talks": {
-              "type": "string",
-              "minLength": 1
-            },
-            "voice": {
-              "type": "string",
-              "minLength": 1
-            },
-            "remembers": {
-              "type": "string",
-              "minLength": 1
-            },
-            "photos": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "about",
-            "talks",
-            "voice",
-            "remembers",
-            "photos"
-          ],
-          "additionalProperties": false
-        },
-        "voiceLabel": {
-          "type": "string",
-          "minLength": 1
-        },
-        "sampleOpener": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Example opening line shown on discovery (\"He might open with\")"
-        },
-        "chatLocation": {
-          "description": "Short fictional place for the chat header status, e.g. \"South Calder\"",
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "spotlightCta",
-        "revealHeadline",
-        "revealSubline",
-        "revealCta",
-        "matchReasons",
-        "firstMessage",
-        "profileSections",
-        "voiceLabel",
-        "sampleOpener"
-      ],
-      "additionalProperties": false
-    },
-    "appearance": {
-      "type": "object",
-      "properties": {
-        "style": {
-          "type": "string",
-          "minLength": 1
-        },
-        "look": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "style",
-        "look"
       ],
       "additionalProperties": false
     },
@@ -711,6 +246,533 @@
         "gallery"
       ],
       "additionalProperties": false
+    },
+    "publicProfile": {
+      "type": "object",
+      "properties": {
+        "chips": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Short temperament tags on the Spotlight card"
+        },
+        "meters": {
+          "type": "object",
+          "properties": {
+            "banter": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "pace": {
+              "type": "string",
+              "enum": [
+                "easy",
+                "quick",
+                "instant"
+              ]
+            }
+          },
+          "required": [
+            "banter",
+            "depth",
+            "pace"
+          ],
+          "additionalProperties": false
+        },
+        "voiceSummary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short voice label for compact rows, e.g. \"Fast, bright tenor\""
+        },
+        "matchTags": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Keywords onboarding matching scores against"
+        },
+        "starters": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Conversation starters / quick replies"
+        },
+        "about": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Two or three plain sentences on temperament, shown only in the profile \"About\" sheet (⋯). No invented biography."
+        },
+        "copy": {
+          "type": "object",
+          "properties": {
+            "spotlightCta": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revealHeadline": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revealSubline": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revealCta": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Reveal screen primary button, e.g. \"Say hi\""
+            },
+            "matchReasons": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "firstMessage": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Opening bubbles"
+            },
+            "sampleOpener": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Example opening line shown on discovery (\"He might open with\")"
+            },
+            "voiceLabel": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Spotlight voice pill, e.g. \"Hear his voice\""
+            },
+            "profileSections": {
+              "type": "object",
+              "properties": {
+                "remembers": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "photos": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "remembers",
+                "photos"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "spotlightCta",
+            "revealHeadline",
+            "revealSubline",
+            "revealCta",
+            "matchReasons",
+            "firstMessage",
+            "sampleOpener",
+            "voiceLabel",
+            "profileSections"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "chips",
+        "meters",
+        "voiceSummary",
+        "matchTags",
+        "starters",
+        "about",
+        "copy"
+      ],
+      "additionalProperties": false
+    },
+    "persona": {
+      "type": "object",
+      "properties": {
+        "backstory": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Temperament, habits of mind, how they are with people"
+        },
+        "interests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "personality": {
+          "type": "object",
+          "properties": {
+            "traits": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "instructions": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Behavioral instructions for the system prompt, second person"
+            },
+            "modes": {
+              "type": "object",
+              "properties": {
+                "casual": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Casual joking and banter"
+                },
+                "teasing": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Light teasing"
+                },
+                "smallTalk": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Small talk and ordinary topics: food, music, plans, their day"
+                },
+                "relationshipAdvice": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Dating, friendships, and relationship advice"
+                },
+                "goodNews": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The user had a good day or has good news"
+                },
+                "badDay": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The user had a frustrating day"
+                },
+                "sincere": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Genuinely emotional moments: lonely, sad, scared"
+                },
+                "disagreement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The user disagrees, or the character thinks they are wrong"
+                },
+                "flirting": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The user flirts (bounded by style.flirtation)"
+                },
+                "building": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The user brings up a startup, project, code, or tech work. The only place founder talk belongs."
+                }
+              },
+              "required": [
+                "casual",
+                "teasing",
+                "smallTalk",
+                "relationshipAdvice",
+                "goodNews",
+                "badDay",
+                "sincere",
+                "disagreement",
+                "flirting",
+                "building"
+              ],
+              "additionalProperties": false
+            },
+            "boundaries": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Character-specific do-nots. The app-level safety preamble always applies too."
+            }
+          },
+          "required": [
+            "traits",
+            "instructions",
+            "modes",
+            "boundaries"
+          ],
+          "additionalProperties": false
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "casing": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "sentence"
+              ]
+            },
+            "bubbleLength": {
+              "type": "string",
+              "enum": [
+                "short",
+                "medium",
+                "long"
+              ]
+            },
+            "burst": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Usual bubbles per turn, [min, max]; the model varies within it"
+            },
+            "emojiRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "questionRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "flirtation": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "0 none, 1 light, 2 playful, 3 bold (always PG-13)"
+            },
+            "roast": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "0 none, 1 gentle, 2 teasing, 3 blunt (excuses and ideas only)"
+            },
+            "profanity": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "0 never, 1 rare and mild, 2 occasional for emphasis, 3 casual"
+            }
+          },
+          "required": [
+            "casing",
+            "bubbleLength",
+            "burst",
+            "emojiRate",
+            "questionRate",
+            "flirtation",
+            "roast",
+            "profanity"
+          ],
+          "additionalProperties": false
+        },
+        "examples": {
+          "type": "object",
+          "properties": {
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "user": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "companion": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Reply bubbles"
+                  }
+                },
+                "required": [
+                  "companion"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Few-shot exchanges for the prompt"
+            },
+            "signatureLines": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Voice reference lines for the prompt"
+            }
+          },
+          "required": [
+            "messages",
+            "signatureLines"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "backstory",
+        "interests",
+        "personality",
+        "style",
+        "examples"
+      ],
+      "additionalProperties": false
+    },
+    "voice": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "voiceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "voiceIdEnv": {
+          "description": "Name of the env var holding the TTS voice id",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        }
+      },
+      "required": [
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "focus": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "maxRetrieved": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "required": [
+        "enabled",
+        "focus",
+        "maxRetrieved"
+      ],
+      "additionalProperties": false
+    },
+    "proactive": {
+      "type": "object",
+      "properties": {
+        "enabledByDefault": {
+          "type": "boolean"
+        },
+        "quietHours": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+            },
+            "end": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ],
+          "additionalProperties": false
+        },
+        "maxPerDay": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "openers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "enabledByDefault",
+        "quietHours",
+        "maxPerDay",
+        "openers"
+      ],
+      "additionalProperties": false
+    },
+    "appearance": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "minLength": 1
+        },
+        "look": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "style",
+        "look"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -718,28 +780,15 @@
     "name",
     "age",
     "pronouns",
-    "tagline",
-    "statusLine",
-    "location",
-    "locationShort",
-    "blurb",
     "tint",
-    "bio",
-    "backstory",
-    "interests",
-    "chips",
-    "talkStyle",
-    "meters",
     "disclosure",
-    "personality",
-    "style",
-    "examples",
+    "images",
+    "publicProfile",
+    "persona",
     "voice",
     "memory",
     "proactive",
-    "copy",
-    "appearance",
-    "images"
+    "appearance"
   ],
   "additionalProperties": false
 }

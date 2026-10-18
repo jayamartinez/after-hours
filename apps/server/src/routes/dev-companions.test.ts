@@ -77,12 +77,12 @@ describe('dev editor API', () => {
     const before = presetText();
     const app = makeApp(true);
 
-    const res = await app.request(put({ name: 'Roy (test)', tagline: 'Edited' }));
+    const res = await app.request(put({ name: 'Roy (test)', age: 30 }));
     expect(res.status).toBe(200);
     expect(DevCharacterResponseSchema.parse(await res.json()).merged.name).toBe('Roy (test)');
 
     expect(JSON.parse(readFileSync(overridesPath, 'utf8'))).toEqual({
-      roy: { name: 'Roy (test)', tagline: 'Edited' },
+      roy: { name: 'Roy (test)', age: 30 },
     });
     expect(presetText()).toBe(before);
 
@@ -94,25 +94,27 @@ describe('dev editor API', () => {
 
   it('PUT keeps other companions’ overrides and an empty object resets one', async () => {
     const app = makeApp(true);
-    await app.request(put({ tagline: 'Edited' }));
+    await app.request(put({ age: 30 }));
     const roya = new Request('http://localhost:8787/dev/companions/roya', {
       method: 'PUT',
-      body: JSON.stringify({ statusLine: 'Offline' }),
+      body: JSON.stringify({ name: 'Roya (test)' }),
     });
     await app.request(roya);
     await app.request(put({}));
     expect(JSON.parse(readFileSync(overridesPath, 'utf8'))).toEqual({
-      roya: { statusLine: 'Offline' },
+      roya: { name: 'Roya (test)' },
     });
   });
 
   it('PUT rejects an invalid override with issues (422) and writes nothing', async () => {
     const app = makeApp(true);
-    const res = await app.request(put({ age: 12, style: { casing: 'loud' } }));
+    const res = await app.request(put({ age: 12, persona: { style: { casing: 'loud' } } }));
     expect(res.status).toBe(422);
     const body = DevCharacterResponseSchema.parse(await res.json());
     expect(body.valid).toBe(false);
-    expect(body.issues.map((i) => i.path)).toEqual(expect.arrayContaining(['age', 'style.casing']));
+    expect(body.issues.map((i) => i.path)).toEqual(
+      expect.arrayContaining(['age', 'persona.style.casing']),
+    );
     expect(existsSync(overridesPath)).toBe(false);
   });
 

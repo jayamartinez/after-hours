@@ -43,14 +43,12 @@ describe('matchCompanion (bundled presets)', () => {
 });
 
 describe('matchCompanion (config-driven)', () => {
-  const make = (id: string, traits: string[], depth = 3): MatchableCompanion => ({
+  const make = (id: string, matchTags: string[], depth = 3): MatchableCompanion => ({
     id,
-    chips: [],
-    meters: { banter: 3, depth, pace: 'quick' },
-    personality: { traits },
+    publicProfile: { chips: [], matchTags, meters: { banter: 3, depth, pace: 'quick' } },
   });
 
-  it('follows traits from config, not ids', () => {
+  it('follows match tags from config, not ids', () => {
     const a = make('a', ['calm', 'gentle']);
     const b = make('b', ['blunt', 'competitive']);
     expect(matchCompanion(prefs({ values: ['calm'] }), [a, b])).toBe('a');

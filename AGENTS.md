@@ -88,9 +88,11 @@ pnpm typecheck
 pnpm lint
 pnpm test           # Vitest (server and packages)
 pnpm companions:schema   # regenerate packages/companions/character.schema.json after schema changes
+pnpm db:generate    # SQL migration from apps/server/src/db/schema.ts into apps/server/drizzle (drizzle-kit via pnpm dlx)
+pnpm db:migrate     # apply migrations to DATABASE_URL, or to local PGlite when unset (stop `pnpm dev` first)
 pnpm --filter @after-hours/mobile export:web   # static web build into apps/mobile/dist
 ```
 
-`pnpm db:migrate` arrives with persistence (Milestone 3). Docker is never required.
+Without `DATABASE_URL`, the server uses PGlite (in-process Postgres) in `local-data/pglite` (git-ignored) and migrates it on startup, so `pnpm dev` needs no database setup. Only one process may open that directory at a time (a `.lock` file enforces it). Docker is never required.
 
 Expo (SDK 58) changes between releases: check the versioned docs at `https://docs.expo.dev/versions/v58.0.0/` instead of relying on memory, and add native-capable packages with `npx expo install <package>` (run in `apps/mobile`) so versions match the SDK.

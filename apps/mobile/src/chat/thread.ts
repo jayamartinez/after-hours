@@ -99,13 +99,17 @@ export function buildThreadRows(messages: ChatMessage[], now: Date): ThreadRow[]
 
     rows.push({
       type: 'message',
-      key: message.id,
+      // Stable across the optimistic → stored id swap of a sent message.
+      key: message.clientId ?? message.id,
       message,
       groupStart: !joinsPrev,
       groupEnd: !joinsNext,
-      // The demo has no per-message read time yet; M3 supplies it from the conversation's
-      // last_read pointer. Until then the receipt shows the send time.
-      receipt: i === lastUserIndex ? receiptLabel(message.status, time) : null,
+      // No per-message read time is stored yet, so "Read" shows the send time. Undelivered
+      // messages always get a receipt (it carries the retry action).
+      receipt:
+        i === lastUserIndex || message.status === 'failed'
+          ? receiptLabel(message.status, time)
+          : null,
     });
   });
 

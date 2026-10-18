@@ -83,7 +83,7 @@ describe('resolveCompanionImages', () => {
     expect(images.hero.focal).toEqual([0.2, 0.8]);
     expect(images.hero.alt).toBe('Custom hero');
     expect(images.gallery[0].focal).toEqual([0.55, 0.45]);
-    expect(images.gallery[0].alt).toBe('Roy in the war room');
+    expect(images.gallery[0].alt).toBe('Roy at a desk of glowing laptops');
   });
 
   it('never resolves a traversal src even if it bypassed schema validation', () => {

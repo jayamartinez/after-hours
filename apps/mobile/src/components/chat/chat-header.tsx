@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { formatClock } from '@/chat/thread';
 import { CompanionImage } from '@/components/companion-image';
 import { colors, fonts, layout, spacing } from '@/theme/tokens';
 
@@ -12,47 +11,42 @@ import { BackIcon, InfoIcon, PhoneIcon } from './icons';
 
 interface ChatHeaderProps {
   companion: PublicCharacter;
-  now: Date;
   onCall: () => void;
 }
 
-/** Chat A header: back, avatar, serif name + disclosure badge, status, call + info. */
-export function ChatHeader({ companion, now, onCall }: ChatHeaderProps) {
+/** Chat A header: back, avatar, serif name + disclosure badge, call + info. */
+export function ChatHeader({ companion, onCall }: ChatHeaderProps) {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/chats'));
-  const place = companion.copy.chatLocation;
+  const openProfile = () =>
+    router.push({ pathname: '/companion/[id]', params: { id: companion.id } });
 
   return (
     <View style={styles.row}>
       <IconButton label="Back" width={36} onPress={goBack}>
         <BackIcon />
       </IconButton>
-      <CompanionImage companion={companion} slot="avatar" style={styles.avatar} />
-      <View style={styles.identity}>
-        <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1} accessibilityRole="header">
-            {companion.name}
-          </Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{companion.disclosure.badge}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${companion.name}'s profile`}
+        onPress={openProfile}
+        style={({ pressed }) => [styles.profileLink, pressed && styles.pressed]}
+      >
+        <CompanionImage companion={companion} slot="avatar" style={styles.avatar} />
+        <View style={styles.identity}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={1} accessibilityRole="header">
+              {companion.name}
+            </Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{companion.disclosure.badge}</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.status} numberOfLines={1}>
-          {companion.statusLine}
-        </Text>
-        {place ? (
-          <Text style={styles.status} numberOfLines={1}>
-            {place}, {formatClock(now)}
-          </Text>
-        ) : null}
-      </View>
+      </Pressable>
       <IconButton label={`Call ${companion.name}, coming soon`} width={40} onPress={onCall}>
         <PhoneIcon />
       </IconButton>
-      <IconButton
-        label={`About ${companion.name}`}
-        width={36}
-        onPress={() => router.push({ pathname: '/companion/[id]', params: { id: companion.id } })}
-      >
+      <IconButton label={`About ${companion.name}`} width={36} onPress={openProfile}>
         <InfoIcon />
       </IconButton>
     </View>
@@ -96,6 +90,7 @@ const styles = StyleSheet.create({
   },
   iconButton: { height: layout.tapTarget, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.6 },
+  profileLink: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20 },
   identity: { flex: 1, minWidth: 0, gap: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -122,5 +117,4 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: colors.textMuted,
   },
-  status: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, color: colors.textMuted },
 });

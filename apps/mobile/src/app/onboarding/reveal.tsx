@@ -47,14 +47,14 @@ export default function RevealScreen() {
         <StaggerIn order={1} style={styles.nameBlock}>
           <View style={styles.nameRow}>
             <Text accessibilityRole="header" style={styles.headline}>
-              {companion.copy.revealHeadline}
+              {companion.publicProfile.copy.revealHeadline}
             </Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{companion.disclosure.badge}</Text>
             </View>
           </View>
           <Text style={styles.subline}>
-            {companion.age} · {companion.copy.revealSubline}
+            {companion.age} · {companion.publicProfile.copy.revealSubline}
           </Text>
         </StaggerIn>
       </View>
@@ -62,13 +62,16 @@ export default function RevealScreen() {
         <StaggerIn order={2} style={styles.why}>
           <Label>Why {companion.name} · from your answers</Label>
           <View style={styles.reasons}>
-            {companion.copy.matchReasons.map((reason) => (
+            {companion.publicProfile.copy.matchReasons.map((reason) => (
               <BrassPill key={reason}>{reason}</BrassPill>
             ))}
           </View>
         </StaggerIn>
         <StaggerIn order={3}>
-          <OnboardingButton label={companion.copy.revealCta} onPress={() => goToNext('reveal')} />
+          <OnboardingButton
+            label={companion.publicProfile.copy.revealCta}
+            onPress={() => goToNext('reveal')}
+          />
         </StaggerIn>
         {other ? (
           <StaggerIn order={4}>

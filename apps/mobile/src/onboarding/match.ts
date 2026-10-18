@@ -2,14 +2,14 @@ import type { PublicCharacter } from '@after-hours/contracts';
 
 import type { CompanionValue, LookingFor, OnboardingPreferences } from './preferences';
 
-/** What matching reads from a companion: public meters plus traits and chips. */
-export type MatchableCompanion = Pick<PublicCharacter, 'id' | 'meters' | 'chips'> & {
-  personality: Pick<PublicCharacter['personality'], 'traits'>;
+/** What matching reads from a companion: public meters, match tags, and chips. */
+export type MatchableCompanion = Pick<PublicCharacter, 'id'> & {
+  publicProfile: Pick<PublicCharacter['publicProfile'], 'meters' | 'chips' | 'matchTags'>;
 };
 
 /**
- * Answer → trait keywords. A companion whose traits or chips contain a keyword scores for it,
- * so matching follows character config rather than hard-coded ids.
+ * Answer → tag keywords. A companion whose match tags or chips contain a keyword scores for
+ * it, so matching follows character config rather than hard-coded ids.
  */
 const LOOKING_FOR_KEYWORDS: Record<LookingFor, readonly string[]> = {
   unwind: ['supportive', 'calm', 'warm'],
@@ -36,9 +36,8 @@ const PACE_INDEX = { easy: 0, quick: 1, instant: 2 } as const;
 const METER_MAX = 5;
 
 function keywordScore(companion: MatchableCompanion, keywords: readonly string[]): number {
-  const haystack = [...companion.personality.traits, ...companion.chips].map((t) =>
-    t.toLowerCase(),
-  );
+  const { matchTags, chips } = companion.publicProfile;
+  const haystack = [...matchTags, ...chips].map((t) => t.toLowerCase());
   return keywords.some((keyword) => haystack.some((trait) => trait.includes(keyword))) ? 1 : 0;
 }
 
@@ -68,9 +67,10 @@ export function scoreCompanion(
   if (prefs.dynamic.x < 0)
     score += 2 * -prefs.dynamic.x * keywordScore(companion, ['supportive', 'gentle']);
   // Short texts suit companions with instant pace; long texts suit slower ones.
-  score -= Math.abs(companion.meters.depth - depthTarget(prefs)) / 2;
-  score -= Math.abs(PACE_INDEX[companion.meters.pace] - paceTarget(prefs)) / 2;
-  if (prefs.texting.length <= 1) score += PACE_INDEX[companion.meters.pace] / 4;
+  const { meters } = companion.publicProfile;
+  score -= Math.abs(meters.depth - depthTarget(prefs)) / 2;
+  score -= Math.abs(PACE_INDEX[meters.pace] - paceTarget(prefs)) / 2;
+  if (prefs.texting.length <= 1) score += PACE_INDEX[meters.pace] / 4;
   return score;
 }
 

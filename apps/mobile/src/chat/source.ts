@@ -4,8 +4,8 @@ import type { ConversationState, Reaction } from './types';
 
 /**
  * Where conversations come from. The UI talks only to this interface through
- * `useConversation`; M3 replaces the demo implementation with one backed by the server
- * (history fetch + SSE stream) without touching components.
+ * `useConversation`: the server-backed source (`api-source.ts`) normally, the canned demo
+ * source (`demo-source.ts`) when the API is unreachable.
  */
 export interface ConversationSource {
   /** True while replies are canned demo lines, not the AI. The UI shows "DEMO DATA". */
@@ -20,5 +20,7 @@ export interface ConversationSource {
    */
   start(companion: PublicCharacter): void;
   send(companion: PublicCharacter, text: string): void;
+  /** Resend a user message that was not delivered. */
+  retry(companion: PublicCharacter, messageId: string): void;
   toggleReaction(companionId: string, messageId: string, reaction: Reaction): void;
 }

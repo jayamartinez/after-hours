@@ -7,6 +7,10 @@ import { CompanionIdSchema, CompanionImagesSchema, FocalPointSchema } from './co
  * `packages/companions/presets/*.json`; deployers override fields in the git-ignored
  * `config/companions.local.json`. Objects are strict so a typo in an override is reported
  * instead of silently ignored.
+ *
+ * Groups: identity at the top level (both sides), `publicProfile` (the only character
+ * content the app may display), `persona` (server-only, builds the LLM prompt), and
+ * server-only feature config (`voice`, `memory`, `proactive`, `appearance`).
  */
 
 const text = z.string().trim().min(1);
@@ -32,9 +36,30 @@ export const DisclosureSchema = z.strictObject({
   note: text.describe('One short line, shown once in the profile footer'),
 });
 
+/**
+ * How the character behaves in each conversational register, one to three lines each, in
+ * the character's own terms. The prompt asks the model to read the situation and pick the
+ * register silently.
+ */
+export const ConversationModesSchema = z.strictObject({
+  casual: text.describe('Casual joking and banter'),
+  teasing: text.describe('Light teasing'),
+  smallTalk: text.describe('Small talk and ordinary topics: food, music, plans, their day'),
+  relationshipAdvice: text.describe('Dating, friendships, and relationship advice'),
+  goodNews: text.describe('The user had a good day or has good news'),
+  badDay: text.describe('The user had a frustrating day'),
+  sincere: text.describe('Genuinely emotional moments: lonely, sad, scared'),
+  disagreement: text.describe('The user disagrees, or the character thinks they are wrong'),
+  flirting: text.describe('The user flirts (bounded by style.flirtation)'),
+  building: text.describe(
+    'The user brings up a startup, project, code, or tech work. The only place founder talk belongs.',
+  ),
+});
+
 export const PersonalitySchema = z.strictObject({
   traits: z.array(text).min(1),
   instructions: text.describe('Behavioral instructions for the system prompt, second person'),
+  modes: ConversationModesSchema,
   boundaries: z
     .array(text)
     .describe('Character-specific do-nots. The app-level safety preamble always applies too.'),
@@ -46,11 +71,12 @@ export const StyleSchema = z.strictObject({
   burst: z
     .tuple([z.number().int().min(1).max(4), z.number().int().min(1).max(4)])
     .refine(([min, max]) => min <= max, 'burst must be [min, max] with min <= max')
-    .describe('Bubbles per turn, [min, max]'),
+    .describe('Usual bubbles per turn, [min, max]; the model varies within it'),
   emojiRate: unit,
   questionRate: unit,
   flirtation: level3.describe('0 none, 1 light, 2 playful, 3 bold (always PG-13)'),
   roast: level3.describe('0 none, 1 gentle, 2 teasing, 3 blunt (excuses and ideas only)'),
+  profanity: level3.describe('0 never, 1 rare and mild, 2 occasional for emphasis, 3 casual'),
 });
 
 export const ExampleExchangeSchema = z.strictObject({
@@ -60,15 +86,11 @@ export const ExampleExchangeSchema = z.strictObject({
 
 export const ExamplesSchema = z.strictObject({
   messages: z.array(ExampleExchangeSchema).describe('Few-shot exchanges for the prompt'),
-  starters: z.array(text).describe('Conversation starters / quick replies'),
-  signatureLines: z.array(text),
+  signatureLines: z.array(text).describe('Voice reference lines for the prompt'),
 });
 
 export const VoiceConfigSchema = z.strictObject({
   description: text,
-  summary: text.describe(
-    'Short form of the description for compact rows, e.g. "Fast, bright tenor"',
-  ),
   provider: text.optional(),
   voiceId: text.optional(),
   voiceIdEnv: z
@@ -93,9 +115,6 @@ export const ProactiveConfigSchema = z.strictObject({
 });
 
 export const ProfileSectionsSchema = z.strictObject({
-  about: text,
-  talks: text,
-  voice: text,
   remembers: text,
   photos: text,
 });
@@ -107,12 +126,9 @@ export const CharacterCopySchema = z.strictObject({
   revealCta: text.describe('Reveal screen primary button, e.g. "Say hi"'),
   matchReasons: z.array(text),
   firstMessage: z.array(text).min(1).describe('Opening bubbles'),
-  profileSections: ProfileSectionsSchema,
-  voiceLabel: text,
   sampleOpener: text.describe('Example opening line shown on discovery ("He might open with")'),
-  chatLocation: text
-    .optional()
-    .describe('Short fictional place for the chat header status, e.g. "South Calder"'),
+  voiceLabel: text.describe('Spotlight voice pill, e.g. "Hear his voice"'),
+  profileSections: ProfileSectionsSchema,
 });
 
 /** Default art for one slot: a key into the app's bundled image registry plus crop and alt. */
@@ -140,65 +156,59 @@ export const AppearanceSchema = z.strictObject({
   look: text,
 });
 
+/** The only character content the app may display or use. */
+export const PublicProfileSchema = z.strictObject({
+  chips: z.array(text).length(3).describe('Short temperament tags on the Spotlight card'),
+  meters: MetersSchema,
+  voiceSummary: text.describe('Short voice label for compact rows, e.g. "Fast, bright tenor"'),
+  matchTags: z.array(text).min(1).describe('Keywords onboarding matching scores against'),
+  starters: z.array(text).describe('Conversation starters / quick replies'),
+  about: text.describe(
+    'Two or three plain sentences on temperament, shown only in the profile "About" sheet (⋯). No invented biography.',
+  ),
+  copy: CharacterCopySchema,
+});
+
+/** Server-only: everything the LLM prompt is built from. Never sent to the app. */
+export const PersonaSchema = z.strictObject({
+  backstory: text.describe('Temperament, habits of mind, how they are with people'),
+  interests: z.array(text),
+  personality: PersonalitySchema,
+  style: StyleSchema,
+  examples: ExamplesSchema,
+});
+
 export const CharacterConfigSchema = z.strictObject({
   $schema: z.string().optional(),
   id: CompanionIdSchema.describe('Immutable slug'),
   name: text,
   age: z.number().int().min(21),
   pronouns: PronounsSchema,
-  tagline: text,
-  statusLine: text,
-  location: text.describe('Fictional place'),
-  locationShort: text.describe('Short place label for status lines, e.g. "South Calder"'),
-  blurb: text.describe('One or two sentences for discovery cards and the cast list'),
   tint: TintSchema,
-  bio: text.describe('Short; profile "About"'),
-  backstory: text,
-  interests: z.array(text),
-  chips: z.array(text).length(3),
-  talkStyle: z.array(text).min(1).max(6).describe('Profile "How they talk" chips'),
-  meters: MetersSchema,
   disclosure: DisclosureSchema,
-  personality: PersonalitySchema,
-  style: StyleSchema,
-  examples: ExamplesSchema,
+  images: CharacterImagesSchema,
+  publicProfile: PublicProfileSchema,
+  persona: PersonaSchema,
   voice: VoiceConfigSchema,
   memory: MemoryConfigSchema,
   proactive: ProactiveConfigSchema,
-  copy: CharacterCopySchema,
   appearance: AppearanceSchema,
-  images: CharacterImagesSchema,
 });
 
 /**
- * What the app receives from `GET /companions`. Prompt-only and feature config
- * (instructions, boundaries, example exchanges, style, memory, proactive, voice ids,
- * appearance) stays on the server.
+ * What the app receives from `GET /companions`: identity, `publicProfile`, the proactive
+ * default, and resolved images. `persona` and feature config stay on the server.
  */
 export const PublicCharacterSchema = z.object({
   id: CompanionIdSchema,
   name: text,
   age: z.number().int().min(21),
   pronouns: PronounsSchema,
-  tagline: z.string(),
-  statusLine: z.string(),
-  location: z.string(),
-  locationShort: z.string(),
-  blurb: z.string(),
   tint: TintSchema,
-  bio: z.string(),
-  backstory: z.string(),
-  interests: z.array(z.string()),
-  chips: z.array(z.string()),
-  talkStyle: z.array(z.string()),
-  meters: MetersSchema,
   disclosure: DisclosureSchema,
-  personality: z.object({ traits: z.array(z.string()) }),
-  examples: z.object({ starters: z.array(z.string()), signatureLines: z.array(z.string()) }),
-  voice: z.object({ description: z.string(), summary: z.string() }),
+  publicProfile: PublicProfileSchema,
   /** `proactive.enabledByDefault`: the default for the user's "Proactive messages" toggle. */
   proactiveByDefault: z.boolean(),
-  copy: CharacterCopySchema,
   images: CompanionImagesSchema,
 });
 
@@ -228,7 +238,10 @@ export const DevCharacterResponseSchema = z.object({
 export type Pronouns = z.infer<typeof PronounsSchema>;
 export type CharacterTint = z.infer<typeof TintSchema>;
 export type CharacterStyle = z.infer<typeof StyleSchema>;
+export type ConversationModes = z.infer<typeof ConversationModesSchema>;
 export type ImageSlotDefault = z.infer<typeof ImageSlotDefaultSchema>;
+export type PublicProfile = z.infer<typeof PublicProfileSchema>;
+export type Persona = z.infer<typeof PersonaSchema>;
 export type CharacterConfig = z.infer<typeof CharacterConfigSchema>;
 export type PublicCharacter = z.infer<typeof PublicCharacterSchema>;
 export type CompanionsResponse = z.infer<typeof CompanionsResponseSchema>;

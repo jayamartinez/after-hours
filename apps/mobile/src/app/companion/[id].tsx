@@ -10,6 +10,7 @@ import { openChat } from '@/components/discovery/chat-link';
 import { LABELS, memoriesSubline } from '@/components/discovery/companion-copy';
 import { goBackOr } from '@/components/discovery/dismiss';
 import { PhotoViewer } from '@/components/gallery/photo-viewer';
+import { AboutSheet } from '@/components/profile/about-sheet';
 import { ActionRow } from '@/components/profile/action-row';
 import { DisclosureFooter } from '@/components/profile/disclosure-footer';
 import { MemoriesEmpty } from '@/components/profile/memories-empty';
@@ -17,10 +18,8 @@ import { PhotoPair } from '@/components/profile/photo-pair';
 import { ProfileHero } from '@/components/profile/profile-hero';
 import { ProfileSection } from '@/components/profile/profile-section';
 import { SettingsCard } from '@/components/profile/settings-card';
-import { TalkStyle } from '@/components/profile/talk-style';
 import { useToast } from '@/components/profile/toast';
-import { VoiceCard } from '@/components/profile/voice-card';
-import { colors, fonts, spacing, tones, type } from '@/theme/tokens';
+import { colors, fonts, spacing, type } from '@/theme/tokens';
 
 const MAX_WIDTH = 430;
 
@@ -50,7 +49,8 @@ export default function CompanionProfileScreen() {
 function Profile({ companion }: { companion: PublicCharacter }) {
   const toast = useToast();
   const [viewerAt, setViewerAt] = useState<number | null>(null);
-  const sections = companion.copy.profileSections;
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const sections = companion.publicProfile.copy.profileSections;
   const photos = [
     { companion, index: 0 as const },
     { companion, index: 1 as const },
@@ -65,7 +65,7 @@ function Profile({ companion }: { companion: PublicCharacter }) {
           <ProfileHero
             companion={companion}
             onBack={() => goBackOr()}
-            onMore={() => toast.show(LABELS.moreSoon)}
+            onMore={() => setAboutOpen(true)}
           />
           <ActionRow
             onMessage={() => openChat(companion.id)}
@@ -76,22 +76,10 @@ function Profile({ companion }: { companion: PublicCharacter }) {
 
           <View style={styles.body}>
             <View style={styles.firstSection}>
-              <ProfileSection title={sections.about} gap={12}>
-                <Text style={styles.about}>{companion.bio}</Text>
+              <ProfileSection title={sections.remembers} subline={memoriesSubline(companion)}>
+                <MemoriesEmpty />
               </ProfileSection>
             </View>
-
-            <ProfileSection title={sections.talks}>
-              <TalkStyle companion={companion} />
-            </ProfileSection>
-
-            <ProfileSection title={sections.voice}>
-              <VoiceCard companion={companion} />
-            </ProfileSection>
-
-            <ProfileSection title={sections.remembers} subline={memoriesSubline(companion)}>
-              <MemoriesEmpty />
-            </ProfileSection>
 
             <ProfileSection
               title={sections.photos}
@@ -112,6 +100,11 @@ function Profile({ companion }: { companion: PublicCharacter }) {
       </ScrollView>
       {toast.node}
       <PhotoViewer photos={photos} openAt={viewerAt} onChange={setViewerAt} />
+      <AboutSheet
+        companion={companion}
+        visible={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+      />
     </View>
   );
 }
@@ -122,7 +115,6 @@ const styles = StyleSheet.create({
   column: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center' },
   body: { gap: 40, paddingHorizontal: spacing.gutter },
   firstSection: { borderTopWidth: 1, borderTopColor: colors.hairline, paddingTop: 28 },
-  about: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 26, color: tones.textBody },
   link: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20, color: colors.textMuted },
   missingBar: { paddingHorizontal: spacing.sm },
   centered: { marginTop: spacing.huge, alignSelf: 'center' },

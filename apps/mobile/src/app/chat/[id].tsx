@@ -10,7 +10,7 @@ import { colors, spacing, type } from '@/theme/tokens';
 /** Chat A "Lamplight". Companion identity from config; messages from `useConversation`. */
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { companion, messages, isTyping, isLoading, isDemo, send, toggleReaction } =
+  const { companion, messages, isTyping, isLoading, isDemo, notice, send, retry, toggleReaction } =
     useConversation(id);
   const insets = useSafeAreaInsets();
 
@@ -38,7 +38,9 @@ export default function ChatScreen() {
       isTyping={isTyping}
       isLoading={isLoading}
       isDemo={isDemo}
+      notice={notice}
       onSend={send}
+      onRetry={retry}
       onToggleReaction={toggleReaction}
     />
   );

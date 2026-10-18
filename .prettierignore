@@ -8,3 +8,5 @@ packages/companions/assets/
 *.md
 packages/companions/character.schema.json
 **/expo-env.d.ts
+# drizzle-kit output (generated)
+apps/server/drizzle/meta/

@@ -39,22 +39,22 @@ describe('resolveCharacter', () => {
   it('applies a valid deep-partial override', () => {
     const result = resolveCharacter(roy, {
       name: 'Roy (test)',
-      style: { casing: 'sentence' },
-      examples: { starters: ['only one'] },
+      persona: { style: { casing: 'sentence' } },
+      publicProfile: { starters: ['only one'] },
     });
     expect(result.valid).toBe(true);
     expect(result.character.name).toBe('Roy (test)');
-    expect(result.character.style.casing).toBe('sentence');
-    expect(result.character.style.burst).toEqual(roy.style.burst);
-    expect(result.character.examples.starters).toEqual(['only one']);
-    expect(result.character.examples.signatureLines).toEqual(roy.examples.signatureLines);
+    expect(result.character.persona.style.casing).toBe('sentence');
+    expect(result.character.persona.style.burst).toEqual(roy.persona.style.burst);
+    expect(result.character.publicProfile.starters).toEqual(['only one']);
+    expect(result.character.publicProfile.copy).toEqual(roy.publicProfile.copy);
   });
 
   it.each([
     ['an under-21 age', { age: 18 }, 'age'],
-    ['a typo key', { tagLine: 'x' }, '(root)'],
-    ['a bad enum', { style: { casing: 'SHOUTY' } }, 'style.casing'],
-    ['a wrong chip count', { chips: ['one'] }, 'chips'],
+    ['a removed key', { tagline: 'x' }, '(root)'],
+    ['a bad enum', { persona: { style: { casing: 'SHOUTY' } } }, 'persona.style.casing'],
+    ['a wrong chip count', { publicProfile: { chips: ['one'] } }, 'publicProfile.chips'],
     ['an id change', { id: 'roya' }, 'id'],
   ])('falls back to the preset for %s', (_label, override, issuePath) => {
     const result = resolveCharacter(roy, override);
@@ -83,9 +83,9 @@ describe('createCharacterStore', () => {
   });
 
   it('applies valid overrides and keeps the other companion on its preset', () => {
-    writeFileSync(file, JSON.stringify({ roy: { tagline: 'New tagline' } }));
+    writeFileSync(file, JSON.stringify({ roy: { publicProfile: { chips: ['a', 'b', 'c'] } } }));
     const store = createCharacterStore(presets, file, warn);
-    expect(store.get('roy')?.tagline).toBe('New tagline');
+    expect(store.get('roy')?.publicProfile.chips).toEqual(['a', 'b', 'c']);
     expect(store.get('roya')).toBe(roya);
   });
 

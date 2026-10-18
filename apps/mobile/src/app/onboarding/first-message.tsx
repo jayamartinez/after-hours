@@ -1,14 +1,15 @@
 import type { PublicCharacter } from '@after-hours/contracts';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import type { ChatMessage } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { ChatView } from '@/components/chat/chat-view';
 import { BrassPill } from '@/components/onboarding/chip';
 import { OnboardingScreen } from '@/components/onboarding/screen';
 import { Label } from '@/components/onboarding/text';
-import { firstChatPhase } from '@/onboarding/first-chat';
+import { firstChatPhase, userMessageCount } from '@/onboarding/first-chat';
 import { finishOnboarding, goToNext } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
 import { onboardingStore } from '@/onboarding/use-onboarding';
@@ -25,11 +26,15 @@ export default function FirstMessageScreen() {
 }
 
 function FirstConversation({ companion }: { companion: PublicCharacter }) {
-  const { messages, isTyping, isLoading, isDemo, send, toggleReaction } = useConversation(
-    companion.id,
-    { fresh: true },
+  const { messages, isTyping, isLoading, isDemo, notice, send, retry, toggleReaction } =
+    useConversation(companion.id, { fresh: true });
+  const priorSent = usePriorSent(messages, isLoading);
+  const { phase, left } = firstChatPhase(
+    messages,
+    isTyping,
+    companion.publicProfile.copy.firstMessage.length,
+    priorSent,
   );
-  const { phase, left } = firstChatPhase(messages, isTyping, companion.copy.firstMessage.length);
   const answered = phase === 'answered';
 
   // Already "subscribed" (demo): skip the paywall and go straight to the chat.
@@ -50,7 +55,7 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
   };
 
   const used = new Set(messages.filter((m) => m.role === 'user').map((m) => m.content));
-  const starters = companion.examples.starters.filter((s) => !used.has(s));
+  const starters = companion.publicProfile.starters.filter((s) => !used.has(s));
 
   let accessory = null;
   if (answered) {
@@ -91,11 +96,22 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
       isTyping={isTyping}
       isLoading={isLoading}
       isDemo={isDemo}
+      notice={notice}
       onSend={onSend}
+      onRetry={retry}
       onToggleReaction={toggleReaction}
       accessory={accessory}
     />
   );
+}
+
+/** User messages already in the thread when it finished loading (server history). */
+function usePriorSent(messages: readonly ChatMessage[], isLoading: boolean) {
+  const [prior, setPrior] = useState<number | null>(null);
+  const count = userMessageCount(messages);
+  // Captured once, during render (no effect round-trip).
+  if (!isLoading && prior === null) setPrior(count);
+  return prior ?? count;
 }
 
 const styles = StyleSheet.create({

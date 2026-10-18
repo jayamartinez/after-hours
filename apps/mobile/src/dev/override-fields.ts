@@ -6,18 +6,21 @@ type Json = Record<string, unknown>;
 export const CORE_FIELDS = [
   { key: 'name', path: ['name'], label: 'Name', kind: 'text' },
   { key: 'age', path: ['age'], label: 'Age', kind: 'number' },
-  { key: 'tagline', path: ['tagline'], label: 'Tagline', kind: 'text' },
-  { key: 'statusLine', path: ['statusLine'], label: 'Status line', kind: 'text' },
-  { key: 'bio', path: ['bio'], label: 'Bio', kind: 'multiline' },
+  {
+    key: 'revealSubline',
+    path: ['publicProfile', 'copy', 'revealSubline'],
+    label: 'Reveal subline',
+    kind: 'text',
+  },
   {
     key: 'starters',
-    path: ['examples', 'starters'],
+    path: ['publicProfile', 'starters'],
     label: 'Starters (one per line)',
     kind: 'lines',
   },
   {
     key: 'instructions',
-    path: ['personality', 'instructions'],
+    path: ['persona', 'personality', 'instructions'],
     label: 'Personality instructions (prompt)',
     kind: 'multiline',
   },

@@ -1,24 +1,17 @@
 /**
- * App-level copy for discovery and profile screens. Companion-specific words (name, pronouns,
- * status, place) always come from character config; only the sentence frames live here.
+ * App-level copy for discovery and profile screens. Companion-specific words (name,
+ * pronouns) always come from character config; only the sentence frames live here.
  */
 
 interface CopySubject {
   name: string;
-  statusLine: string;
-  locationShort: string;
   pronouns: { subject: string; object: string };
 }
 
 const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
-/** "Shipping until sunrise · South Calder" (rendered uppercase by the label style). */
-export const statusWithPlace = (c: CopySubject) => `${c.statusLine} · ${c.locationShort}`;
-
 export const mightOpenWith = (c: CopySubject) =>
   `${capitalize(c.pronouns.subject)} might open with`;
-
-export const lineTheyMightSend = (c: CopySubject) => `A line ${c.pronouns.subject} might send`;
 
 export const memoriesSubline = (c: CopySubject) =>
   `Only what you’ve told ${c.pronouns.object}. Edit or forget anything.`;
@@ -64,7 +57,5 @@ export const LABELS = {
   clearUnavailable: 'Available once chats are saved',
   callSoon: 'Calls are coming soon.',
   voiceNoteSoon: 'Voice notes are coming soon.',
-  voiceSoon: 'Voice samples are coming soon.',
-  moreSoon: 'More options are coming soon.',
   iMessageSoon: 'The iMessage bridge is coming soon.',
 } as const;

@@ -13,29 +13,50 @@ Roy and Roya are the only companions in scope. Both are fictional adult AI parod
 
 ## Schema
 
-| Field | Notes | Public |
-| --- | --- | --- |
-| `id` | Slug (`roy`, `roya`). Immutable; an override cannot change it. | Yes |
-| `name`, `age` (≥ 21), `pronouns { subject, object, possessive }` | Identity. | Yes |
-| `tagline`, `statusLine`, `location` (fictional), `bio`, `backstory`, `interests[]` | Profile text; backstory and interests also feed the prompt. | Yes |
-| `locationShort` | Short fictional place label; status line is `statusLine · locationShort` (Spotlight, profile hero, preview sheet). | Yes |
-| `blurb` | One or two sentences for discovery cards and Cast List rows. | Yes |
-| `tint` (`window` / `lamplight`) | Accent family for status lines, dots, and waveforms; maps to design tokens. | Yes |
-| `chips` (exactly 3), `meters { banter 0–5, depth 0–5, pace easy/quick/instant }` | Spotlight and profile. | Yes |
-| `talkStyle[]` (1–6) | Profile "How they talk" chips. | Yes |
-| `disclosure { badge, note }` | `badge` is the "AI PARODY" pill beside the name (Spotlight, profile, chat header). `note` is one short line, shown once in the profile footer. | Yes |
-| `personality.traits[]` | Prompt and profile. | Yes |
-| `personality.instructions`, `personality.boundaries[]` | Second-person behavior and character-specific do-nots. | Prompt only |
-| `style { casing, bubbleLength, burst [min,max] 1–4, emojiRate 0–1, questionRate 0–1, flirtation 0–3, roast 0–3 }` | Rendered into the prompt's style block. | Server only |
-| `examples.messages[] { user?, companion[] }` | Few-shot exchanges. | Prompt only |
-| `examples.starters[]`, `examples.signatureLines[]` | Quick replies; signature lines are a prompt hint and the profile's sample line. | Yes |
-| `voice { description, summary, provider?, voiceId?, voiceIdEnv?, speed? }` | `summary` is the short form for compact voice rows (Cast List, sheet). Only `description` and `summary` are public. Prefer `voiceIdEnv` (env var name) over a literal id. | `description`, `summary` |
-| `memory { enabled, focus[], maxRetrieved 1–20 }`, `proactive { enabledByDefault, quietHours, maxPerDay 0–5, openers[] }` | Feature config. `enabledByDefault` is exposed as `proactiveByDefault`, the default for the profile's "Proactive messages" toggle. | Server only, except `proactiveByDefault` |
-| `copy { spotlightCta, revealHeadline, revealSubline, revealCta, matchReasons[], firstMessage[], profileSections { about, talks, voice, remembers, photos }, voiceLabel, sampleOpener, chatLocation? }` | All companion-specific UI text. `revealCta` is the onboarding reveal button. `sampleOpener` is the "He might open with" line (Cast List row, preview sheet). `chatLocation` is the optional place in the chat header status. | Yes |
-| `appearance { style, look }` | Art direction for image generation. | Server only |
-| `images { hero, avatar, gallery[2] }` each `{ asset, focal [x,y], alt }` | `asset` is a bundled default key such as `roy/hero`. Ratios are fixed: hero 3:4, avatar 1:1, gallery 4:5. | Yes (resolved) |
+`CharacterConfig` has four groups. Only identity and `publicProfile` reach the app.
 
-Objects are strict: unknown keys (typos) fail validation. `GET /companions` returns `PublicCharacter[]`, built field by field in `packages/companions/src/public.ts`; a test asserts that prompt-only fields never appear.
+**Identity** (top level, used by app and server)
+
+| Field | Notes |
+| --- | --- |
+| `id` | Slug (`roy`, `roya`). Immutable; an override cannot change it. |
+| `name`, `age` (≥ 21), `pronouns { subject, object, possessive }` | Identity. |
+| `tint` (`window` / `lamplight`) | Accent family for dots and waveforms; maps to design tokens. |
+| `disclosure { badge, note }` | `badge` is the "AI PARODY" pill beside the name (Spotlight, profile, chat header). `note` is one short line, shown once in the profile footer. |
+| `images { hero, avatar, gallery[2] }` each `{ asset, focal [x,y], alt }` | `asset` is a bundled default key such as `roy/hero`. Ratios are fixed: hero 3:4, avatar 1:1, gallery 4:5. Sent resolved (see [image-overrides.md](image-overrides.md)). |
+
+**`publicProfile`** (the only character content the app may display or use)
+
+| Field | Notes |
+| --- | --- |
+| `chips` (exactly 3) | Short temperament tags on the Spotlight card. |
+| `meters { banter 0–5, depth 0–5, pace easy/quick/instant }` | Spotlight, Cast List, preview sheet, onboarding matching. |
+| `voiceSummary` | Short voice label for the Cast List and preview-sheet voice rows. |
+| `matchTags[]` | Keywords onboarding matching scores against (with `chips`). |
+| `starters[]` | Quick replies in chat and onboarding. |
+| `about` | Two or three plain sentences on temperament, shown only in the profile's ⋯ → About sheet. No invented biography, slogans, or places. |
+| `copy { spotlightCta, revealHeadline, revealSubline, revealCta, matchReasons[], firstMessage[], sampleOpener, voiceLabel, profileSections { remembers, photos } }` | All companion-specific UI text. `revealCta` is the onboarding reveal button. `firstMessage` opens every new thread. `sampleOpener` is the "He might open with" line (Cast List row, preview sheet). `voiceLabel` is the Spotlight voice pill. |
+
+**`persona`** (server only; builds the LLM prompt)
+
+| Field | Notes |
+| --- | --- |
+| `backstory`, `interests[]` | Temperament, habits of mind, and how they are with people. No invented career, companies, places, events, or relationships stated as fact. |
+| `personality.traits[]`, `personality.instructions`, `personality.boundaries[]` | Traits, second-person behavior, and character-specific do-nots. |
+| `personality.modes { casual, teasing, smallTalk, relationshipAdvice, goodNews, badDay, sincere, disagreement, flirting, building }` | One to three lines per conversational register, in the character's terms. `building` is the only register where work or tech talk belongs. |
+| `style { casing, bubbleLength, burst [min,max] 1–4, emojiRate 0–1, questionRate 0–1, flirtation 0–3, roast 0–3, profanity 0–3 }` | Rendered into the prompt's style block. `burst` is the usual range, not a quota. |
+| `examples.messages[] { user?, companion[] }`, `examples.signatureLines[]` | Few-shot exchanges and voice reference lines (never reused verbatim). |
+
+**Server-only feature config**
+
+| Field | Notes |
+| --- | --- |
+| `voice { description, provider?, voiceId?, voiceIdEnv?, speed? }` | Text-to-speech settings. Prefer `voiceIdEnv` (env var name) over a literal id. |
+| `memory { enabled, focus[], maxRetrieved 1–20 }` | Memory feature config. |
+| `proactive { enabledByDefault, quietHours, maxPerDay 0–5, openers[] }` | Only `enabledByDefault` is public, as `proactiveByDefault` (the default for the profile's "Proactive messages" toggle). |
+| `appearance { style, look }` | Art direction for image generation. |
+
+Objects are strict: unknown keys (typos) fail validation. `GET /companions` returns `PublicCharacter[]` (identity, `publicProfile`, `proactiveByDefault`, resolved images), built field by field in `packages/companions/src/public.ts`; tests assert that no `persona` key or text appears in it. The demo chat (used when the API is unreachable) builds its canned lines from `publicProfile.copy` only.
 
 ## Disclosure
 
@@ -45,8 +66,30 @@ Objects are strict: unknown keys (typos) fail validation. `GET /companions` retu
 
 ## Presets
 
-- **Roy**: a blunt, chaotic founder whose answer to everything is "build it now". He texts lowercase, in 2–3 short bubbles, never flirts, and roasts excuses bluntly.
-- **Roya**: Roy's alternate-timeline counterpart, who founded the rival studio first. She teases and is sarcastic, flirts back within PG-13, calls the user "founder", and rates excuses out of 10. She writes in sentence case, 1–2 medium bubbles per turn.
+- **Roy**: socially confident, irreverent, opinionated, nosy about people, competitive for fun, sincere when someone is hurting. Mostly lowercase, short texts, sparing emoji, occasional profanity for emphasis. Reacts first, prefers statements to questions, defends his takes once and admits a good counterpoint. Into tech and building, but it comes up only when the user brings up work, a project, or startups. Never flirts first.
+- **Roya**: her own temperament: perceptive, dry and observational, affectionately sarcastic, direct, independent. Sentence case, one or two medium texts. Notices details and contradictions, calls out self-deprecation, disagrees calmly. Flirts back only when the conversation invites it; no pet-name filler, no possessiveness, glad when the user has other people. Ordinary everyday texture: food opinions, music, friends, walking home late.
+
+Neither has an invented biography. Backstories describe temperament and habits, and the prompt tells both not to claim accomplishments, companies, famous acquaintances, or past events as facts.
+
+## Conversation behavior
+
+The prompt combines character config with app-level rules (`apps/server/src/chat/prompt.ts`) that config cannot remove:
+
+- **Registers.** The model reads the situation and silently picks one of the ten `persona.personality.modes`. A food question gets food, loneliness gets attention to the feeling, a startup gets the `building` register.
+- **Anti-patterns.** No motivational speeches, shipping or productivity framing outside work topics, corporate vocabulary, therapy-speak, stock supportive moves, over-complimenting, automatic agreement, reflex questions ("what about you?"), forced jokes or catchphrases, or repeated phrasing.
+- **Texting shape.** Texts are separated by a blank line; the server splits them into bubbles (`splitBubbles`, at most 4). Often one text, sometimes two or three, occasionally one longer message.
+- **Memory.** Only the current companion's memories are sent (`selectMemories` filters by `companionId`, pinned first, then newest, capped at `memory.maxRetrieved`), as plain facts with rough recency. The model uses them only when relevant, never announces them, and never invents details or outcomes. Memories are separate records (`packages/contracts/src/memory.ts`) so the memory UI can list, edit, and delete them.
+
+## How config reaches the model
+
+presets → local override (deep merge, validated) → `buildChatRequest` → `ChatModel.stream`:
+
+1. `buildSystemPrompt(character, prefs)`: safety preamble, identity, then `persona` (backstory, interests, personality, modes, boundaries, style), conversation and memory rules, signature lines, examples. Byte-stable, sent as the cached first system block.
+2. `buildTurnContext(character, { memories, now, timeZone })`: current time and this companion's memories, sent as a second, uncached system block.
+3. Recent history (last 40 turns) as messages.
+4. `providers/anthropic.ts` sends it to `CHAT_PRIMARY_MODEL` (default `claude-opus-5-5`) with `output_config.effort = CHAT_EFFORT` (default `low`) and server-side refusal fallback.
+
+`request.test.ts` asserts that the preset text arrives in the Anthropic request params. Behavior is measured with the personality eval: [eval/personality-eval.md](eval/personality-eval.md).
 
 Default art lives in `packages/companions/assets/<id>/`, exported from Paper (AH · 01 Foundations › Character art). Roy: hero/avatar `1TY-0`, gallery `1UY-0`, `1UF-0`. Roya: hero/avatar `1U7-0`, gallery `1UR-0`, `1UV-0`. Spares: Roy sunrise `1UJ-0`, Roya livestream `1UN-0`.
 
@@ -60,7 +103,7 @@ Presets ship inside the app bundle as the offline fallback, so they must never c
 
 ## Dev editor (optional, local only)
 
-Set `DEV_EDITOR=true` for the server and `EXPO_PUBLIC_DEV_EDITOR=true` for the app (in `apps/mobile/.env`), then restart both. Open **You › Dev: character editor** or `/dev/companions`. Pick a companion, edit the core fields (name, age, tagline, status line, bio, starters, instructions) or the advanced override JSON, and save. Validation errors appear inline. The preview uses the real Spotlight card.
+Set `DEV_EDITOR=true` for the server and `EXPO_PUBLIC_DEV_EDITOR=true` for the app (in `apps/mobile/.env`), then restart both. Open **You › Dev: character editor** or `/dev/companions`. Pick a companion, edit the core fields (name, age, reveal subline, starters, prompt instructions) or the advanced override JSON, and save. Validation errors appear inline. The preview uses the real Spotlight card.
 
 - Server: `GET /dev/companions/:id` returns the preset, the override, the merged config, and validation status. `PUT /dev/companions/:id` takes a deep-partial override, validates the merged result (422 with issues if invalid), and writes it atomically to the overrides file. It never writes presets. An empty object `{}` removes that companion's override.
 - Gate: the routes return 404 unless `DEV_EDITOR=true`. They return 403 unless the connection comes from loopback, is addressed to `localhost`, `127.0.0.1`, or `[::1]`, and has no proxy headers. There is no other auth. Never enable the editor on a deployed server.

@@ -9,21 +9,13 @@ interface ProfileSectionProps {
   subline?: string;
   /** Right-aligned element on the title row (e.g. "See gallery"). */
   accessory?: ReactNode;
-  /** Gap between title block and content: 12 for About, 16 elsewhere. */
-  gap?: 12 | 16;
   children: ReactNode;
 }
 
 /** Profile section: serif display-s title from `copy.profileSections`, then content. */
-export function ProfileSection({
-  title,
-  subline,
-  accessory,
-  gap = 16,
-  children,
-}: ProfileSectionProps) {
+export function ProfileSection({ title, subline, accessory, children }: ProfileSectionProps) {
   return (
-    <View style={{ gap }}>
+    <View style={styles.section}>
       <View style={styles.titleBlock}>
         <View style={styles.titleRow}>
           <Text style={[type.displayS, styles.title]} accessibilityRole="header">
@@ -39,6 +31,7 @@ export function ProfileSection({
 }
 
 const styles = StyleSheet.create({
+  section: { gap: 16 },
   titleBlock: { gap: 6 },
   titleRow: {
     flexDirection: 'row',
