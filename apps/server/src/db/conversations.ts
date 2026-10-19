@@ -2,6 +2,7 @@ import type { ChatMessageDto, ConversationSummary, ReactionId } from '@after-hou
 import { and, asc, desc, eq, inArray, lte } from 'drizzle-orm';
 
 import type { Db } from './client';
+import { isUuid } from './ids';
 import { conversations, messages, type MessageRow } from './schema';
 
 /**
@@ -170,4 +171,44 @@ export async function setMessageStatus(
     .update(messages)
     .set({ status })
     .where(and(eq(messages.conversationId, conversationId), inArray(messages.id, ids)));
+}
+
+/**
+ * Clears the user's thread with a companion: the conversation row and (by cascade) every
+ * message. The next read starts a fresh thread with the opener. Memories are kept; they
+ * have their own controls. False when there was no thread.
+ */
+export async function deleteConversation(
+  db: Db,
+  userId: string,
+  companionId: string,
+): Promise<boolean> {
+  const rows = await db
+    .delete(conversations)
+    .where(and(eq(conversations.userId, userId), eq(conversations.companionId, companionId)))
+    .returning({ id: conversations.id });
+  return rows.length > 0;
+}
+
+/** One of the user's own messages in their thread with a companion, or null. */
+export async function getUserMessage(
+  db: Db,
+  userId: string,
+  companionId: string,
+  messageId: string,
+): Promise<MessageRow | null> {
+  if (!isUuid(messageId)) return null;
+  const [row] = await db
+    .select({ message: messages })
+    .from(messages)
+    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+    .where(
+      and(
+        eq(messages.id, messageId),
+        eq(messages.role, 'user'),
+        eq(conversations.userId, userId),
+        eq(conversations.companionId, companionId),
+      ),
+    );
+  return row?.message ?? null;
 }
