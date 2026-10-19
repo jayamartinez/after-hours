@@ -9,6 +9,7 @@ import type { Db } from './db/client';
 import type { ChatModel, StructuredModel } from './providers/types';
 import { accountRoutes } from './routes/account';
 import { companionRoutes, createPublicProjector } from './routes/companions';
+import { creditRoutes } from './routes/credits';
 import { conversationRoutes } from './routes/conversations';
 import { devCompanionRoutes, type DevCompanionRoutesOptions } from './routes/dev-companions';
 import { healthRoutes } from './routes/health';
@@ -108,6 +109,7 @@ export function createApp(
           log: overrides.log,
         }),
       )
+      .route('/', creditRoutes(db, sessionSecret))
       .route('/', accountRoutes(db, sessionSecret));
   }
   return app;
