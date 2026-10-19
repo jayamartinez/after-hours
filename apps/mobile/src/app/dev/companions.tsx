@@ -124,7 +124,7 @@ function EditorForm({ data }: { data: DevCharacterResponse }) {
     }
   };
 
-  const preview = { ...data.public, name: values.name, tagline: values.tagline };
+  const preview = { ...data.public, name: values.name };
 
   return (
     <View style={styles.form}>

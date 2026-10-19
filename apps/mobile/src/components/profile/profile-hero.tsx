@@ -3,14 +3,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CompanionImage } from '@/components/companion-image';
-import { statusWithPlace } from '@/components/discovery/companion-copy';
 import { GlassButton } from '@/components/discovery/glass-button';
 import { ChevronLeftIcon, MoreIcon } from '@/components/discovery/icons';
 import { ParodyBadge } from '@/components/discovery/parody-badge';
 import { Scrim, SCRIMS } from '@/components/discovery/scrim';
-import { colors, fonts, tints, tones, type } from '@/theme/tokens';
+import { colors, fonts, tints } from '@/theme/tokens';
 
 const HERO_HEIGHT = 520;
+const NAV_MIN_TOP = 16;
 
 interface ProfileHeroProps {
   companion: PublicCharacter;
@@ -28,19 +28,17 @@ export function ProfileHero({ companion, onBack, onMore }: ProfileHeroProps) {
       <Scrim stops={SCRIMS.heroBottom} style={styles.bottomScrim} />
       <Scrim stops={SCRIMS.heroTop} style={styles.topScrim} />
 
-      <View style={[styles.nav, { paddingTop: insets.top }]}>
+      {/* Web has no status-bar inset, so keep a minimum gap from the top edge. */}
+      <View style={[styles.nav, { paddingTop: Math.max(insets.top, NAV_MIN_TOP) }]}>
         <GlassButton label="Back" onPress={onBack}>
           <ChevronLeftIcon />
         </GlassButton>
-        <GlassButton label="More options" onPress={onMore}>
+        <GlassButton label={`About ${companion.name}`} onPress={onMore}>
           <MoreIcon />
         </GlassButton>
       </View>
 
       <View style={styles.identity}>
-        <Text style={[type.label, styles.status, { color: tint.heroLabel }]} numberOfLines={1}>
-          {statusWithPlace(companion)}
-        </Text>
         <View style={styles.nameRow}>
           <Text
             style={styles.name}
@@ -55,7 +53,6 @@ export function ProfileHero({ companion, onBack, onMore }: ProfileHeroProps) {
             <Text style={styles.age}>{companion.age}</Text>
           </View>
         </View>
-        <Text style={styles.tagline}>{companion.tagline}</Text>
       </View>
     </View>
   );
@@ -75,7 +72,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   identity: { position: 'absolute', left: 20, right: 20, bottom: 20, gap: 10 },
-  status: { lineHeight: 14 },
   nameRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   name: {
     flexShrink: 1,
@@ -87,10 +83,4 @@ const styles = StyleSheet.create({
   },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
   age: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.textMuted },
-  tagline: {
-    fontFamily: fonts.displayItalic,
-    fontSize: 22,
-    lineHeight: 28,
-    color: tones.textOnArt,
-  },
 });

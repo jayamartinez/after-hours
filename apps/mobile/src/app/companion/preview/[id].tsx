@@ -12,7 +12,6 @@ import { Meters } from '@/components/discovery/meters';
 import { NameRow } from '@/components/discovery/name-row';
 import { Opener } from '@/components/discovery/opener';
 import { Scrim, SCRIMS } from '@/components/discovery/scrim';
-import { StatusLine } from '@/components/discovery/status-line';
 import { VoiceSampleRow } from '@/components/discovery/voice';
 import { PrimaryButton } from '@/components/primary-button';
 import { colors, fonts, radius, spacing, tints, tones } from '@/theme/tokens';
@@ -62,18 +61,16 @@ export default function CompanionPreviewSheet() {
           <View style={styles.grabber} />
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.identity}>
-              <StatusLine companion={companion} />
               <NameRow companion={companion} size={44} />
-              <Text style={styles.blurb}>{companion.blurb}</Text>
               <View style={styles.meters}>
-                <Meters meters={companion.meters} />
+                <Meters meters={companion.publicProfile.meters} />
               </View>
             </View>
             <Opener companion={companion} />
             <VoiceSampleRow companion={companion} />
           </ScrollView>
           <PrimaryButton
-            label={companion.copy.spotlightCta}
+            label={companion.publicProfile.copy.spotlightCta}
             accessibilityHint="Opens the chat"
             onPress={() => openChat(companion.id)}
           />
@@ -120,7 +117,6 @@ const styles = StyleSheet.create({
   },
   content: { gap: 16, paddingBottom: spacing.lg },
   identity: { gap: 10 },
-  blurb: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.text },
   meters: { paddingTop: 8 },
   missing: { fontFamily: fonts.regular, fontSize: 15, color: colors.textMuted },
   centered: { marginTop: spacing.huge, alignSelf: 'center' },

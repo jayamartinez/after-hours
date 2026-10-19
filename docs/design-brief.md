@@ -82,19 +82,23 @@ After Hours is a premium AI companion app. Users text, call, and share images wi
 
 Only two companion presets exist. Both are fictional AI parody characters: the personas never claim to be, speak as, or quote the real person they parody, and the only place that person is named is the non-affiliation note below. No real companies, schools, products, or quotes. Content is PG-13.
 
-**Roy, 25.** Founder parody. Runs a five-person startup out of a converted parking garage in South Calder (fictional Port Calder). Pivoted eleven times.
-- Personality: blunt, competitive, energetic, obsessed with shipping. Underneath: genuinely in your corner.
-- Texting: rapid-fire lowercase bursts, ends with a challenge.
-- Voice: "Fast, bright tenor — always mid-pitch".
-- Look: messy black hair, oversized charcoal hoodie, laptop glow, brass gong blurred behind him.
-- Tint: `--color-window` (window blue to ink); brass only as a thin CTA accent. Tagline: "Ships first. Sleeps never."
+Neither companion has an invented biography, tagline, status line, or fictional place (D-024). Screens show temperament, not lore.
 
-**Roya, 25.** Roy's alternate-timeline counterpart. Hosts the late-night livestream "Demo or Die".
-- Personality: charismatic, teasing, sarcastic, flirts back (playful, never explicit).
-- Texting: polished one-liners with a wink.
+**Roy, 25.** Parody informed by a founder's public persona.
+- Personality: blunt, quick, competitive, opinionated. Underneath: genuinely in your corner. Into tech and building, but only talks about it when you do.
+- Texting: quick lowercase reactions, strong opinions.
+- Voice: "Fast, bright tenor — always mid-pitch".
+- Look: messy black hair, oversized charcoal hoodie, laptop glow.
+- Tint: `--color-window` (window blue to ink); brass only as a thin CTA accent.
+
+**Roya, 25.** Original character with her own temperament.
+- Personality: dry humor, teasing, perceptive; flirts back (playful, never explicit).
+- Texting: polished sentences with a raised eyebrow.
 - Voice: "Smoky, amused mezzo — always half-laughing".
-- Look: sharp black bob, oversized cream blazer, gold hoop earrings, warm stage light.
-- Tint: brass to oxblood (lamplight). Tagline: "Same ambition. Better timeline."
+- Look: sharp black bob, oversized cream blazer, gold hoop earrings, warm lamp light.
+- Tint: brass to oxblood (lamplight).
+
+**Profile screen (D-024).** Hero: portrait with the existing scrims, back and options glass buttons, name, AI PARODY badge, and age (no status line or tagline). Then the action row (Message, Call, Voice note, Photos). Then only functional sections: "What he remembers", Photos (two images and "See gallery"), the settings card, and the disclosure footer. No About, talk-style, or voice sections on the page; the options (⋯) button opens an About sheet with `publicProfile.about` (two or three plain sentences on temperament) and the disclosure note. The Spotlight card, Cast List, preview sheet, and chat header likewise drop status lines, taglines, blurbs, and places; the chat header shows avatar, name, and badge.
 
 **Disclosure copy (exact):**
 - Badge: "AI PARODY" beside the name in chat headers and profiles.
@@ -114,7 +118,7 @@ Companion art is supplied per slot. Each slot has a fixed ratio; only the source
 |---|---|---|---|
 | `roy.hero` | 3:4 | 0.50, 0.30 | Spotlight card, profile hero, onboarding welcome and reveal |
 | `roy.avatar` | 1:1 | 0.50, 0.26 | Chat header, thumbnails |
-| `roy.gallery.0` | 4:5 | 0.55, 0.45 | Chat image bubbles, profile photo 1 (war room) |
+| `roy.gallery.0` | 4:5 | 0.55, 0.45 | Chat image bubbles, profile photo 1 (desk) |
 | `roy.gallery.1` | 4:5 | 0.50, 0.35 | Profile photo 2 (rooftop) |
 | `roya.hero` | 3:4 | 0.55, 0.32 | Spotlight card, profile hero, onboarding welcome and reveal |
 | `roya.avatar` | 1:1 | 0.55, 0.28 | Chat header, thumbnails |
@@ -177,4 +181,4 @@ Plus: replay entry in settings, and a debug sheet for design review.
 
 - Approved baseline (revision v3, 2026-10-16, pending Gate A2): chat Lamplight (dark, primary; Chat B archived); discovery Spotlight card (primary, Companions tab, swipe Roy ↔ Roya). The Cast List is a secondary browse state. The Spotlight card style also governs the onboarding reveal and profile hero.
 - Revised Roy & Roya designs (v3): pending Gate A2 (D-016). Implementation waits for that approval.
-- This brief is frozen. Later visual changes need a new decision entry in `docs/decisions.md`.
+- This brief is frozen. Later visual changes need a new decision entry in `docs/decisions.md`. Since freezing: D-021 (onboarding polish), D-024 (profile simplification, no character lore on any screen).

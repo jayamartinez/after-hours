@@ -1,8 +1,6 @@
 /**
- * Client chat model. Mirrors the `messages` table in docs/architecture.md (id, role, kind,
- * content, status, reactions, created_at) so the M3 server adapter can map rows 1:1.
- * When the API lands, move the wire shapes into packages/contracts and keep these as the
- * UI-facing types.
+ * UI-facing chat model. The wire shape is `ChatMessageDto` in packages/contracts; the API
+ * source maps it 1:1 (`api-source.ts`). `sending` and `delivered` exist only here.
  */
 
 export type MessageRole = 'user' | 'assistant';
@@ -39,6 +37,14 @@ export interface ChatMessage {
   reactions: Reaction[];
   image?: ImageRef;
   voice?: VoiceRef;
+  /** Idempotency key of a user message; a retry resends it. */
+  clientId?: string | null;
+}
+
+/** A short message for the toast (errors that have no inline place). */
+export interface ChatNotice {
+  id: number;
+  text: string;
 }
 
 export interface ConversationState {
@@ -48,6 +54,12 @@ export interface ConversationState {
   typing: boolean;
   /** Initial history has been loaded (or seeded). */
   loaded: boolean;
+  notice: ChatNotice | null;
 }
 
-export const EMPTY_CONVERSATION: ConversationState = { messages: [], typing: false, loaded: false };
+export const EMPTY_CONVERSATION: ConversationState = {
+  messages: [],
+  typing: false,
+  loaded: false,
+  notice: null,
+};

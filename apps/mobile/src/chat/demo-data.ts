@@ -1,10 +1,10 @@
 /**
- * DEMO DATA for the chat UI until the server chat API lands (Milestone 3).
+ * DEMO DATA for the chat UI when the server chat API is unreachable.
  *
- * Every line comes from the companion's public config: `copy.firstMessage` opens the
- * thread, `examples.starters` stand in for the user's side, and `examples.signatureLines`
- * are the canned companion lines. Nothing here is AI-generated, and the UI labels it
- * "DEMO DATA".
+ * Every line comes from the companion's `publicProfile`: `copy.firstMessage` opens the
+ * thread, `starters` stand in for the user's side, and `copy.sampleOpener` plus the opening
+ * lines are the canned companion lines (persona text never reaches the app). Nothing here is
+ * AI-generated, and the UI labels it "DEMO DATA".
  */
 import type { PublicCharacter } from '@after-hours/contracts';
 
@@ -20,10 +20,17 @@ function pick(list: readonly string[], index: number): string | undefined {
   return list[((index % list.length) + list.length) % list.length];
 }
 
+/** Canned companion lines: the sample opener first, then the opening bubbles. */
+export function demoLines(companion: PublicCharacter): string[] {
+  const { sampleOpener, firstMessage } = companion.publicProfile.copy;
+  return [sampleOpener, ...firstMessage];
+}
+
 /** A short demo thread showing every bubble type: text, reaction, voice note, image, receipts. */
 export function buildDemoThread(companion: PublicCharacter, now: number): ChatMessage[] {
-  const { firstMessage } = companion.copy;
-  const { starters, signatureLines } = companion.examples;
+  const { firstMessage } = companion.publicProfile.copy;
+  const { starters } = companion.publicProfile;
+  const canned = demoLines(companion);
   const lines: SeedLine[] = [];
 
   firstMessage.forEach((content, i) =>
@@ -53,13 +60,13 @@ export function buildDemoThread(companion: PublicCharacter, now: number): ChatMe
     image: { source: 'companion-gallery', index: 0 },
     minutesAgo: 10,
   });
-  const caption = pick(signatureLines, 0);
+  const caption = pick(canned, 0);
   if (caption) lines.push({ role: 'assistant', kind: 'text', content: caption, minutesAgo: 10 });
 
   const followUp = pick(starters, 1);
   if (followUp) lines.push({ role: 'user', kind: 'text', content: followUp, minutesAgo: 2 });
 
-  const latest = pick(signatureLines, 1);
+  const latest = pick(canned, 1);
   if (latest) lines.push({ role: 'assistant', kind: 'text', content: latest, minutesAgo: 1 });
 
   return lines.map(({ minutesAgo, reactions, ...line }, i) => ({
@@ -73,13 +80,9 @@ export function buildDemoThread(companion: PublicCharacter, now: number): ChatMe
 }
 
 /**
- * The canned reply for the `turn`-th user message: cycles through the signature lines
- * (after the two the seed thread already used).
+ * The canned reply for the `turn`-th user message: cycles through the demo lines (after the
+ * two the seed thread already used).
  */
 export function demoReply(companion: PublicCharacter, turn: number): string {
-  return (
-    pick(companion.examples.signatureLines, turn + 2) ??
-    pick(companion.copy.firstMessage, turn) ??
-    companion.statusLine
-  );
+  return pick(demoLines(companion), turn + 2) ?? companion.publicProfile.copy.sampleOpener;
 }

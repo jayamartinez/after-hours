@@ -11,7 +11,7 @@ export function Opener({ companion }: { companion: PublicCharacter }) {
     <View style={styles.block}>
       <Text style={[type.label, styles.label]}>{mightOpenWith(companion)}</Text>
       <View style={styles.bubble}>
-        <Text style={styles.text}>{companion.copy.sampleOpener}</Text>
+        <Text style={styles.text}>{companion.publicProfile.copy.sampleOpener}</Text>
       </View>
     </View>
   );

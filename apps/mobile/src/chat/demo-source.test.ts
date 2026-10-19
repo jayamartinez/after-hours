@@ -1,7 +1,7 @@
 import { presets, toPublicCharacter } from '@after-hours/companions';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildDemoThread, demoReply } from './demo-data';
+import { buildDemoThread, demoLines, demoReply } from './demo-data';
 import { createDemoConversationSource, type DemoTiming } from './demo-source';
 
 const companions = presets.map((preset) => toPublicCharacter(preset));
@@ -21,14 +21,9 @@ const NOW = new Date('2026-10-16T23:52:00').getTime();
 describe('demo thread', () => {
   it('is built only from the companion config', () => {
     const thread = buildDemoThread(roy, NOW);
-    const config = [
-      ...roy.copy.firstMessage,
-      ...roy.examples.starters,
-      ...roy.examples.signatureLines,
-      '',
-    ];
+    const config = [...demoLines(roy), ...roy.publicProfile.starters, ''];
     for (const message of thread) expect(config).toContain(message.content);
-    expect(thread[0]?.content).toBe(roy.copy.firstMessage[0]);
+    expect(thread[0]?.content).toBe(roy.publicProfile.copy.firstMessage[0]);
   });
 
   it('shows every bubble type and keeps chronological order', () => {
@@ -39,8 +34,8 @@ describe('demo thread', () => {
     expect(thread.filter((m) => m.role === 'user').every((m) => m.status === 'read')).toBe(true);
   });
 
-  it('cycles canned replies through signature lines', () => {
-    const lines = roy.examples.signatureLines;
+  it('cycles canned replies through the public demo lines', () => {
+    const lines = demoLines(roy);
     expect(demoReply(roy, 0)).toBe(lines[2 % lines.length]);
     expect(demoReply(roy, lines.length)).toBe(demoReply(roy, 0));
   });
@@ -80,7 +75,7 @@ describe('demo conversation source', () => {
     vi.runAllTimers();
     expect(state().typing).toBe(false);
     expect(state().messages.map((m) => [m.role, m.content])).toEqual(
-      roy.copy.firstMessage.map((line) => ['assistant', line]),
+      roy.publicProfile.copy.firstMessage.map((line) => ['assistant', line]),
     );
   });
 
@@ -104,7 +99,10 @@ describe('demo conversation source', () => {
     source.send(roy, 'hey');
     vi.runAllTimers();
     const assistant = state().messages.filter((m) => m.role === 'assistant');
-    expect(assistant.map((m) => m.content)).toEqual([...roy.copy.firstMessage, demoReply(roy, 0)]);
+    expect(assistant.map((m) => m.content)).toEqual([
+      ...roy.publicProfile.copy.firstMessage,
+      demoReply(roy, 0),
+    ]);
   });
 
   it('keeps conversations independent per companion', () => {

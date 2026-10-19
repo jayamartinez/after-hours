@@ -30,6 +30,7 @@ coverage/
 supabase/.temp/
 supabase/.branches/
 local-data/
+apps/server/eval/results/
 media-cache/
 apps/imessage-bridge/state/
 config/*.local.json

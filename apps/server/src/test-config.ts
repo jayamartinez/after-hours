@@ -12,6 +12,17 @@ export function testConfig(workDir: string, overrides: Partial<ServerConfig> = {
     companionsConfigPath: path.join(workDir, 'companions.local.json'),
     devEditor: false,
     corsOrigins: ['http://localhost:8081'],
+    chat: {
+      provider: 'anthropic',
+      model: 'claude-opus-5-5',
+      effort: 'low',
+      memoryModel: 'claude-haiku-5-5',
+    },
+    database: { kind: 'pglite' },
+    sessionSecret: 'test-session-secret-0123456789abcdef',
+    killSwitch: false,
+    rateLimitPerMin: 20,
+    allowLocalhostOrigins: true,
     ...overrides,
   };
 }

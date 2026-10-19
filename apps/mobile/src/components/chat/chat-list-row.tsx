@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatClock } from '@/chat/thread';
 import type { ChatMessage } from '@/chat/types';
-import { useConversation } from '@/chat/use-conversation';
+import { useConversationPreview } from '@/chat/use-conversation';
 import { CompanionImage } from '@/components/companion-image';
 import { colors, fonts, layout, radius, spacing } from '@/theme/tokens';
 
@@ -24,9 +24,8 @@ function preview(message: ChatMessage | undefined, name: string): string {
 
 /** One companion conversation: avatar, name + badge, last message, time. Opens the chat. */
 export function ChatListRow({ companion }: { companion: PublicCharacter }) {
-  const { messages, isTyping } = useConversation(companion.id);
-  const last = messages.at(-1);
-  const subtitle = isTyping ? 'typing…' : preview(last, companion.name);
+  const { last, opener, isTyping } = useConversationPreview(companion);
+  const subtitle = isTyping ? 'typing…' : last ? preview(last, companion.name) : (opener ?? '');
 
   return (
     <Pressable

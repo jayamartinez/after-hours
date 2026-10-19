@@ -1,6 +1,6 @@
 import type { PublicCharacter } from '@after-hours/contracts';
 import * as Clipboard from 'expo-clipboard';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { ChatMessage, Reaction } from '@/chat/types';
+import type { ChatMessage, ChatNotice, Reaction } from '@/chat/types';
 import { colors, spacing } from '@/theme/tokens';
 
 import { ChatHeader } from './chat-header';
@@ -38,7 +38,11 @@ interface ChatViewProps {
   isTyping: boolean;
   isLoading: boolean;
   isDemo: boolean;
+  /** Latest error without an inline place; each new one shows as a toast. */
+  notice?: ChatNotice | null;
   onSend: (text: string) => void;
+  /** Resend an undelivered message ("Not delivered · Retry"). */
+  onRetry?: (messageId: string) => void;
   onToggleReaction: (messageId: string, reaction: Reaction) => void;
   /** Shown between the thread and the composer (onboarding quick replies). */
   accessory?: ReactNode;
@@ -51,7 +55,9 @@ export function ChatView({
   isTyping,
   isLoading,
   isDemo,
+  notice = null,
   onSend,
+  onRetry,
   onToggleReaction,
   accessory,
 }: ChatViewProps) {
@@ -60,6 +66,7 @@ export function ChatView({
   const now = useMinuteClock();
   const { toast, show } = useToast();
   const [menu, setMenu] = useState<{ message: ChatMessage; rect: BubbleRect } | null>(null);
+  useNoticeToast(notice, show);
 
   const onReact = (message: ChatMessage, reaction: Reaction) => {
     onToggleReaction(message.id, reaction);
@@ -85,7 +92,7 @@ export function ChatView({
       <View style={styles.column}>
         <LampGlow />
         <View style={{ paddingTop: insets.top }}>
-          <ChatHeader companion={companion} now={now} onCall={() => show('Calls · coming soon')} />
+          <ChatHeader companion={companion} onCall={() => show('Calls · coming soon')} />
         </View>
 
         <KeyboardAvoidingView
@@ -104,6 +111,7 @@ export function ChatView({
                 now={now}
                 onLongPress={(message, rect) => setMenu({ message, rect })}
                 onPlayVoice={() => show('Voice playback · coming soon')}
+                onRetry={onRetry}
               />
             )}
             <Toast toast={toast} />
@@ -128,6 +136,16 @@ export function ChatView({
       />
     </View>
   );
+}
+
+/** Shows each new conversation notice as a toast. */
+function useNoticeToast(notice: ChatNotice | null, show: (text: string) => void) {
+  const shown = useRef(notice?.id ?? 0);
+  useEffect(() => {
+    if (!notice || notice.id === shown.current) return;
+    shown.current = notice.id;
+    show(notice.text);
+  }, [notice, show]);
 }
 
 /** iOS: drop the home-indicator inset while the keyboard covers it. */

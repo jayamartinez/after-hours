@@ -1,18 +1,21 @@
 import type { ChatMessage, ConversationState, MessageStatus, Reaction } from './types';
 
 /**
- * Pure state transitions for one conversation. Both the demo adapter and the M3 server
- * adapter (optimistic send, SSE `typing` / `message` events) drive the UI through these.
+ * Pure state transitions for one conversation. Both the demo adapter and the server
+ * adapter (optimistic send, SSE `ack` / `typing` / `bubble` events) drive the UI through these.
  */
 export type ConversationAction =
   | { type: 'loaded'; messages: ChatMessage[] }
   | { type: 'send'; message: ChatMessage }
+  /** The server stored an optimistic message: swap in the stored copy (server id). */
+  | { type: 'ack'; localId: string; message: ChatMessage }
   | { type: 'status'; id: string; status: MessageStatus }
   /** The companion read everything the user sent so far. */
   | { type: 'readAll' }
   | { type: 'typing'; typing: boolean }
   | { type: 'receive'; message: ChatMessage }
-  | { type: 'toggleReaction'; id: string; reaction: Reaction };
+  | { type: 'toggleReaction'; id: string; reaction: Reaction }
+  | { type: 'notice'; text: string };
 
 const STATUS_ORDER: Record<MessageStatus, number> = {
   failed: -1,
@@ -49,11 +52,37 @@ export function conversationReducer(
 ): ConversationState {
   switch (action.type) {
     case 'loaded':
-      return { messages: action.messages, typing: false, loaded: true };
+      return { ...state, messages: action.messages, typing: false, loaded: true };
 
     case 'send':
       if (state.messages.some((m) => m.id === action.message.id)) return state;
       return { ...state, messages: [...state.messages, action.message] };
+
+    case 'ack': {
+      const local = state.messages.find((m) => m.id === action.localId);
+      const duplicate =
+        action.message.id !== action.localId &&
+        state.messages.some((m) => m.id === action.message.id);
+      if (duplicate) {
+        // Already present (a replayed send): drop the optimistic copy.
+        return local
+          ? { ...state, messages: state.messages.filter((m) => m.id !== action.localId) }
+          : state;
+      }
+      if (!local) return { ...state, messages: [...state.messages, action.message] };
+      const stored: ChatMessage = {
+        ...action.message,
+        reactions: local.reactions,
+        status: nextStatus(local.status, action.message.status),
+      };
+      return {
+        ...state,
+        messages: state.messages.map((m) => (m.id === action.localId ? stored : m)),
+      };
+    }
+
+    case 'notice':
+      return { ...state, notice: { id: (state.notice?.id ?? 0) + 1, text: action.text } };
 
     case 'status':
       return updateMessage(state, action.id, (message) => {

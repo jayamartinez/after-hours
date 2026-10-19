@@ -7,8 +7,13 @@ import { LABELS } from './companion-copy';
 
 const DOTS = 5;
 
-/** Banter and depth as five dots each, plus pace, from `meters` in character config. */
-export function Meters({ meters, gap = 28 }: { meters: PublicCharacter['meters']; gap?: number }) {
+interface MetersProps {
+  meters: PublicCharacter['publicProfile']['meters'];
+  gap?: number;
+}
+
+/** Banter and depth as five dots each, plus pace, from `publicProfile.meters` in config. */
+export function Meters({ meters, gap = 28 }: MetersProps) {
   return (
     <View
       style={[styles.row, { gap }]}

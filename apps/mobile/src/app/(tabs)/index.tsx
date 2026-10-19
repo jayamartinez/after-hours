@@ -53,7 +53,7 @@ export default function CompanionsScreen() {
             <View style={styles.footer}>
               <SpotlightDots count={companions.length} active={active} />
               <PrimaryButton
-                label={current.copy.spotlightCta}
+                label={current.publicProfile.copy.spotlightCta}
                 accessibilityHint={`Shows more about ${current.name}`}
                 onPress={() => openSheet(current)}
               />

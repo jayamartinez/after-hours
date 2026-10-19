@@ -1,6 +1,6 @@
 import type { PublicCharacter } from '@after-hours/contracts';
 import { useMemo } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { buildThreadRows, GROUP_GAP_MS, type ThreadRow } from '@/chat/thread';
 import type { ChatMessage } from '@/chat/types';
@@ -19,6 +19,8 @@ interface MessageListProps {
   now: Date;
   onLongPress: (message: ChatMessage, rect: BubbleRect) => void;
   onPlayVoice: () => void;
+  /** Resend an undelivered message. */
+  onRetry?: (messageId: string) => void;
 }
 
 /** The thread, newest at the bottom (inverted list, so it opens at the latest message). */
@@ -29,6 +31,7 @@ export function MessageList({
   now,
   onLongPress,
   onPlayVoice,
+  onRetry,
 }: MessageListProps) {
   const rows = useMemo(() => {
     const thread: ListRow[] = buildThreadRows(messages, now);
@@ -66,7 +69,19 @@ export function MessageList({
               onLongPress={onLongPress}
               onPlayVoice={onPlayVoice}
             />
-            {item.receipt ? (
+            {item.receipt && message.status === 'failed' && onRetry ? (
+              <View style={styles.failedRow} accessibilityLiveRegion="polite">
+                <Text style={styles.receiptInline}>{item.receipt} · </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry sending"
+                  onPress={() => onRetry(message.id)}
+                  hitSlop={12}
+                >
+                  <Text style={[styles.receiptInline, styles.retry]}>Retry</Text>
+                </Pressable>
+              </View>
+            ) : item.receipt ? (
               <Text style={styles.receipt} accessibilityLiveRegion="polite">
                 {item.receipt}
               </Text>
@@ -102,6 +117,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.textMuted,
   },
+  failedRow: {
+    marginTop: 6,
+    paddingRight: spacing.xs,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  receiptInline: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textMuted,
+  },
+  retry: { fontFamily: fonts.semibold, color: colors.accent },
   receipt: {
     marginTop: 6,
     paddingRight: spacing.xs,

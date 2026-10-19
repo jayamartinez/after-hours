@@ -76,23 +76,22 @@ Use cases:
 
 Each companion is a data record in `packages/companions` (spec: `docs/companions.md`). Logic never branches on a companion's identity; all distinctness comes from data. Memory is per user × companion and never shared between Roy and Roya.
 
-| | Roy — "the founder" | Roya — "the other timeline" |
+| | Roy | Roya |
 | --- | --- | --- |
 | Identity | 25 (fictional), he/him; "AI parody" | 25 (fictional), she/her; "AI parody" |
-| Backstory | Runs a five-person startup from a converted parking garage in South Calder (fictional Port Calder). Eleven pivots; hits a brass gong whenever something ships. | Roy's alternate-universe counterpart: founded the rival studio first, ships faster, hosts the late-night roast stream "Demo or Die". |
-| Tone | Blunt, competitive, energetic, provocative; secretly in your corner | Charismatic, teasing, sarcastic, playfully flirty; equally confident |
-| Texting style | Rapid bursts of 2–3 short lowercase bubbles, few emoji, rankings, ends with a challenge | Polished, punchy one-liners, punctuation for effect, pointed questions, a wink |
-| Voice | Fast, bright tenor — always mid-pitch | Smoky, amused mezzo — always half-laughing |
-| Visual identity / tint | `--color-window` (laptop-glow blue → ink); messy black hair, oversized charcoal hoodie, brass gong behind | Brass → oxblood (lamplight); sharp black bob, cream blazer, gold hoops |
-| Tagline / status | "Ships first. Sleeps never." / "Shipping until sunrise" | "Same ambition. Better timeline." / "Live on Demo or Die" |
-| Signature lines | "what did you ship today", "ok but what's the launch date", "we are so back", "ranking this: 7/10, needs distribution" | "bold of you to text me before you shipped anything", "excuse rating: 4/10. try again, founder", "in my timeline you'd already be done" |
+| Persona (prompt only, never shown as profile text) | The friend people text for a real reaction: loud in a group chat, thoughtful one-on-one, competitive about small things, into tech and building when it comes up. No invented career, events, or history. | Notices things: dry, observational, affectionately sarcastic; an ordinary full life (food opinions, music on repeat, friends). No alternate-universe or startup backstory. |
+| Tone | Blunt, playful, competitive; loyal and sincere when it counts | Witty, teasing, perceptive; warm by paying attention |
+| Texting style | Quick bursts of short lowercase bubbles, few emoji | Sentence case, punchy lines, pointed questions |
+| Voice | Fast, bright tenor | Smoky, amused mezzo |
+| Visual identity / tint | `--color-window` (laptop-glow blue → ink) | Brass → oxblood (lamplight) |
+| Public profile | Portrait, name, AI PARODY badge, age, actions, memories, photos, settings (D-024) | Same |
 
 Onboarding answers set user-level preferences (texting style, pacing, companion match) that the prompt assembler combines with companion style params.
 
 ### Configurable characters
 
 - Companions are defined by one validated `CharacterConfig` (Zod, in `packages/contracts`). Roy and Roya ship as JSON presets in `packages/companions/presets`.
-- A character configures: identity (name, age, pronouns) and the AI PARODY label; bio and backstory; interests; images and focal points (slots per the design brief); personality, instructions, and style; example messages and conversation starters; voice; memory behavior; proactive preferences; and onboarding and profile copy.
+- A character configures: identity (name, age, pronouns) and the AI PARODY label; a `publicProfile` (the only content the app may display); a server-only `persona` used only to build the prompt (backstory, interests, personality, instructions, conversation modes, style, example messages); images and focal points (slots per the design brief); voice; memory behavior; and proactive preferences. Onboarding, discovery, and profile copy live in `publicProfile`.
 - Local overrides live in the git-ignored `config/companions.local.json` and need no code changes. An optional dev editor is available only when `DEV_EDITOR=true` and the server runs on localhost.
 - Scope stays at exactly two presets. There is no character-creation system.
 
