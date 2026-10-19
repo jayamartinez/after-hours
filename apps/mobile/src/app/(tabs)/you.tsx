@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDeleteAccount } from '@/api/account';
 import { DEV_EDITOR_ENABLED } from '@/api/config';
 import { confirmDestructive } from '@/components/confirm';
+import { PhotosCard } from '@/components/credits/photos-card';
 import { TrashIcon } from '@/components/discovery/icons';
 import { DemoControlsRow } from '@/components/onboarding/demo-controls-row';
 import { useToast } from '@/components/profile/toast';
@@ -12,7 +13,7 @@ import { colors, fonts, layout, radius, spacing, type } from '@/theme/tokens';
 
 const MAX_WIDTH = 430;
 
-/** You tab: data controls, demo controls, and (in development) the character editor. */
+/** You tab: photo credits, data controls, demo controls, and (in development) the editor. */
 export default function YouScreen() {
   const toast = useToast();
   const deleteAccount = useDeleteAccount();
@@ -21,7 +22,7 @@ export default function YouScreen() {
     const ok = await confirmDestructive({
       title: 'Delete all your data?',
       message:
-        'Every conversation, message, and memory is deleted from After Hours for good. You start over with a new, empty account.',
+        'Every conversation, message, memory, and photo credit is deleted from After Hours for good. You start over with a new, empty account.',
       confirmLabel: 'Delete everything',
     });
     if (!ok) return;
@@ -37,6 +38,11 @@ export default function YouScreen() {
         <Text style={type.displayM} accessibilityRole="header">
           You
         </Text>
+
+        <View style={styles.section}>
+          <Text style={type.label}>Photos</Text>
+          <PhotosCard onMessage={toast.show} />
+        </View>
 
         <View style={styles.section}>
           <Text style={type.label}>Your data</Text>
@@ -56,7 +62,7 @@ export default function YouScreen() {
               </View>
               <View style={styles.labels}>
                 <Text style={[styles.title, styles.danger]}>Delete all my data</Text>
-                <Text style={styles.subtitle}>Conversations, messages, and memories</Text>
+                <Text style={styles.subtitle}>Chats, memories, and photo credits</Text>
               </View>
             </Pressable>
           </View>

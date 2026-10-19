@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { setDemoPlus } from '@/api/credits';
 import { openLandingChat, stepHref } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
 import { onboardingStore, useOnboarding } from '@/onboarding/use-onboarding';
@@ -40,6 +41,9 @@ export function DemoControlsSheet({ visible, onClose }: DemoControlsSheetProps) 
   const resetPurchase = () => {
     onClose();
     onboardingStore.getState().resetDemoPurchase();
+    setDemoPlus(null).catch((error: unknown) =>
+      console.warn('[plus] Could not end demo Plus on the server.', error),
+    );
     router.push(stepHref('paywall'));
   };
 
