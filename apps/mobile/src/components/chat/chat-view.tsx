@@ -39,6 +39,8 @@ interface ChatViewProps {
   isDemo: boolean;
   /** Latest error without an inline place; each new one shows as a toast. */
   notice?: ChatNotice | null;
+  /** Screen-level status (e.g. a demo purchase); each new one shows as a toast. */
+  status?: ChatNotice | null;
   onSend: (text: string) => void;
   /** Resend an undelivered message ("Not delivered · Retry"). */
   onRetry?: (messageId: string) => void;
@@ -57,6 +59,7 @@ export function ChatView({
   isLoading,
   isDemo,
   notice = null,
+  status = null,
   onSend,
   onRetry,
   onToggleReaction,
@@ -69,6 +72,7 @@ export function ChatView({
   const { toast, show } = useToast();
   const [menu, setMenu] = useState<{ message: ChatMessage; rect: BubbleRect } | null>(null);
   useNoticeToast(notice, show);
+  useNoticeToast(status, show);
 
   const onReact = (message: ChatMessage, reaction: Reaction) => {
     onToggleReaction(message.id, reaction);

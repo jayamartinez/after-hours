@@ -9,6 +9,8 @@ import {
   type PublicCharacter,
 } from '@after-hours/contracts';
 
+import type { CreditSignal } from '@/api/credits';
+
 import { conversationReducer, type ConversationAction } from './reducer';
 import type { ConversationSource } from './source';
 import { createSseParser, toChatEvent } from './sse';
@@ -57,6 +59,8 @@ export interface ApiSourceOptions {
   timeZone?: () => string | undefined;
   /** Client idempotency key generator. */
   makeClientId?: () => string;
+  /** Photo credit events from reply streams (balance after a photo, or none left). */
+  onCredits?: (signal: CreditSignal) => void;
 }
 
 export interface ApiConversationSource extends ConversationSource {
@@ -91,6 +95,9 @@ export const fromDto = (dto: ChatMessageDto): ChatMessage => ({
   createdAt: dto.createdAt,
   reactions: dto.reactions,
   clientId: dto.clientId,
+  ...(dto.image
+    ? { image: { source: 'placeholder', description: dto.image.description } as const }
+    : {}),
 });
 
 function defaultClientId(): string {
@@ -128,6 +135,7 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
       }
     });
   const makeClientId = options.makeClientId ?? defaultClientId;
+  const { onCredits } = options;
   const conversations = new Map<string, Conversation>();
   let offline = false;
 
@@ -290,6 +298,17 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
         case 'error':
           finished = true;
           fail(event.error, true);
+          return;
+        case 'credits':
+        case 'credits_required':
+          // In step with the paced bubbles: the balance drops once the photo shows.
+          enqueue(id, () =>
+            onCredits?.(
+              event.type === 'credits'
+                ? { type: 'credits', balance: event.balance, companionId: id }
+                : { type: 'credits_required', companionId: id },
+            ),
+          );
           return;
       }
     };

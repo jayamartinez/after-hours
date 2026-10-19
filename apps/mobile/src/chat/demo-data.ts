@@ -57,7 +57,7 @@ export function buildDemoThread(companion: PublicCharacter, now: number): ChatMe
     role: 'assistant',
     kind: 'image',
     content: '',
-    image: { source: 'companion-gallery', index: 0 },
+    image: { source: 'placeholder', description: 'demo photo' },
     minutesAgo: 10,
   });
   const caption = pick(canned, 0);

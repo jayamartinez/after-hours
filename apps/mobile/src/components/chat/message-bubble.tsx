@@ -1,4 +1,3 @@
-import type { PublicCharacter } from '@after-hours/contracts';
 import { Image } from 'expo-image';
 import { useRef } from 'react';
 import {
@@ -12,7 +11,7 @@ import {
 } from 'react-native';
 
 import type { ChatMessage, Reaction } from '@/chat/types';
-import { CompanionImage } from '@/components/companion-image';
+import { PlaceholderPhoto } from '@/components/placeholder-photo';
 import { colors, fonts, radius } from '@/theme/tokens';
 
 import { chatColors, chatLayout } from './chat-tokens';
@@ -27,7 +26,6 @@ export interface BubbleRect {
 
 interface MessageContentProps {
   message: ChatMessage;
-  companion: PublicCharacter;
   /** Last bubble of a sender group: text bubbles get the 6px tail corner. */
   tail: boolean;
   /** Long-press state: raised fill, shadow, brass ring. */
@@ -41,24 +39,21 @@ const formatDuration = (sec: number) =>
     .padStart(2, '0')}`;
 
 /** The bubble itself (text, image, or voice note), without reactions or gestures. */
-export function MessageContent({
-  message,
-  companion,
-  tail,
-  lifted,
-  onPlayVoice,
-}: MessageContentProps) {
+export function MessageContent({ message, tail, lifted, onPlayVoice }: MessageContentProps) {
   const mine = message.role === 'user';
 
   if (message.kind === 'image' && message.image) {
     const box = [styles.image, lifted && styles.lifted];
-    return message.image.source === 'companion-gallery' ? (
-      <CompanionImage
-        companion={companion}
-        slot="gallery"
-        index={message.image.index}
-        style={box}
-      />
+    const caption = message.content.trim();
+    return message.image.source === 'placeholder' ? (
+      <View style={styles.photo}>
+        <PlaceholderPhoto description={message.image.description} style={box} />
+        {caption ? (
+          <View style={[styles.text, mine ? styles.mine : styles.theirs]}>
+            <Text style={[styles.body, mine && styles.bodyMine]}>{caption}</Text>
+          </View>
+        ) : null}
+      </View>
     ) : (
       <View style={box} accessible accessibilityRole="image" accessibilityLabel="Photo">
         <Image
@@ -118,7 +113,6 @@ interface MessageBubbleProps extends Omit<MessageContentProps, 'lifted'> {
 /** A message in the thread: bubble, reactions pill, long-press to open the menu. */
 export function MessageBubble({
   message,
-  companion,
   tail,
   onLongPress,
   onPlayVoice,
@@ -145,12 +139,7 @@ export function MessageBubble({
           accessibilityActions={[{ name: 'longpress', label: 'Show actions' }]}
           onAccessibilityAction={openMenu}
         >
-          <MessageContent
-            message={message}
-            companion={companion}
-            tail={tail}
-            onPlayVoice={onPlayVoice}
-          />
+          <MessageContent message={message} tail={tail} onPlayVoice={onPlayVoice} />
         </Pressable>
         {hasReactions ? <ReactionsPill reactions={message.reactions} mine={mine} /> : null}
       </View>
@@ -208,6 +197,7 @@ const styles = StyleSheet.create({
   theirs: { backgroundColor: colors.surface },
   body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.text },
   bodyMine: { color: colors.onAccent },
+  photo: { gap: 4, alignItems: 'flex-start' },
   image: {
     width: chatLayout.imageWidth,
     aspectRatio: 4 / 5,

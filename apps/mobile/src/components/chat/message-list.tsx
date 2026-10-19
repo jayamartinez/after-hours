@@ -64,7 +64,6 @@ export function MessageList({
           >
             <MessageBubble
               message={message}
-              companion={companion}
               tail={item.groupEnd}
               onLongPress={onLongPress}
               onPlayVoice={onPlayVoice}
