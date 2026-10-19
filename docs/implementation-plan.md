@@ -1,6 +1,6 @@
 # After Hours — implementation plan
 
-Status as of 2026-10-16. Current phase: **Milestone 1 (Phases 1–2: scaffold, image slots)**. Gate A approved 2026-10-15; Gate A2 (revision v3) approved 2026-10-16.
+Status as of 2026-10-18. Phases 1–3 built (scaffold, UI shell, real streamed chat on hosted Supabase). Current: **Phase 4 (memory) built on `feat/memory`, ready for manual testing**; next: Phase 5 as revised in D-026 (placeholder photos and image credits). Gate A approved 2026-10-15; Gate A2 (revision v3) approved 2026-10-16.
 
 Scope and rules: see `AGENTS.md`. Decisions: `docs/decisions.md`. Visual baseline: `docs/design-brief.md`.
 
@@ -10,9 +10,9 @@ Scope and rules: see `AGENTS.md`. Decisions: `docs/decisions.md`. Visual baselin
 - Priority: a polished core (onboarding → discovery → chat with memory) over breadth.
 - Build order follows the gates below. Nothing in Phases 1–8 starts before Gate A is recorded.
 
-## Phase 0 — Setup, docs, design exploration (current)
+## Phase 0 — Setup, docs, design exploration
 
-Status: **in progress**
+Status: **done**
 
 - Goal: repo setup, product and design documentation, reference analysis, design directions in Paper.
 - Deliverables:
@@ -68,12 +68,12 @@ Status: **in progress**
   - Supabase Postgres with anonymous auth; tables scoped to `userId` (RLS or explicit filter).
   - Streaming replies through `apps/server`; `ChatModel` interface in `apps/server/src/providers/types.ts`.
   - Per-companion persona in `packages/companions`; prompt assembly module.
-  - Error and retry UI; provider fallback to the secondary provider.
+  - Error and retry UI. Provider fallback dropped (D-026); a failed send retries once, then shows a retry action.
 - Done when:
   - Reply tokens appear incrementally in the UI.
   - A conversation survives an app reload.
   - A second anonymous user cannot read the first user's conversations (integration test).
-  - A forced primary-provider failure falls back without a broken UI; a failed send shows a retry action.
+  - A failed send shows a retry action.
   - Prompt assembly and provider fallback have unit tests; routes are tested against a real local database.
 - Validation evidence: test output, streamed-response recording, two-user isolation test result.
 
@@ -90,7 +90,9 @@ Status: **in progress**
   - Extraction and retrieval have unit tests.
 - Validation evidence: test output; before/after screenshots of the memory list.
 
-## Phase 5 — Image generation, gallery, voice messages
+## Phase 5 — Photos, image credits, gallery, voice messages
+
+Revised 2026-10-18 (D-026): real image generation is deferred. A companion "sends a photo" through an allowlisted tool, which spends one image credit and sends a clearly labeled placeholder (the companion's gallery art). Users start with free credits, can buy more through demo packs (no real charge), and the demo Plus purchase grants monthly credits. The deliverables below that mention generation apply once a provider is chosen (D-011).
 
 - Prerequisite: developer authorization for image generation (D-013, accepted 2026-10-15 for original, non-photoreal character art).
 - Goal: generated images in a per-user gallery; voice messages in both directions.
