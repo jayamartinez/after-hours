@@ -25,9 +25,8 @@ import { Toast, useToast } from './toast';
 
 export const CHAT_MAX_WIDTH = 430;
 
-const COMING_SOON: Record<Exclude<MenuAction, 'copy'>, string> = {
+const COMING_SOON: Record<Exclude<MenuAction, 'copy' | 'remember'>, string> = {
   reply: 'Reply · coming soon',
-  remember: 'Memories · coming soon',
   regenerate: 'Regenerate · coming soon',
   moreReactions: 'More reactions · coming soon',
 };
@@ -44,6 +43,8 @@ interface ChatViewProps {
   /** Resend an undelivered message ("Not delivered · Retry"). */
   onRetry?: (messageId: string) => void;
   onToggleReaction: (messageId: string, reaction: Reaction) => void;
+  /** "Remember this" on a user message; resolves to the toast text. Unset: coming soon. */
+  onRemember?: (message: ChatMessage) => Promise<string>;
   /** Shown between the thread and the composer (onboarding quick replies). */
   accessory?: ReactNode;
 }
@@ -59,6 +60,7 @@ export function ChatView({
   onSend,
   onRetry,
   onToggleReaction,
+  onRemember,
   accessory,
 }: ChatViewProps) {
   const insets = useSafeAreaInsets();
@@ -75,6 +77,16 @@ export function ChatView({
 
   const onAction = async (message: ChatMessage, action: MenuAction) => {
     setMenu(null);
+    if (action === 'remember') {
+      if (!onRemember) {
+        show('Memories · coming soon');
+        return;
+      }
+      // Phrasing the memory takes a moment; acknowledge the tap right away.
+      show('Remembering…');
+      show(await onRemember(message));
+      return;
+    }
     if (action !== 'copy') {
       show(COMING_SOON[action]);
       return;

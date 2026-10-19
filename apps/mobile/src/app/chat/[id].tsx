@@ -2,6 +2,9 @@ import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useMemoryActions } from '@/api/memories';
+import { ApiRequestError } from '@/api/transport';
+import type { ChatMessage } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { BackButton } from '@/components/back-button';
 import { CHAT_MAX_WIDTH, ChatView } from '@/components/chat/chat-view';
@@ -13,6 +16,23 @@ export default function ChatScreen() {
   const { companion, messages, isTyping, isLoading, isDemo, notice, send, retry, toggleReaction } =
     useConversation(id);
   const insets = useSafeAreaInsets();
+  const { remember } = useMemoryActions(companion?.id ?? '');
+
+  const onRemember = async (message: ChatMessage): Promise<string> => {
+    if (isDemo) return 'Memories need a connection to After Hours.';
+    if (message.status === 'sending' || message.status === 'failed') {
+      return 'Wait until it’s sent, then try again.';
+    }
+    try {
+      await remember.mutateAsync({
+        messageId: message.id,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      return companion ? `Saved to ${companion.name}’s memory` : 'Saved';
+    } catch (error) {
+      return error instanceof ApiRequestError ? error.message : 'Could not save that. Try again.';
+    }
+  };
 
   if (!companion) {
     return (
@@ -42,6 +62,7 @@ export default function ChatScreen() {
       onSend={send}
       onRetry={retry}
       onToggleReaction={toggleReaction}
+      onRemember={onRemember}
     />
   );
 }

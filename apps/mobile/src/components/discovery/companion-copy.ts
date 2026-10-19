@@ -16,6 +16,15 @@ export const mightOpenWith = (c: CopySubject) =>
 export const memoriesSubline = (c: CopySubject) =>
   `Only what you’ve told ${c.pronouns.object}. Edit or forget anything.`;
 
+/** Empty memory list: nothing has been remembered yet. */
+export const memoriesEmpty = (c: CopySubject) => ({
+  title: 'Nothing remembered yet',
+  detail: `Tell ${c.pronouns.object} about your day. What matters shows up here, and you can forget anything.`,
+});
+
+export const clearConversationSubline = (c: CopySubject) =>
+  `Deletes your messages with ${c.name}. Memories stay.`;
+
 export const proactiveSubline = (c: CopySubject) =>
   `${capitalize(c.pronouns.subject)} can text you first, sometimes`;
 
@@ -49,12 +58,9 @@ export const LABELS = {
   voiceNote: 'Voice note',
   photos: 'Photos',
   seeGallery: 'See gallery',
-  memoriesEmpty: 'Memories appear after you chat',
-  memoriesEmptyDetail: 'Nothing is saved yet. Once chats are saved, what you share shows up here.',
   proactive: 'Proactive messages',
   iMessageValue: 'Off',
   clearConversation: 'Clear conversation',
-  clearUnavailable: 'Available once chats are saved',
   callSoon: 'Calls are coming soon.',
   voiceNoteSoon: 'Voice notes are coming soon.',
   iMessageSoon: 'The iMessage bridge is coming soon.',
