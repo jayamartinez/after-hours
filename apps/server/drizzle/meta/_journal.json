@@ -15,6 +15,13 @@
       "when": 1792352144169,
       "tag": "0001_violet_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792353640322,
+      "tag": "0002_lazy_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }

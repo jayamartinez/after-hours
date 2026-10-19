@@ -1,3 +1,5 @@
+import { PLUS_MONTHLY_CREDITS } from '@after-hours/contracts';
+
 /**
  * DEMO DATA for onboarding. Example memories illustrate the memory controls (nothing is
  * stored), and the plans are a mock paywall: no store, no payment, no real charge.
@@ -48,7 +50,7 @@ export const DEMO_PLANS: readonly DemoPlanOption[] = [
 export const PLUS_FEATURES = [
   'Unlimited messages',
   'Voice notes & calls',
-  'Photos from {names}',
+  `${PLUS_MONTHLY_CREDITS} photos a month from {names}`,
   'Longer memory',
   'iMessage mode',
 ] as const;

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { CONVERSATIONS_QUERY_KEY, forgetConversations } from '@/chat/use-conversation';
 
+import { CREDITS_QUERY_KEY, GALLERY_QUERY_KEY } from './credits';
 import { MEMORIES_QUERY_KEY } from './memories';
 import { resetSession } from './session';
 import { apiRequest } from './transport';
@@ -32,6 +33,8 @@ export function useDeleteAccount() {
       await resetSession();
       forgetConversations();
       queryClient.removeQueries({ queryKey: MEMORIES_QUERY_KEY });
+      queryClient.removeQueries({ queryKey: CREDITS_QUERY_KEY });
+      queryClient.removeQueries({ queryKey: GALLERY_QUERY_KEY });
       await queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
     },
   });

@@ -16,6 +16,16 @@ export const MessageKindSchema = z.enum(['text', 'image', 'voice']);
 export const StoredMessageStatusSchema = z.enum(['sent', 'read', 'failed']);
 export const ReactionSchema = z.enum(['heart', 'ha', 'wow', 'question', 'like']);
 
+/**
+ * The picture of an image message. `placeholder`: no image yet; the app draws a labeled
+ * placeholder card with `description` (what the photo would show) until image generation
+ * exists (D-026).
+ */
+export const MessageImageSchema = z.object({
+  kind: z.literal('placeholder'),
+  description: z.string().max(200).default(''),
+});
+
 export const ChatMessageDtoSchema = z.object({
   id: z.string().min(1),
   role: MessageRoleSchema,
@@ -27,6 +37,8 @@ export const ChatMessageDtoSchema = z.object({
   reactions: z.array(ReactionSchema),
   /** Client idempotency key of a user message. */
   clientId: z.string().nullable(),
+  /** Set on `kind: 'image'` messages. */
+  image: MessageImageSchema.nullable().default(null),
 });
 
 export const SessionResponseSchema = z.object({
@@ -85,6 +97,8 @@ export const ApiErrorSchema = z.object({
  * Server-sent events of `POST /conversations/:companionId/messages`. Each SSE frame has
  * `event: <type>` and `data: <JSON of the whole event>`. Order:
  * `ack` → `typing` → (`delta`* `bubble`)+ → `done`, or `error` at any point after `ack`.
+ * A photo arrives as an image `bubble` followed by `credits`; without credits, the photo
+ * is not sent and `credits_required` tells the app to offer more.
  */
 export const ChatStreamEventSchema = z.discriminatedUnion('type', [
   /** The user message is persisted. */
@@ -101,12 +115,17 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
     messageIds: z.array(z.string()),
   }),
   z.object({ type: z.literal('error'), error: ApiErrorSchema }),
+  /** The photo credit balance after a photo was sent. */
+  z.object({ type: z.literal('credits'), balance: z.number().int().min(0) }),
+  /** The companion tried to send a photo but the user has no credits left. */
+  z.object({ type: z.literal('credits_required') }),
 ]);
 
 export type MessageRole = z.infer<typeof MessageRoleSchema>;
 export type MessageKind = z.infer<typeof MessageKindSchema>;
 export type StoredMessageStatus = z.infer<typeof StoredMessageStatusSchema>;
 export type ReactionId = z.infer<typeof ReactionSchema>;
+export type MessageImage = z.infer<typeof MessageImageSchema>;
 export type ChatMessageDto = z.infer<typeof ChatMessageDtoSchema>;
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export type ConversationSummary = z.infer<typeof ConversationSummarySchema>;

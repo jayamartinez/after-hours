@@ -13,8 +13,11 @@ export type Reaction = (typeof REACTIONS)[number];
 
 /** Where an image bubble's picture comes from. */
 export type ImageRef =
-  /** One of the companion's configured gallery slots (bundled default or override). */
-  | { source: 'companion-gallery'; index: 0 | 1 }
+  /**
+   * No image yet: a labeled placeholder card describing the shot (D-026). Never shows a
+   * real or configured image.
+   */
+  | { source: 'placeholder'; description: string }
   /** A stored media asset (M4: signed URL from the server). */
   | { source: 'uri'; uri: string };
 

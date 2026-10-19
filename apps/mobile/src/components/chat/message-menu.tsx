@@ -106,7 +106,7 @@ export function MessageMenu({ target, companion, onReact, onAction, onClose }: M
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <MessageContent message={message} companion={companion} tail lifted />
+          <MessageContent message={message} tail lifted />
         </View>
 
         <Animated.View entering={FadeIn.duration(160)} style={styles.menu}>

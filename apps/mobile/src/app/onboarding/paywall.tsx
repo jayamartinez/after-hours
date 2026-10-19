@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { setDemoPlus } from '@/api/credits';
 import { OnboardingButton } from '@/components/onboarding/buttons';
 import { DemoPill } from '@/components/onboarding/demo-pill';
 import { OnboardingScreen } from '@/components/onboarding/screen';
@@ -26,6 +27,10 @@ export default function PaywallScreen() {
   const notNow = () => finishOnboarding(companion?.id ?? null);
   const purchase = () => {
     onboardingStore.getState().purchaseDemo(planId);
+    // Plus adds monthly photo credits on the server; offline, the local demo flag still holds.
+    setDemoPlus(planId).catch((error: unknown) =>
+      console.warn('[plus] Could not start demo Plus on the server.', error),
+    );
     router.replace(stepHref('confirmed'));
   };
 

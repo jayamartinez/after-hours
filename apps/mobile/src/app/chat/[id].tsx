@@ -1,13 +1,16 @@
 import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useCreditSignals } from '@/api/credits';
 import { useMemoryActions } from '@/api/memories';
 import { ApiRequestError } from '@/api/transport';
-import type { ChatMessage } from '@/chat/types';
+import type { ChatMessage, ChatNotice } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { BackButton } from '@/components/back-button';
 import { CHAT_MAX_WIDTH, ChatView } from '@/components/chat/chat-view';
+import { CreditsSheet } from '@/components/credits/credits-sheet';
 import { colors, spacing, type } from '@/theme/tokens';
 
 /** Chat A "Lamplight". Companion identity from config; messages from `useConversation`. */
@@ -17,6 +20,16 @@ export default function ChatScreen() {
     useConversation(id);
   const insets = useSafeAreaInsets();
   const { remember } = useMemoryActions(companion?.id ?? '');
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [status, setStatus] = useState<ChatNotice | null>(null);
+  const showStatus = (text: string) => setStatus({ id: Date.now(), text });
+
+  // Out of photo credits mid-reply: offer more (D-026).
+  useCreditSignals((signal) => {
+    if (signal.type === 'credits_required' && signal.companionId === companion?.id) {
+      setCreditsOpen(true);
+    }
+  });
 
   const onRemember = async (message: ChatMessage): Promise<string> => {
     if (isDemo) return 'Memories need a connection to After Hours.';
@@ -52,18 +65,27 @@ export default function ChatScreen() {
   }
 
   return (
-    <ChatView
-      companion={companion}
-      messages={messages}
-      isTyping={isTyping}
-      isLoading={isLoading}
-      isDemo={isDemo}
-      notice={notice}
-      onSend={send}
-      onRetry={retry}
-      onToggleReaction={toggleReaction}
-      onRemember={onRemember}
-    />
+    <>
+      <ChatView
+        companion={companion}
+        messages={messages}
+        isTyping={isTyping}
+        isLoading={isLoading}
+        isDemo={isDemo}
+        notice={notice}
+        onSend={send}
+        onRetry={retry}
+        onToggleReaction={toggleReaction}
+        onRemember={onRemember}
+        status={status}
+      />
+      <CreditsSheet
+        visible={creditsOpen}
+        onClose={() => setCreditsOpen(false)}
+        onMessage={showStatus}
+        reason={`${companion.name} wanted to send you a photo.`}
+      />
+    </>
   );
 }
 

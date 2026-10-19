@@ -2,6 +2,8 @@ import { presets, toPublicCharacter } from '@after-hours/companions';
 import type { ChatMessageDto, ChatStreamEvent } from '@after-hours/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { CreditSignal } from '@/api/credits';
+
 import { createApiConversationSource, type ApiResponse, type ApiTransport } from './api-source';
 import { createDemoConversationSource } from './demo-source';
 
@@ -16,6 +18,7 @@ const dto = (fields: Partial<ChatMessageDto>): ChatMessageDto => ({
   createdAt: '2026-10-16T22:00:00.000Z',
   reactions: [],
   clientId: null,
+  image: null,
   ...fields,
 });
 
@@ -41,7 +44,7 @@ function sse(events: ChatStreamEvent[]): ApiResponse {
   };
 }
 
-function setup(transport: Partial<ApiTransport>) {
+function setup(transport: Partial<ApiTransport>, onCredits?: (signal: CreditSignal) => void) {
   const source = createApiConversationSource({
     transport: {
       get: async () => json({ companionId: 'roy', messages: [] }),
@@ -54,6 +57,7 @@ function setup(transport: Partial<ApiTransport>) {
     timing: { readDelay: 0, bubbleGap: () => 0 },
     makeClientId: () => 'client-1',
     timeZone: () => 'UTC',
+    onCredits,
   });
   /** Lets queued fetches, stream reads, and zero-delay pacing steps run. */
   const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
@@ -101,6 +105,45 @@ describe('createApiConversationSource', () => {
     ]);
     expect(state.typing).toBe(false);
     expect(source.isDemo).toBe(false);
+  });
+
+  it('shows a photo as a labeled placeholder and reports credits after it', async () => {
+    const signals: CreditSignal[] = [];
+    const { source, settle } = setup(
+      {
+        postStream: async () =>
+          sse([
+            { type: 'ack', message: dto({ id: 'u1', role: 'user', content: 'pic?' }) },
+            { type: 'typing' },
+            {
+              type: 'bubble',
+              message: dto({
+                id: 'p1',
+                kind: 'image',
+                content: 'desk',
+                image: { kind: 'placeholder', description: 'desk lamp, late' },
+              }),
+            },
+            { type: 'credits', balance: 2 },
+            { type: 'credits_required' },
+            { type: 'done', userMessageId: 'u1', messageIds: ['p1'] },
+          ]),
+      },
+      (signal) => signals.push(signal),
+    );
+    source.load(roy);
+    await settle();
+    source.send(roy, 'pic?');
+    await settle();
+    expect(source.getSnapshot('roy').messages.at(-1)).toMatchObject({
+      kind: 'image',
+      content: 'desk',
+      image: { source: 'placeholder', description: 'desk lamp, late' },
+    });
+    expect(signals).toEqual([
+      { type: 'credits', balance: 2, companionId: 'roy' },
+      { type: 'credits_required', companionId: 'roy' },
+    ]);
   });
 
   it('marks a send failed on a retryable error and retries with the same clientId', async () => {

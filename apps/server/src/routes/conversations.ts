@@ -13,14 +13,17 @@ import { requireUser, type AuthEnv } from '../auth/session';
 import type { CharacterStore } from '../characters/store';
 import { HISTORY_MESSAGES, toHistoryTurns } from '../chat/history';
 import { streamReply } from '../chat/reply';
+import { runPhotoCalls, type PhotoOutcome, type SendPhotoInput } from '../chat/photo-tool';
 import { rememberFromExchange } from '../chat/remember';
 import { buildChatRequest } from '../chat/request';
 import { validTimeZone } from '../chat/time-zone';
 import type { Db } from '../db/client';
+import { spendCredit } from '../db/credits';
 import {
   deleteConversation,
   getOrCreateConversation,
   insertAssistantBubble,
+  insertAssistantPhoto,
   insertUserMessage,
   listConversationSummaries,
   listMessages,
@@ -31,7 +34,12 @@ import {
 import { listMemories } from '../db/memories';
 import type { MessageRow } from '../db/schema';
 import { createRateLimiter } from '../limits/rate-limit';
-import { ChatModelError, type ChatModel, type StructuredModel } from '../providers/types';
+import {
+  ChatModelError,
+  type ChatModel,
+  type StructuredModel,
+  type ToolCall,
+} from '../providers/types';
 
 export interface ConversationRoutesOptions {
   db: Db;
@@ -198,10 +206,30 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               history: toHistoryTurns(rows, userRow.id),
               memories,
               timeZone: validTimeZone(parsed.data.timeZone),
+              photos: true,
             });
 
             const saved: string[] = [];
             const replyText: string[] = [];
+            /** Sends the photo if the user has a credit (D-026). */
+            const sendPhoto = async (
+              input: SendPhotoInput,
+              call: ToolCall,
+            ): Promise<PhotoOutcome> => {
+              const balance = await spendCredit(db, userId, `${userRow.id}:${call.id}`);
+              if (balance === null) {
+                await send({ type: 'credits_required' });
+                return { kind: 'noCredits' };
+              }
+              const row = await insertAssistantPhoto(db, conversationId, userRow.id, {
+                caption: input.caption,
+                description: input.moment,
+              });
+              saved.push(row.id);
+              await send({ type: 'bubble', message: toMessageDto(row) });
+              await send({ type: 'credits', balance });
+              return { kind: 'sent' };
+            };
             try {
               await streamReply(model, request, {
                 onDelta: (delta) => void send({ type: 'delta', text: delta }),
@@ -216,6 +244,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
                   replyText.push(bubbleText);
                   await send({ type: 'bubble', message: toMessageDto(row) });
                 },
+                onToolCalls: (calls) => runPhotoCalls(calls, sendPhoto),
               });
               if (saved.length === 0) {
                 throw new ChatModelError('api', 'The model returned an empty reply.', true);

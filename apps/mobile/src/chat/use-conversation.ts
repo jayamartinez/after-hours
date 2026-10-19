@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { useCompanion } from '@/api/companions';
+import { emitCreditSignal } from '@/api/credits';
 import { apiTransport } from '@/api/transport';
 
 import { createApiConversationSource, fromDto } from './api-source';
@@ -16,6 +17,7 @@ import type { ChatMessage, Reaction } from './types';
 const source = createApiConversationSource({
   transport: apiTransport,
   fallback: createDemoConversationSource(),
+  onCredits: emitCreditSignal,
 });
 
 export const CONVERSATIONS_QUERY_KEY = ['conversations'] as const;
