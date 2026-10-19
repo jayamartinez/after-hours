@@ -78,14 +78,17 @@ function toUsage(usage: Anthropic.Beta.BetaUsage | Anthropic.Usage): ChatUsage {
   };
 }
 
-/** Structured outputs accept a subset of JSON Schema; numeric bounds are checked by Zod instead. */
-function toOutputSchema(schema: z.ZodType): Record<string, unknown> {
+/** JSON Schema keywords structured outputs reject; Zod re-checks them on the result. */
+const UNSUPPORTED_SCHEMA_KEYS = ['$schema', 'minimum', 'maximum', 'maxItems'];
+
+/** Structured outputs accept a subset of JSON Schema (exported for tests). */
+export function toOutputSchema(schema: z.ZodType): Record<string, unknown> {
   const strip = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(strip);
     if (!node || typeof node !== 'object') return node;
     return Object.fromEntries(
       Object.entries(node)
-        .filter(([key]) => !['$schema', 'minimum', 'maximum'].includes(key))
+        .filter(([key]) => !UNSUPPORTED_SCHEMA_KEYS.includes(key))
         .map(([key, value]) => [key, strip(value)]),
     );
   };

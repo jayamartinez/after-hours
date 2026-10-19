@@ -16,43 +16,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { openDatabase, type Database } from '../db/client';
 import { addMemory } from '../db/memories';
-import { ChatModelError, type ChatModel, type ChatRequest } from '../providers/types';
+import { ChatModelError } from '../providers/types';
 import type { ServerConfig } from '../config';
+import { scriptedModel } from '../test-chat';
 import { testConfig } from '../test-config';
 
 const [roy, roya] = presets;
 if (!roy || !roya) throw new Error('expected Roy and Roya presets');
-
-/** One scripted model turn: streamed chunks, optionally followed by a failure. */
-type Turn = { chunks: string[]; error?: ChatModelError };
-
-/** ChatModel double: plays scripted turns and records every request. */
-function scriptedModel() {
-  const script: Turn[] = [];
-  const requests: ChatRequest[] = [];
-  const model: ChatModel = {
-    provider: 'test',
-    model: 'test-model',
-    async stream(request, onText) {
-      requests.push(request);
-      const turn = script.shift() ?? { chunks: ['ok'] };
-      for (const chunk of turn.chunks) onText?.(chunk);
-      if (turn.error) throw turn.error;
-      return {
-        text: turn.chunks.join(''),
-        stopReason: 'end_turn',
-        model: 'test-model',
-        usage: {
-          inputTokens: 1,
-          outputTokens: 1,
-          cacheReadInputTokens: 0,
-          cacheCreationInputTokens: 0,
-        },
-      };
-    },
-  };
-  return { model, script, requests };
-}
 
 let workDir: string;
 let database: Database;
@@ -285,18 +255,15 @@ describe('chat', () => {
     const b = await newSession();
     const userId = (token: string) =>
       JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString()).sub as string;
-    await addMemory(database.db, userId(a), {
-      companionId: 'roy',
+    await addMemory(database.db, userId(a), 'roy', {
       content: 'Has a dog named Pixel',
       category: 'fact',
     });
-    await addMemory(database.db, userId(a), {
-      companionId: 'roya',
+    await addMemory(database.db, userId(a), 'roya', {
       content: 'Is learning the cello',
       category: 'fact',
     });
-    await addMemory(database.db, userId(b), {
-      companionId: 'roy',
+    await addMemory(database.db, userId(b), 'roy', {
       content: 'Works night shifts',
       category: 'fact',
     });
