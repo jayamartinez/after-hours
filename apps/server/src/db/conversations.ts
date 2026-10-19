@@ -1,4 +1,9 @@
-import type { ChatMessageDto, ConversationSummary, ReactionId } from '@after-hours/contracts';
+import type {
+  ChatMessageDto,
+  ConversationSummary,
+  GalleryPhoto,
+  ReactionId,
+} from '@after-hours/contracts';
 import { and, asc, desc, eq, inArray, lte } from 'drizzle-orm';
 
 import type { Db } from './client';
@@ -21,6 +26,7 @@ export function toMessageDto(row: MessageRow): ChatMessageDto {
     createdAt: row.createdAt.toISOString(),
     reactions: row.reactions as ReactionId[],
     clientId: row.clientId,
+    image: row.media ? { kind: 'placeholder', description: row.media.description ?? '' } : null,
   };
 }
 
@@ -158,6 +164,61 @@ export async function insertAssistantBubble(
     .returning();
   if (!row) throw new Error('insert returned no row');
   return row;
+}
+
+/**
+ * Stores a photo the companion sent. Until image generation exists there is no image:
+ * the app draws a labeled placeholder card with `description` (what it would show).
+ */
+export async function insertAssistantPhoto(
+  db: Db,
+  conversationId: string,
+  replyTo: string,
+  photo: { caption: string; description: string },
+): Promise<MessageRow> {
+  const [row] = await db
+    .insert(messages)
+    .values({
+      conversationId,
+      role: 'assistant',
+      kind: 'image',
+      content: photo.caption,
+      replyTo,
+      media: { kind: 'placeholder', description: photo.description },
+    })
+    .returning();
+  if (!row) throw new Error('insert returned no row');
+  return row;
+}
+
+/** Every photo companions sent this user, newest first (the Gallery tab). */
+export async function listPhotos(db: Db, userId: string): Promise<GalleryPhoto[]> {
+  const rows = await db
+    .select({ message: messages, companionId: conversations.companionId })
+    .from(messages)
+    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        eq(messages.kind, 'image'),
+        eq(messages.role, 'assistant'),
+      ),
+    )
+    .orderBy(desc(messages.seq));
+  return rows.flatMap(({ message, companionId }) =>
+    message.media
+      ? [
+          {
+            messageId: message.id,
+            companionId,
+            // Rows from before descriptions existed have none.
+            description: message.media.description ?? '',
+            caption: message.content,
+            createdAt: message.createdAt.toISOString(),
+          },
+        ]
+      : [],
+  );
 }
 
 export async function setMessageStatus(

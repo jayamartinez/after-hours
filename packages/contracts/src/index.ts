@@ -4,3 +4,4 @@ export * from './asset-manifest';
 export * from './health';
 export * from './memory';
 export * from './chat';
+export * from './credits';
