@@ -6,11 +6,13 @@ import { createManifestLoader, type Warn } from './assets/manifest';
 import { createCharacterStore } from './characters/store';
 import type { ServerConfig } from './config';
 import type { Db } from './db/client';
-import type { ChatModel } from './providers/types';
+import type { ChatModel, StructuredModel } from './providers/types';
+import { accountRoutes } from './routes/account';
 import { companionRoutes, createPublicProjector } from './routes/companions';
 import { conversationRoutes } from './routes/conversations';
 import { devCompanionRoutes, type DevCompanionRoutesOptions } from './routes/dev-companions';
 import { healthRoutes } from './routes/health';
+import { memoryRoutes } from './routes/memories';
 import { privateAssetRoutes } from './routes/private-assets';
 import { sessionRoutes } from './routes/session';
 
@@ -19,6 +21,10 @@ export interface ChatServices {
   db: Db;
   model: ChatModel;
   sessionSecret: string;
+  /** Memory extraction after each reply; unset disables automatic memories. */
+  memoryModel?: StructuredModel;
+  /** Background work that outlives a response (see `conversationRoutes`). */
+  waitUntil?: (task: Promise<void>) => void;
 }
 
 export interface AppOverrides {
@@ -73,19 +79,36 @@ export function createApp(
     .route('/', privateAssetRoutes(config.privateAssetsDir));
 
   if (overrides.chat) {
-    const { db, model, sessionSecret } = overrides.chat;
-    app.route('/', sessionRoutes(db, sessionSecret)).route(
-      '/',
-      conversationRoutes({
-        db,
-        store,
-        model,
-        sessionSecret,
-        killSwitch: config.killSwitch,
-        rateLimitPerMin: config.rateLimitPerMin,
-        log: overrides.log,
-      }),
-    );
+    const { db, model, sessionSecret, memoryModel, waitUntil } = overrides.chat;
+    app
+      .route('/', sessionRoutes(db, sessionSecret))
+      .route(
+        '/',
+        conversationRoutes({
+          db,
+          store,
+          model,
+          sessionSecret,
+          killSwitch: config.killSwitch,
+          rateLimitPerMin: config.rateLimitPerMin,
+          memoryModel,
+          waitUntil,
+          log: overrides.log,
+        }),
+      )
+      .route(
+        '/',
+        memoryRoutes({
+          db,
+          store,
+          sessionSecret,
+          memoryModel,
+          killSwitch: config.killSwitch,
+          rateLimitPerMin: config.rateLimitPerMin,
+          log: overrides.log,
+        }),
+      )
+      .route('/', accountRoutes(db, sessionSecret));
   }
   return app;
 }
