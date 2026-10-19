@@ -8,6 +8,7 @@ import {
   type ChatModel,
   type ChatRequest,
   type ChatResult,
+  type ChatTurn,
   type ChatUsage,
   type StructuredModel,
 } from './types';
@@ -15,6 +16,29 @@ import {
 /** Short texting replies; generous enough that thinking at low effort never truncates them. */
 const DEFAULT_MAX_TOKENS = 4000;
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
+
+/**
+ * One turn as a Messages API message. An assistant turn that ended in a tool call is
+ * echoed back as its original content blocks (thinking included, unchanged), and tool
+ * results go first in the next user turn.
+ */
+function toMessageParam(turn: ChatTurn): Anthropic.Beta.BetaMessageParam {
+  if (turn.role === 'assistant') {
+    return {
+      role: 'assistant',
+      content: turn.raw ? (turn.raw as Anthropic.Beta.BetaContentBlockParam[]) : turn.content,
+    };
+  }
+  if (!turn.toolResults?.length) return { role: 'user', content: turn.content };
+  const content: Anthropic.Beta.BetaContentBlockParam[] = turn.toolResults.map((result) => ({
+    type: 'tool_result',
+    tool_use_id: result.callId,
+    content: result.content,
+    ...(result.isError ? { is_error: true } : {}),
+  }));
+  if (turn.content) content.push({ type: 'text', text: turn.content });
+  return { role: 'user', content };
+}
 
 /** Builds the Messages API params for one chat turn (exported for tests). */
 export function toAnthropicParams(
@@ -26,11 +50,24 @@ export function toAnthropicParams(
     { type: 'text', text: request.system.stable, cache_control: { type: 'ephemeral' } },
   ];
   if (request.system.context) system.push({ type: 'text', text: request.system.context });
+  const tools = request.tools?.length
+    ? {
+        // Strict: inputs always match the schema (they are tiny, so no eager streaming).
+        tools: request.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.inputSchema as Anthropic.Beta.BetaTool.InputSchema,
+          strict: true,
+        })),
+        tool_choice: { type: request.toolChoice ?? 'auto' } as const,
+      }
+    : {};
   return {
     model,
     max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
     system,
-    messages: request.messages.map((turn) => ({ role: turn.role, content: turn.content })),
+    messages: request.messages.map(toMessageParam),
+    ...tools,
     output_config: { effort },
     betas: [FALLBACK_BETA],
     fallbacks: 'default',
@@ -152,11 +189,16 @@ export function createAnthropicChatModel(
         const text = message.content
           .flatMap((block) => (block.type === 'text' ? [block.text] : []))
           .join('');
+        const toolCalls = message.content.flatMap((block) =>
+          block.type === 'tool_use' ? [{ id: block.id, name: block.name, input: block.input }] : [],
+        );
         return {
           text,
           stopReason: message.stop_reason,
           model: message.model,
           usage: toUsage(message.usage),
+          toolCalls,
+          raw: message.content,
         };
       } catch (error) {
         throw toChatError(error);

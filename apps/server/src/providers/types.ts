@@ -5,9 +5,41 @@ import type { z } from 'zod';
  * allowed to import provider SDKs (AGENTS.md boundaries).
  */
 
-export interface ChatTurn {
-  role: 'user' | 'assistant';
+export type ChatTurn =
+  | {
+      role: 'user';
+      content: string;
+      /** Results for the tool calls of the previous assistant turn. */
+      toolResults?: ToolResult[];
+    }
+  | {
+      role: 'assistant';
+      content: string;
+      /**
+       * The provider's own record of this turn (e.g. content blocks with thinking and tool
+       * calls), echoed back unchanged when continuing after a tool call.
+       */
+      raw?: unknown;
+    };
+
+/** A tool the model may call. `inputSchema` is JSON Schema; inputs are re-validated. */
+export interface ChatTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  /** Unvalidated model output; check it against the tool's schema before use. */
+  input: unknown;
+}
+
+export interface ToolResult {
+  callId: string;
   content: string;
+  isError?: boolean;
 }
 
 export interface ChatRequest {
@@ -20,6 +52,10 @@ export interface ChatRequest {
   /** Conversation history, oldest first, ending with the user's latest message. */
   messages: ChatTurn[];
   maxTokens?: number;
+  /** Tools the model may call this turn (allowlisted by the caller). */
+  tools?: readonly ChatTool[];
+  /** `none`: tools stay declared but may not be called (continuing after a call). */
+  toolChoice?: 'auto' | 'none';
 }
 
 export interface ChatUsage {
@@ -35,6 +71,10 @@ export interface ChatResult {
   stopReason: string | null;
   /** The model that actually served the reply (may differ after a server-side fallback). */
   model: string;
+  /** Tool calls the reply ended with (`stopReason` is then `tool_use`). */
+  toolCalls: ToolCall[];
+  /** This turn as the provider recorded it; pass back as `ChatTurn.raw` to continue. */
+  raw: unknown;
 }
 
 export type ChatErrorKind = 'rate_limit' | 'connection' | 'refusal' | 'auth' | 'api';

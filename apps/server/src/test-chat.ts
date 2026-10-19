@@ -11,6 +11,7 @@ import type {
   ChatRequest,
   StructuredModel,
   StructuredRequest,
+  ToolCall,
 } from './providers/types';
 
 /** Test doubles and HTTP helpers shared by the chat route tests. */
@@ -22,8 +23,11 @@ const USAGE = {
   cacheCreationInputTokens: 0,
 };
 
-/** One scripted model turn: streamed chunks, optionally followed by a failure. */
-export type Turn = { chunks: string[]; error?: ChatModelError };
+/**
+ * One scripted model turn: streamed chunks, optionally followed by a failure, or ending in
+ * tool calls (`stopReason: 'tool_use'`).
+ */
+export type Turn = { chunks: string[]; error?: ChatModelError; toolCalls?: ToolCall[] };
 
 /** ChatModel double: plays scripted turns and records every request. */
 export function scriptedModel() {
@@ -33,15 +37,19 @@ export function scriptedModel() {
     provider: 'test',
     model: 'test-model',
     async stream(request, onText) {
-      requests.push(request);
+      // Snapshot: callers may extend the same message list for a continuation.
+      requests.push({ ...request, messages: [...request.messages] });
       const turn = script.shift() ?? { chunks: ['ok'] };
       for (const chunk of turn.chunks) onText?.(chunk);
       if (turn.error) throw turn.error;
+      const toolCalls = turn.toolCalls ?? [];
       return {
         text: turn.chunks.join(''),
-        stopReason: 'end_turn',
+        stopReason: toolCalls.length ? 'tool_use' : 'end_turn',
         model: 'test-model',
         usage: USAGE,
+        toolCalls,
+        raw: { scripted: turn.chunks, toolCalls },
       };
     },
   };

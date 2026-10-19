@@ -127,10 +127,11 @@ describe('sessions', () => {
 
   it('enables RLS on every table (blocks the public PostgREST API)', async () => {
     const result = (await database.db.execute(
-      sql`select relname, relrowsecurity from pg_class where relname in ('users','conversations','messages','memories') order by relname`,
+      sql`select relname, relrowsecurity from pg_class where relname in ('users','conversations','messages','memories','credit_events') order by relname`,
     )) as unknown as { rows: { relname: string; relrowsecurity: boolean }[] };
     expect(result.rows).toEqual([
       { relname: 'conversations', relrowsecurity: true },
+      { relname: 'credit_events', relrowsecurity: true },
       { relname: 'memories', relrowsecurity: true },
       { relname: 'messages', relrowsecurity: true },
       { relname: 'users', relrowsecurity: true },

@@ -5,6 +5,7 @@ import type {
   Persona,
 } from '@after-hours/contracts';
 
+import { PHOTO_RULES } from './photo-tool';
 import { SAFETY_PREAMBLE } from './safety';
 
 /** Onboarding preferences. They can only lower a character's flirtation and roast levels. */
@@ -150,7 +151,11 @@ function renderExamples(examples: Persona['examples']): string {
  * preferences. Byte-stable for a given config and prefs so providers can cache it; per-turn
  * context (memories, time) is built by `buildTurnContext`.
  */
-export function buildSystemPrompt(character: CharacterConfig, prefs: UserPrefs = {}): string {
+export function buildSystemPrompt(
+  character: CharacterConfig,
+  prefs: UserPrefs = {},
+  options: { photos?: boolean } = {},
+): string {
   const { name, pronouns, persona } = character;
   const { personality, examples } = persona;
   const sections: string[] = [
@@ -172,6 +177,7 @@ export function buildSystemPrompt(character: CharacterConfig, prefs: UserPrefs =
   sections.push(`# How you text\n${renderStyle(persona.style, prefs)}`);
   sections.push(`# Sounding like a person, not a chatbot\n${bulletList(CONVERSATION_RULES)}`);
   if (character.memory.enabled) sections.push(`# Memory\n${bulletList(MEMORY_RULES)}`);
+  if (options.photos) sections.push(`# Photos\n${bulletList(PHOTO_RULES)}`);
   if (examples.signatureLines.length > 0) {
     sections.push(
       `# Lines that sound like you (voice reference only; do not reuse them)\n${bulletList(examples.signatureLines)}`,

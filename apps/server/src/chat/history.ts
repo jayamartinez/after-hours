@@ -4,6 +4,13 @@ import type { ChatTurn } from '../providers/types';
 /** Messages loaded from the database per model request (the newest ones). */
 export const HISTORY_MESSAGES = 30;
 
+/** A photo the companion sent reads as `[photo]` plus its caption (see `PHOTO_RULES`). */
+function turnText(row: MessageRow): string {
+  const text = row.content.trim();
+  if (row.kind === 'image' && row.role === 'assistant') return text ? `[photo] ${text}` : '[photo]';
+  return row.kind === 'text' ? text : '';
+}
+
 /**
  * Stored messages → model turns. Undelivered user messages (other than the one being
  * answered) are dropped, and consecutive messages from one side are merged with a blank
@@ -12,11 +19,12 @@ export const HISTORY_MESSAGES = 30;
 export function toHistoryTurns(rows: readonly MessageRow[], currentId: string): ChatTurn[] {
   const turns: ChatTurn[] = [];
   for (const row of rows) {
-    if (row.kind !== 'text' || !row.content.trim()) continue;
+    const content = turnText(row);
+    if (!content) continue;
     if (row.status === 'failed' && row.id !== currentId) continue;
     const last = turns.at(-1);
-    if (last?.role === row.role) last.content = `${last.content}\n\n${row.content}`;
-    else turns.push({ role: row.role, content: row.content });
+    if (last?.role === row.role) last.content = `${last.content}\n\n${content}`;
+    else turns.push({ role: row.role, content });
   }
   return turns;
 }
