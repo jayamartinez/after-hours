@@ -1,6 +1,6 @@
 # After Hours — implementation plan
 
-Status as of 2026-10-18. Phases 1–3 built (scaffold, UI shell, real streamed chat on hosted Supabase). Current: **Phase 4 (memory) built on `feat/memory`, ready for manual testing**; next: Phase 5 as revised in D-026 (placeholder photos and image credits). Gate A approved 2026-10-15; Gate A2 (revision v3) approved 2026-10-16.
+Status as of 2026-10-18. Phases 1–3 built (scaffold, UI shell, real streamed chat on hosted Supabase). Phase 4 (memory, `feat/memory`) and the revised Phase 5 photos and credits (`feat/photo-credits`, D-026) are built and ready for manual testing; voice messages and real image generation remain. Gate A approved 2026-10-15; Gate A2 (revision v3) approved 2026-10-16.
 
 Scope and rules: see `AGENTS.md`. Decisions: `docs/decisions.md`. Visual baseline: `docs/design-brief.md`.
 
@@ -92,7 +92,7 @@ Status: **done**
 
 ## Phase 5 — Photos, image credits, gallery, voice messages
 
-Revised 2026-10-18 (D-026): real image generation is deferred. A companion "sends a photo" through an allowlisted tool, which spends one image credit and sends a clearly labeled placeholder (the companion's gallery art). Users start with free credits, can buy more through demo packs (no real charge), and the demo Plus purchase grants monthly credits. The deliverables below that mention generation apply once a provider is chosen (D-011).
+Revised 2026-10-18 (D-026): real image generation is deferred. A companion "sends a photo" through an allowlisted tool, which spends one image credit and sends a clearly labeled placeholder card describing the shot (no real image). Users start with free credits, can buy more through demo packs (no real charge), and the demo Plus purchase grants monthly credits. The deliverables below that mention generation apply once a provider is chosen (D-011).
 
 - Prerequisite: developer authorization for image generation (D-013, accepted 2026-10-15 for original, non-photoreal character art).
 - Goal: generated images in a per-user gallery; voice messages in both directions.

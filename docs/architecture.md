@@ -1,6 +1,6 @@
 # After Hours — Architecture
 
-Status: **Milestone 4 built**: workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell, configurable character system (presets, overrides, prompt assembly, dev editor), real chat (anonymous sessions, Postgres/PGlite persistence, streamed replies over SSE; D-023), and long-term memory with user controls (D-025). Media, voice, and the bridge are still proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
+Status: **Milestone 4 built**: workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell, configurable character system (presets, overrides, prompt assembly, dev editor), real chat (anonymous sessions, Postgres/PGlite persistence, streamed replies over SSE; D-023), long-term memory with user controls (D-025), and photos with demo credits (placeholder images; D-026). Image generation, voice, and the bridge are still proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
 
 ## Overview
 
@@ -65,7 +65,7 @@ Built in Milestone 3 (`apps/server/src/routes/conversations.ts`):
 
 8. After `done`, memory extraction runs in the background (see "Memory"); its failure is logged and never affects the reply.
 
-Later: tool calls, the usage ledger after each turn, persisted reactions and read pointers. No fallback chat provider is planned (developer decision 2026-10-18).
+Later: the usage ledger after each turn, persisted reactions and read pointers. No fallback chat provider is planned (developer decision 2026-10-18).
 
 ### Memory
 
@@ -79,7 +79,16 @@ Built in Milestone 4 (`chat/memory-extract.ts`, `chat/remember.ts`, `routes/memo
 
 ### Tool calls
 
-Allowlist: `generate_image`, `web_search` (time-sensitive questions only), `save_memory`. Arguments validated with Zod; max N calls per turn (default 2, env-configurable); each tool checks budget and entitlement; unknown tools are rejected and logged. Tools whose provider is unconfigured are not offered to the model.
+Built (D-026): chat offers exactly one tool, `send_photo` (`chat/photo-tool.ts`), declared `strict` and re-validated with Zod. `streamReply` runs one round of tool use per reply: if the model stops on tool calls, they run after every earlier bubble is delivered, and the model continues once with the results and `tool_choice: none`, with its own content blocks (thinking included) echoed back unchanged. At most one photo per reply; extra or invalid calls get error results and spend nothing. Later candidates (`web_search`, image generation) follow the same allowlist pattern.
+
+### Photos and credits
+
+Built in D-026 (`db/credits.ts`, `routes/credits.ts`):
+
+- **Photos:** `send_photo` spends one credit, then stores an assistant `image` message whose `media` is `{ kind: 'placeholder', description }` (the tool's `moment`). No image is shown: chat and Gallery draw a labeled "Placeholder" card with that description until image generation exists. History shows it to the model as `[photo] caption`. Without credits nothing is stored, the stream emits `credits_required`, and the companion says the photo will wait. After a photo, `credits { balance }` follows the image bubble.
+- **Credits:** `users.image_credits` (starts at 3, never negative) holds the balance, so a spend is one conditional update. `credit_events` records every change with a ref unique per user, which makes purchases (`purchaseId`), spends (user message + tool call id), and Plus grants idempotent.
+- **Demo purchases (D-008):** `POST /credits/purchase { packId, purchaseId }` adds 10/30/100 credits (balance capped at 999, 10 purchases per user per minute); nothing is charged and the UI labels prices as demo. `POST /plus { plan }` / `DELETE /plus` start and end demo Plus, which grants 50 credits per 30-day period, applied lazily on the next balance read (missed periods are not back-paid). `GET /credits` returns the balance and Plus state; `GET /gallery` lists the user's photos. All scoped to the session user; account deletion cascades the ledger.
+- **App:** the chat source forwards credit events (`api/credits.ts`), which update the cached balance and open the "More photos" sheet; the You tab shows the balance and Plus state; the onboarding paywall's demo purchase also starts server Plus.
 
 ### Provider interfaces
 
@@ -110,7 +119,7 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 
 - **Targets:** `DATABASE_URL` set → node-postgres (hosted Supabase, session pooler URI). Unset → PGlite (in-process Postgres, no Docker) persisted to `PGLITE_DIR` (default `local-data/pglite`, git-ignored) and migrated at server startup. Tests use in-memory PGlite. PGlite is single-process; a pid `.lock` file next to the directory stops a second process (e.g. `db:migrate` during `pnpm dev`) from opening it.
 - **Scoping:** every query filters by `userId` (or a conversation id resolved through it). RLS is enabled on every table with no policies: the server connects as the table owner, and Supabase's public PostgREST roles see nothing. Route tests prove two users and two companions stay isolated.
-- **Built now:** `users` (id, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
+- **Built now:** `users` (id, image_credits, plus_plan, plus_since, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
 
 | Table | Key columns |
 | --- | --- |
@@ -246,7 +255,7 @@ Bridge-side: `BRIDGE_SERVER_URL`, `BRIDGE_TOKEN`, `BRIDGE_POLL_MS`.
 ## Testing strategy
 
 - **Unit:** prompt assembly (per companion and preferences), memory extraction parsing/dedupe/merge, retrieval scoring, provider fallback (pre/post first token), rate/budget logic, tool allowlist and caps, bridge dedup and loop prevention, contract schemas.
-- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table. `routes/memories.test.ts` adds a scripted `StructuredModel`: extraction after a reply, "Remember this", every memory control, clear history, account deletion, and that a second user can never list, edit, pin, delete, or remember from the first user's data.
+- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table. `routes/memories.test.ts` adds a scripted `StructuredModel`: extraction after a reply, "Remember this", every memory control, clear history, account deletion, and that a second user can never list, edit, pin, delete, or remember from the first user's data. `routes/photos.test.ts` covers the photo tool (sent, out of credits, one per reply, invalid input, idempotent replay), purchases, Plus periods, and per-user isolation of photos, balances, and the ledger.
 - **Streaming:** SSE event sequence tests, including mid-stream failure; client SSE parser and API source tests (`apps/mobile/src/chat/*.test.ts`).
 - **Persona regression:** fixed transcript prompts per companion checked for style params (casing, length, bursts) with a mocked or recorded model.
 - **UI:** verify on web and iOS Simulator; screenshots for meaningful visual changes.
