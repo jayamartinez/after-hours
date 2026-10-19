@@ -1,3 +1,4 @@
+import { ApiErrorSchema } from '@after-hours/contracts';
 import { fetch as expoFetch } from 'expo/fetch';
 
 import type { ApiResponse, ApiTransport } from '@/chat/api-source';
@@ -48,3 +49,38 @@ export const apiTransport: ApiTransport = {
         }) as Promise<ApiResponse>,
     ),
 };
+
+const UNREACHABLE = 'Can’t reach After Hours right now. Check your connection and try again.';
+
+/** A failed API call; `message` is user-facing (the server's, or a connection hint). */
+export class ApiRequestError extends Error {}
+
+/**
+ * JSON request to the API (memories, account). Resolves with an `ok` response; otherwise
+ * throws `ApiRequestError` carrying text a screen can show as is.
+ */
+export async function apiRequest(method: string, path: string, body?: unknown): Promise<Response> {
+  let res: Response;
+  try {
+    res = await authedFetch((token) =>
+      withTimeout((signal) =>
+        fetch(`${API_URL}${path}`, {
+          method,
+          headers: {
+            authorization: `Bearer ${token}`,
+            ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
+          signal,
+        }),
+      ),
+    );
+  } catch {
+    throw new ApiRequestError(UNREACHABLE);
+  }
+  if (res.ok) return res;
+  const parsed = ApiErrorSchema.safeParse(await res.json().catch(() => null));
+  throw new ApiRequestError(
+    parsed.success ? parsed.data.message : 'Something went wrong. Try again.',
+  );
+}

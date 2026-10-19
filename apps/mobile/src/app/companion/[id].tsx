@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useClearConversation } from '@/api/account';
 import { useCompanion } from '@/api/companions';
 import { BackButton } from '@/components/back-button';
+import { confirmDestructive } from '@/components/confirm';
 import { openChat } from '@/components/discovery/chat-link';
 import { LABELS, memoriesSubline } from '@/components/discovery/companion-copy';
 import { goBackOr } from '@/components/discovery/dismiss';
@@ -13,7 +15,7 @@ import { PhotoViewer } from '@/components/gallery/photo-viewer';
 import { AboutSheet } from '@/components/profile/about-sheet';
 import { ActionRow } from '@/components/profile/action-row';
 import { DisclosureFooter } from '@/components/profile/disclosure-footer';
-import { MemoriesEmpty } from '@/components/profile/memories-empty';
+import { MemoryList } from '@/components/profile/memory-list';
 import { PhotoPair } from '@/components/profile/photo-pair';
 import { ProfileHero } from '@/components/profile/profile-hero';
 import { ProfileSection } from '@/components/profile/profile-section';
@@ -50,11 +52,24 @@ function Profile({ companion }: { companion: PublicCharacter }) {
   const toast = useToast();
   const [viewerAt, setViewerAt] = useState<number | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const clear = useClearConversation(companion.id);
   const sections = companion.publicProfile.copy.profileSections;
   const photos = [
     { companion, index: 0 as const },
     { companion, index: 1 as const },
   ];
+  const clearConversation = async () => {
+    const ok = await confirmDestructive({
+      title: `Clear your chat with ${companion.name}?`,
+      message: `Every message is deleted. ${companion.name} keeps the memories listed above; forget those separately.`,
+      confirmLabel: 'Clear',
+    });
+    if (!ok) return;
+    clear.mutate(undefined, {
+      onSuccess: () => toast.show('Conversation cleared'),
+      onError: (error) => toast.show(error.message),
+    });
+  };
   const openGallery = () =>
     router.navigate({ pathname: '/gallery', params: { companion: companion.id } });
 
@@ -77,7 +92,7 @@ function Profile({ companion }: { companion: PublicCharacter }) {
           <View style={styles.body}>
             <View style={styles.firstSection}>
               <ProfileSection title={sections.remembers} subline={memoriesSubline(companion)}>
-                <MemoriesEmpty />
+                <MemoryList companion={companion} onMessage={toast.show} />
               </ProfileSection>
             </View>
 
@@ -92,7 +107,12 @@ function Profile({ companion }: { companion: PublicCharacter }) {
               <PhotoPair companion={companion} onOpen={setViewerAt} />
             </ProfileSection>
 
-            <SettingsCard companion={companion} onUnavailable={toast.show} />
+            <SettingsCard
+              companion={companion}
+              onUnavailable={toast.show}
+              onClear={() => void clearConversation()}
+              clearing={clear.isPending}
+            />
 
             <DisclosureFooter companion={companion} />
           </View>
@@ -100,11 +120,7 @@ function Profile({ companion }: { companion: PublicCharacter }) {
       </ScrollView>
       {toast.node}
       <PhotoViewer photos={photos} openAt={viewerAt} onChange={setViewerAt} />
-      <AboutSheet
-        companion={companion}
-        visible={aboutOpen}
-        onClose={() => setAboutOpen(false)}
-      />
+      <AboutSheet companion={companion} visible={aboutOpen} onClose={() => setAboutOpen(false)} />
     </View>
   );
 }

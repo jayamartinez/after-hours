@@ -55,8 +55,8 @@ export default function MemoryScreen() {
         <StaggerIn order={6} style={styles.privacy}>
           <LockIcon size={16} color={colors.textMuted} />
           <Text style={styles.privacyText}>
-            Memories will be stored with your account. View, edit, or delete them anytime in
-            Settings. Memory is coming soon; these notes are examples.
+            Memories are stored with your account. View, edit, or forget them anytime on a
+            companion’s profile. These notes are examples.
           </Text>
         </StaggerIn>
         <StaggerIn order={7}>

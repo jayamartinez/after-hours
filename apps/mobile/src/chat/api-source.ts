@@ -62,6 +62,11 @@ export interface ApiSourceOptions {
 export interface ApiConversationSource extends ConversationSource {
   /** Last message per conversation (Chats tab); null once in demo fallback. */
   fetchSummaries(): Promise<ConversationSummary[] | null>;
+  /**
+   * Drops the cached thread of one companion (or all) after its history was cleared or
+   * the account deleted; the next `load` fetches it again.
+   */
+  forget(companionId?: string): void;
 }
 
 interface Conversation {
@@ -387,6 +392,18 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
       } catch (error) {
         goOffline(error);
         return null;
+      }
+    },
+
+    forget(companionId) {
+      const ids = companionId ? [companionId] : [...conversations.keys()];
+      for (const id of ids) {
+        const entry = conversations.get(id);
+        if (!entry) continue;
+        entry.state = EMPTY_CONVERSATION;
+        entry.unrevealed = [];
+        entry.loading = false;
+        notify(entry);
       }
     },
   };

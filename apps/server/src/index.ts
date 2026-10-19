@@ -7,7 +7,7 @@ import { createApp } from './app';
 import { resolveSessionSecret } from './auth/secret';
 import { loadConfig, REPO_ROOT } from './config';
 import { openDatabase } from './db/client';
-import { createChatModel } from './providers';
+import { createChatModel, createMemoryModel } from './providers';
 
 const envFile = path.join(REPO_ROOT, '.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
@@ -22,6 +22,7 @@ const app = createApp(config, console.warn, {
   chat: {
     db: database.db,
     model: createChatModel(config.chat),
+    memoryModel: createMemoryModel(config.chat),
     sessionSecret: resolveSessionSecret(config),
   },
 });
@@ -36,6 +37,7 @@ const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
     }`,
   );
   console.log(`[server] chat model: ${config.chat.model} (effort ${config.chat.effort})`);
+  console.log(`[server] memory model: ${config.chat.memoryModel}`);
   console.log(`[server] asset manifest: ${config.manifestPath}`);
   console.log(`[server] private assets: ${config.privateAssetsDir}`);
   console.log(`[server] character overrides: ${config.companionsConfigPath}`);

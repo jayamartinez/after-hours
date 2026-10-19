@@ -73,7 +73,10 @@ export const messages = pgTable(
   ],
 ).enableRLS();
 
-/** Remembered facts, owned by one user and one companion. Extraction lands in M4. */
+/**
+ * Remembered facts, owned by one user and one companion. Written by extraction after each
+ * reply and by "Remember this"; deletes are hard deletes so forgotten text is really gone.
+ */
 export const memories = pgTable(
   'memories',
   {
@@ -92,7 +95,6 @@ export const memories = pgTable(
     }),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => [index('memories_user_companion_idx').on(t.userId, t.companionId)],
 ).enableRLS();

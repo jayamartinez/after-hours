@@ -20,6 +20,11 @@ const source = createApiConversationSource({
 
 export const CONVERSATIONS_QUERY_KEY = ['conversations'] as const;
 
+/** Drops cached threads (one companion, or all) so screens reload them from the server. */
+export function forgetConversations(companionId?: string): void {
+  source.forget(companionId);
+}
+
 function useSourceState(companionId: string) {
   const subscribe = useCallback(
     (listener: () => void) => source.subscribe(companionId, listener),
@@ -42,13 +47,15 @@ export function useConversation(
   const { companion, isPending: companionPending } = useCompanion(companionId);
   const id = companion?.id ?? '';
 
+  const state = useSourceState(id);
+
+  // Loads again after `forgetConversations` (history cleared while this screen was open).
+  const loaded = state.loaded;
   useEffect(() => {
-    if (!companion) return;
+    if (!companion || loaded) return;
     if (fresh) source.start(companion);
     else source.load(companion);
-  }, [companion, fresh]);
-
-  const state = useSourceState(id);
+  }, [companion, fresh, loaded]);
 
   const send = useCallback(
     (text: string) => {

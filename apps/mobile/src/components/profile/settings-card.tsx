@@ -2,7 +2,12 @@ import type { PublicCharacter } from '@after-hours/contracts';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { iMessageLabel, LABELS, proactiveSubline } from '@/components/discovery/companion-copy';
+import {
+  clearConversationSubline,
+  iMessageLabel,
+  LABELS,
+  proactiveSubline,
+} from '@/components/discovery/companion-copy';
 import {
   BellIcon,
   ChatBubbleIcon,
@@ -17,13 +22,18 @@ import { useProactivePreference } from './use-proactive-preference';
 interface SettingsCardProps {
   companion: PublicCharacter;
   onUnavailable: (message: string) => void;
+  /** Clear conversation (asks first; see the profile screen). */
+  onClear: () => void;
+  /** A clear is in flight. */
+  clearing?: boolean;
 }
 
 /**
  * Per-companion settings. Proactive messages is a session preference (config default);
- * the iMessage bridge and clearing history are not built, so they are labeled and disabled.
+ * the iMessage bridge is not built, so it is labeled coming soon. Clear conversation
+ * deletes the stored messages (memories stay).
  */
-export function SettingsCard({ companion, onUnavailable }: SettingsCardProps) {
+export function SettingsCard({ companion, onUnavailable, onClear, clearing }: SettingsCardProps) {
   const [proactive, setProactive] = useProactivePreference(companion);
   return (
     <View style={styles.card}>
@@ -52,20 +62,21 @@ export function SettingsCard({ companion, onUnavailable }: SettingsCardProps) {
         </Row>
       </Pressable>
 
-      <View
-        accessible
+      <Pressable
+        onPress={onClear}
+        disabled={clearing}
         accessibilityRole="button"
-        accessibilityState={{ disabled: true }}
-        accessibilityLabel={`${LABELS.clearConversation}. ${LABELS.clearUnavailable}`}
-        style={styles.disabled}
+        accessibilityState={{ disabled: !!clearing, busy: !!clearing }}
+        accessibilityLabel={`${LABELS.clearConversation}. ${clearConversationSubline(companion)}`}
+        style={({ pressed }) => [(pressed || clearing) && styles.pressed]}
       >
         <Row icon={<TrashIcon />} danger>
           <View style={styles.labels}>
             <Text style={[styles.title, styles.danger]}>{LABELS.clearConversation}</Text>
-            <Text style={styles.subtitle}>{LABELS.clearUnavailable}</Text>
+            <Text style={styles.subtitle}>{clearConversationSubline(companion)}</Text>
           </View>
         </Row>
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -113,5 +124,5 @@ const styles = StyleSheet.create({
   danger: { color: colors.danger },
   value: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   valueText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, color: colors.textMuted },
-  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.6 },
 });

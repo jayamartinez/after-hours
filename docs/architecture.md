@@ -1,6 +1,6 @@
 # After Hours — Architecture
 
-Status: **Milestone 3 built**: workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell, configurable character system (presets, overrides, prompt assembly, dev editor), and real chat (anonymous sessions, Postgres/PGlite persistence, streamed replies over SSE; D-023). Memory extraction, media, voice, the fallback provider, and the bridge are still proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
+Status: **Milestone 4 built**: workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell, configurable character system (presets, overrides, prompt assembly, dev editor), real chat (anonymous sessions, Postgres/PGlite persistence, streamed replies over SSE; D-023), and long-term memory with user controls (D-025). Media, voice, and the bridge are still proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
 
 ## Overview
 
@@ -63,14 +63,19 @@ Built in Milestone 3 (`apps/server/src/routes/conversations.ts`):
 6. Stream from the `ChatModel`. Deltas feed an incremental bubble splitter (`createBubbleSplitter`, same result as `splitBubbles`); each finished bubble is stored as its own assistant message (`reply_to` = the user message) and emitted as `bubble`. A retryable failure before the first token is retried once. No fallback provider yet.
 7. `done` with the stored ids; the user message becomes `read`. On failure, `error { code, message, retryable }`: a refusal is non-retryable (message `read`); a provider error before any bubble is retryable (message `failed`); a failure after some bubbles keeps them and is non-retryable. A client disconnect does not stop generation, so the reply is still saved. Logs never include message content.
 
-Later: tool calls, fallback provider, memory extraction and the usage ledger after each turn, persisted reactions and read pointers.
+8. After `done`, memory extraction runs in the background (see "Memory"); its failure is logged and never affects the reply.
+
+Later: tool calls, the usage ledger after each turn, persisted reactions and read pointers. No fallback chat provider is planned (developer decision 2026-10-18).
 
 ### Memory
 
-- **Separate from history.** Memories are short facts/preferences with category (`fact`, `preference`, `event`, `relationship`, `boundary`), source message, and pinned flag.
-- **Extraction:** after each turn, a cheap model proposes candidates as Zod-validated JSON; the server dedupes and merges against existing memories (normalized text match, then embedding similarity when enabled). "Remember this" writes directly as pinned.
-- **Retrieval:** score = relevance (embedding cosine via pgvector, or keyword overlap when embeddings are off) + recency decay + pinned boost; take top-k (default 8). `deleted_at` rows are never retrieved.
-- **User controls:** list, edit, pin, delete, clear all per companion; account deletion cascades.
+Built in Milestone 4 (`chat/memory-extract.ts`, `chat/remember.ts`, `routes/memories.ts`; D-025):
+
+- **Separate from history.** Memories are short third-person facts with a category (`fact`, `preference`, `event`, `relationship`, `boundary`), the user message they came from, and a pinned flag. Clearing a conversation keeps them.
+- **Extraction:** after each delivered reply, `MEMORY_MODEL` (structured outputs, Zod-validated) reads the last few turns, today's date in the device time zone, and what the companion already knows, and proposes facts the user stated in the latest message, guided by the companion's `memory.focus`. The server keeps candidates with confidence ≥ 0.7, at most 3 per exchange, skips normalized-text duplicates, and stores relative dates as absolute ones ("on Fri, Oct 23"). Secrets, contact details, and addresses are excluded by the prompt.
+- **"Remember this"** (long-press on the user's own text message): the server loads that message through the user's own conversation, phrases it as a memory with the same model, and returns an existing memory instead when the model marks it as already known. If phrasing fails, the message text is saved as is.
+- **Retrieval:** all of this companion's memories for this user, pinned first, then newest, capped at `memory.maxRetrieved`, as a volatile system block (`chat/context.ts`). No embeddings yet.
+- **User controls:** `GET/POST /memories/:companionId`, `PATCH|DELETE /memories/:companionId/:memoryId` (edit text, pin), `DELETE /memories/:companionId` (forget all), `DELETE /conversations/:companionId` (clear messages), `DELETE /account` (user row; everything cascades). Deletes are hard deletes, so forgotten text is gone, not hidden.
 
 ### Tool calls
 
@@ -105,7 +110,7 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 
 - **Targets:** `DATABASE_URL` set → node-postgres (hosted Supabase, session pooler URI). Unset → PGlite (in-process Postgres, no Docker) persisted to `PGLITE_DIR` (default `local-data/pglite`, git-ignored) and migrated at server startup. Tests use in-memory PGlite. PGlite is single-process; a pid `.lock` file next to the directory stops a second process (e.g. `db:migrate` during `pnpm dev`) from opening it.
 - **Scoping:** every query filters by `userId` (or a conversation id resolved through it). RLS is enabled on every table with no policies: the server connects as the table owner, and Supabase's public PostgREST roles see nothing. Route tests prove two users and two companions stay isolated.
-- **Built now:** `users` (id, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated/deleted_at; CRUD helpers in `db/memories.ts`, retrieval wired into chat, extraction in Milestone 4). The rest of the table below is proposed.
+- **Built now:** `users` (id, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
 
 | Table | Key columns |
 | --- | --- |
@@ -113,7 +118,7 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 | `companions` | id (slug), name, version — seeded from `packages/companions` |
 | `conversations` | id, user_id, companion_id (unique pair), last_read_message_id, created_at |
 | `messages` | id, conversation_id, role (user/assistant/system), content, kind (text/voice/image), source (app/imessage), external_id (unique, nullable), status (sending/sent/delivered/read/failed), reactions (jsonb), created_at |
-| `memories` | id, user_id, companion_id, content, category, source_message_id, pinned, embedding (vector, optional), created_at, updated_at, deleted_at |
+| `memories` | id, user_id, companion_id, content, category, source_message_id, pinned, embedding (vector, optional), created_at, updated_at |
 | `media_assets` | id, user_id, companion_id, message_id, storage_path, prompt, provider, created_at |
 | `voice_assets` | id, user_id, message_id, storage_path, duration_s, direction (in/out), transcript |
 | `entitlements` | user_id, plan (free/demo_plus), demo_purchased_at — demo state only, no billing |
@@ -241,7 +246,7 @@ Bridge-side: `BRIDGE_SERVER_URL`, `BRIDGE_TOKEN`, `BRIDGE_POLL_MS`.
 ## Testing strategy
 
 - **Unit:** prompt assembly (per companion and preferences), memory extraction parsing/dedupe/merge, retrieval scoring, provider fallback (pre/post first token), rate/budget logic, tool allowlist and caps, bridge dedup and loop prevention, contract schemas.
-- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table.
+- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table. `routes/memories.test.ts` adds a scripted `StructuredModel`: extraction after a reply, "Remember this", every memory control, clear history, account deletion, and that a second user can never list, edit, pin, delete, or remember from the first user's data.
 - **Streaming:** SSE event sequence tests, including mid-stream failure; client SSE parser and API source tests (`apps/mobile/src/chat/*.test.ts`).
 - **Persona regression:** fixed transcript prompts per companion checked for style params (casing, length, bursts) with a mocked or recorded model.
 - **UI:** verify on web and iOS Simulator; screenshots for meaningful visual changes.

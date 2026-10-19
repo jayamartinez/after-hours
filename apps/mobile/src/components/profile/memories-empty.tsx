@@ -1,14 +1,16 @@
+import type { PublicCharacter } from '@after-hours/contracts';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LABELS } from '@/components/discovery/companion-copy';
+import { memoriesEmpty } from '@/components/discovery/companion-copy';
 import { colors, fonts, radius } from '@/theme/tokens';
 
-/** Honest empty state: memories are not extracted or stored yet. */
-export function MemoriesEmpty() {
+/** Empty memory list: nothing remembered yet for this companion. */
+export function MemoriesEmpty({ companion }: { companion: PublicCharacter }) {
+  const copy = memoriesEmpty(companion);
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{LABELS.memoriesEmpty}</Text>
-      <Text style={styles.detail}>{LABELS.memoriesEmptyDetail}</Text>
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.detail}>{copy.detail}</Text>
     </View>
   );
 }

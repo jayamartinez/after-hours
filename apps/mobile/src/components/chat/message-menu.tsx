@@ -35,8 +35,8 @@ const REMEMBER_ROW_HEIGHT = 66;
 
 /**
  * Long-press menu (Paper: Chat A · long-press): dimmed backdrop, reaction row, the lifted
- * bubble in place, and the action card. Reply, Remember this, and Regenerate arrive with
- * M3/M4; the screen reports them as coming soon.
+ * bubble in place, and the action card. Remember this appears on the user's own text
+ * messages (memories are facts about the user); Reply and Regenerate are coming soon.
  */
 export function MessageMenu({ target, companion, onReact, onAction, onClose }: MessageMenuProps) {
   const window = useWindowDimensions();
@@ -46,9 +46,10 @@ export function MessageMenu({ target, companion, onReact, onAction, onClose }: M
   const { message, rect } = target;
   const mine = message.role === 'user';
   const canCopy = message.content.trim().length > 0;
+  const canRemember = mine && message.kind === 'text' && canCopy;
   const canRegenerate = !mine;
   const rows = [true, canCopy, canRegenerate].filter(Boolean).length;
-  const menuHeight = rows * chatLayout.menuRowHeight + REMEMBER_ROW_HEIGHT;
+  const menuHeight = rows * chatLayout.menuRowHeight + (canRemember ? REMEMBER_ROW_HEIGHT : 0);
   const stackHeight = chatLayout.reactionBarHeight + GAP + rect.height + GAP + menuHeight;
 
   // Keep the bubble where it was; shift the whole stack only if it would leave the screen.
@@ -109,18 +110,30 @@ export function MessageMenu({ target, companion, onReact, onAction, onClose }: M
         </View>
 
         <Animated.View entering={FadeIn.duration(160)} style={styles.menu}>
-          <MenuRow label="Reply" icon={<ReplyIcon />} onPress={() => onAction(message, 'reply')} />
-          {canCopy ? (
-            <MenuRow label="Copy" icon={<CopyIcon />} onPress={() => onAction(message, 'copy')} />
-          ) : null}
           <MenuRow
-            label="Remember this"
-            subline={`Adds to ${companion.name}'s memory`}
-            accent
-            icon={<BookmarkIcon />}
-            onPress={() => onAction(message, 'remember')}
-            last={!canRegenerate}
+            label="Reply"
+            icon={<ReplyIcon />}
+            onPress={() => onAction(message, 'reply')}
+            last={!canCopy && !canRemember && !canRegenerate}
           />
+          {canCopy ? (
+            <MenuRow
+              label="Copy"
+              icon={<CopyIcon />}
+              onPress={() => onAction(message, 'copy')}
+              last={!canRemember && !canRegenerate}
+            />
+          ) : null}
+          {canRemember ? (
+            <MenuRow
+              label="Remember this"
+              subline={`Adds to ${companion.name}'s memory`}
+              accent
+              icon={<BookmarkIcon />}
+              onPress={() => onAction(message, 'remember')}
+              last={!canRegenerate}
+            />
+          ) : null}
           {canRegenerate ? (
             <MenuRow
               label="Regenerate"
