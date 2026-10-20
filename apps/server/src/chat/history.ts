@@ -4,10 +4,19 @@ import type { ChatTurn } from '../providers/types';
 /** Messages loaded from the database per model request (the newest ones). */
 export const HISTORY_MESSAGES = 30;
 
-/** A photo the companion sent reads as `[photo]` plus its caption (see `PHOTO_RULES`). */
+/**
+ * A photo the companion sent reads as `[photo]` plus its caption (see `PHOTO_RULES`); a
+ * picture found on the web as `[shared picture: title]` (see `WEB_RULES`).
+ */
 function turnText(row: MessageRow): string {
   const text = row.content.trim();
-  if (row.kind === 'image' && row.role === 'assistant') return text ? `[photo] ${text}` : '[photo]';
+  if (row.kind === 'image' && row.role === 'assistant') {
+    const tag =
+      row.media?.kind === 'web'
+        ? `[shared picture: ${row.media.title || row.media.pageUrl}]`
+        : '[photo]';
+    return text ? `${tag} ${text}` : tag;
+  }
   return row.kind === 'text' ? text : '';
 }
 

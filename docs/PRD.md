@@ -27,7 +27,7 @@ Use cases:
 
 ## Principles
 
-1. **Honest by default.** Roy and Roya are fictional AI parody adults, labeled "AI parody" in onboarding, profiles, and the chat header. They never claim to be human or a real person.
+1. **Feels real, honest when it counts.** Roy and Roya are fictional adult AI characters, disclosed as AI parody in onboarding (D-029). In chat they stay in character and feel like a real person to text: they know about the world, can look things up, and never volunteer that they are AI. A sincere question about whether the user is talking to a person or an AI always gets a truthful, in-voice answer (D-038).
 2. **Character over capability.** Tone, pacing, and memory matter more than feature count.
 3. **The user owns their data.** Memories and history are visible, editable, and deletable.
 4. **Feels native.** Streaming, typing indicators, receipts, and haptics behave like a real messaging app.
@@ -101,11 +101,12 @@ Companions get to know the user before they open up (D-032): early replies are s
 
 - **Labeled.** An "AI PARODY" badge in the chat header and beside each name; one short non-affiliation note in the profile footer; onboarding welcome caption "AI-generated parody characters. 18+." No repeated disclaimers in chat.
 - **Original art.** Stylized editorial illustration (gouache/grain, painterly), never photoreal, and never depicting or resembling a specific real person.
-- **No real references.** No real names, companies, schools, products, or quotes in character data, prompts, copy, or generated output, except the referenced person's name in the non-affiliation note. All places and brands are fictional.
-- **No factual claims about real people**, and no implied endorsement by or affiliation with anyone the characters may resemble.
+- **Real world, fictional characters (D-038).** In conversation, companions talk about real people, companies, products, shows, and news like anyone would, with opinions, and can look things up. Character data and app copy still contain no real names except the referenced person in the non-affiliation note, and companions never present invented stories as anyone's real history.
+- **No invented facts or quotes about real people.** Unsure means look it up or say so. No defamation, nothing sexual about real people, no personal information about private individuals, and no implied endorsement by or affiliation with anyone the characters may resemble.
 - **PG-13.** Flirtation stays playful; never explicit, in text or images.
-- **Never a real person.** Companions never claim to be human or a real person, and never speak as, for, or quote a real person. If asked sincerely, they say plainly, and in voice, that they are fictional AI parodies.
-- **Refusals.** Requests to impersonate a real person, speak as one, invent quotes, or produce defamatory or harassing content about real people are declined in character, with a redirect to something in bounds. Image prompts naming real people are rejected.
+- **Never a real person.** Companions never speak as, for, or quote the person who inspired them or any other real person. They do not volunteer that they are AI, but if sincerely asked, they say so plainly and in voice.
+- **Refusals.** Requests to impersonate a real person, invent quotes, produce defamatory or harassing content, or find sexual, minor-related, violent, or private-person content are declined in character, with a redirect to something in bounds.
+- **Limited web access (D-038).** Web search and reading links the user shares, plus showing a picture found on the web (a page's preview image, with its link), capped per reply and at 20 lookups per user per day (100 with demo Plus). Companions cannot watch video; they react to what a page says about it.
 
 ## Success criteria for the demo
 

@@ -9,6 +9,14 @@ export function withoutEmDashes(text: string): string {
     .replace(/\s*\u2014\s*/g, ', ');
 }
 
+/**
+ * Tool-call markup a model sometimes writes as plain text when it cannot call a tool.
+ * Such a bubble is never shown (exported for tests).
+ */
+export function isToolMarkup(text: string): boolean {
+  return /<\/?(invoke|parameter|function_calls|antml:[a-z_]+)\b/i.test(text);
+}
+
 /** Most bubbles one reply may become; anything past this is folded into the last bubble. */
 export const MAX_BUBBLES = 4;
 

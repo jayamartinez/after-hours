@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBubbleSplitter, MAX_BUBBLES, splitBubbles, withoutEmDashes } from './bubbles';
+import {
+  createBubbleSplitter,
+  isToolMarkup,
+  MAX_BUBBLES,
+  splitBubbles,
+  withoutEmDashes,
+} from './bubbles';
 
 describe('splitBubbles', () => {
   it.each([
@@ -72,5 +78,15 @@ describe('withoutEmDashes', () => {
     expect(withoutEmDashes('wait\u2014what')).toBe('wait, what');
     expect(withoutEmDashes('\u2014 so anyway \u2014')).toBe('so anyway');
     expect(withoutEmDashes('plain text')).toBe('plain text');
+  });
+});
+
+describe('isToolMarkup', () => {
+  it('spots tool calls written as text, not ordinary angle brackets', () => {
+    expect(isToolMarkup('<invoke name="share_image">')).toBe(true);
+    expect(isToolMarkup('</parameter>')).toBe(true);
+    expect(isToolMarkup('<function_calls>')).toBe(true);
+    expect(isToolMarkup('i <3 this')).toBe(false);
+    expect(isToolMarkup('a < b and c > d')).toBe(false);
   });
 });

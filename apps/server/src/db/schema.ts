@@ -65,6 +65,19 @@ export const messageUsage = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 ).enableRLS();
 
+/** Web lookups (searches, link reads, shared pictures) per user per UTC day (D-038). */
+export const webUsage = pgTable(
+  'web_usage',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+).enableRLS();
+
 /**
  * Bonus messages granted by a demo pack or a demo ad. `ref` is unique per user, so a
  * retried purchase or ad claim counts once; ads per day are counted from here.

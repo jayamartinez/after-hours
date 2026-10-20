@@ -27,7 +27,13 @@ export const USAGE = {
  * One scripted model turn: streamed chunks, optionally followed by a failure, or ending in
  * tool calls (`stopReason: 'tool_use'`).
  */
-export type Turn = { chunks: string[]; error?: ChatModelError; toolCalls?: ToolCall[] };
+export type Turn = {
+  chunks: string[];
+  error?: ChatModelError;
+  toolCalls?: ToolCall[];
+  /** Web searches and link reads this turn reports (D-038). */
+  webRequests?: number;
+};
 
 /** ChatModel double: plays scripted turns and records every request. */
 export function scriptedModel() {
@@ -49,6 +55,7 @@ export function scriptedModel() {
         model: 'test-model',
         usage: USAGE,
         toolCalls,
+        webRequests: turn.webRequests ?? 0,
         raw: { scripted: turn.chunks, toolCalls },
       };
     },

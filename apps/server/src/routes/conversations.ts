@@ -25,6 +25,12 @@ import {
   type StarterInput,
 } from '../chat/starters';
 import { validTimeZone } from '../chat/time-zone';
+import {
+  runShareImageCalls,
+  SHARE_IMAGE,
+  webLimitsFor,
+  type ShareImageOutcome,
+} from '../chat/web-tools';
 import type { Db } from '../db/client';
 import { spendCredit } from '../db/credits';
 import {
@@ -34,6 +40,7 @@ import {
   getOrCreateConversation,
   insertAssistantBubble,
   insertAssistantPhoto,
+  insertAssistantWebImage,
   insertUserMessage,
   listConversationSummaries,
   listMessages,
@@ -45,6 +52,7 @@ import { listMemories } from '../db/memories';
 import { spendMessage } from '../db/message-allowance';
 import type { MessageRow } from '../db/schema';
 import { getProfile } from '../db/users';
+import { addWebLookups, remainingWebLookups } from '../db/web-usage';
 import { createRateLimiter } from '../limits/rate-limit';
 import {
   ChatModelError,
@@ -71,6 +79,10 @@ export interface ConversationRoutesOptions {
    */
   waitUntil?: (task: Promise<void>) => void;
   log?: (message: string) => void;
+  /** Web search, link reading, and found pictures (D-038). Off by default. */
+  webAccess?: boolean;
+  /** Finds a page's preview picture (tests inject a fake; default `findPageImage`). */
+  findPageImage?: (pageUrl: string) => Promise<{ url: string; pageUrl: string; title: string }>;
 }
 
 const apiError = (code: ApiError['code'], message: string, retryable: boolean): ApiError => ({
@@ -260,17 +272,19 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
             }
 
             await send({ type: 'typing' });
-            const [rows, memories, userMessages, profile] = await Promise.all([
+            const [rows, memories, userMessages, profile, webLeft] = await Promise.all([
               listMessages(db, conversationId, { limit: HISTORY_MESSAGES, uptoSeq: userRow.seq }),
               listMemories(db, userId, character.id),
               countUserMessages(db, conversationId, userRow.seq),
               getProfile(db, userId),
+              options.webAccess ? remainingWebLookups(db, userId) : Promise.resolve(0),
             ]);
             const request = buildChatRequest(character, {
               history: toHistoryTurns(rows, userRow.id),
               memories,
               userMessages,
               prefs: prefsFromProfile(profile),
+              web: webLimitsFor(webLeft),
               timeZone: validTimeZone(parsed.data.timeZone),
               photos: true,
             });
@@ -296,8 +310,25 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               await send({ type: 'credits', balance });
               return { kind: 'sent' };
             };
+            /** Shows a picture found on the web (D-038). */
+            let picturesShared = 0;
+            const shareImage = async (image: {
+              url: string;
+              pageUrl: string;
+              title: string;
+              caption: string;
+            }): Promise<ShareImageOutcome> => {
+              const row = await insertAssistantWebImage(db, conversationId, userRow.id, image);
+              saved.push(row.id);
+              picturesShared += 1;
+              await send({ type: 'bubble', message: toMessageDto(row) });
+              return { kind: 'sent' };
+            };
+            let webRequests = 0;
+            /** One photo and one picture per reply, across tool rounds. */
+            const replyTools = { photoAttempted: false, pictureShared: false };
             try {
-              await streamReply(model, request, {
+              const { result } = await streamReply(model, request, {
                 onDelta: (delta) => void send({ type: 'delta', text: delta }),
                 onBubble: async (bubbleText) => {
                   const row = await insertAssistantBubble(
@@ -310,8 +341,21 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
                   replyText.push(bubbleText);
                   await send({ type: 'bubble', message: toMessageDto(row) });
                 },
-                onToolCalls: (calls) => runPhotoCalls(calls, sendPhoto),
+                onToolCalls: async (calls) => [
+                  ...(await runPhotoCalls(
+                    calls.filter((call) => call.name !== SHARE_IMAGE),
+                    sendPhoto,
+                    replyTools,
+                  )),
+                  ...(await runShareImageCalls(
+                    calls.filter((call) => call.name === SHARE_IMAGE),
+                    shareImage,
+                    options.findPageImage,
+                    replyTools,
+                  )),
+                ],
               });
+              webRequests = result.webRequests ?? 0;
               if (saved.length === 0) {
                 throw new ChatModelError('api', 'The model returned an empty reply.', true);
               }
@@ -332,6 +376,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               return;
             }
 
+            await addWebLookups(db, userId, webRequests + picturesShared);
             await setMessageStatus(db, conversationId, [userRow.id], 'read');
             await send({ type: 'done', userMessageId: userRow.id, messageIds: saved });
 

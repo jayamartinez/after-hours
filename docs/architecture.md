@@ -86,6 +86,15 @@ Built in D-032 (`chat/relationship.ts`, `chat/starters.ts`, `routes/profile.ts`)
 - **Pacing:** each turn's volatile context gets a relationship stage from the thread's user-message count and how many memories this companion has: `new` (≤ 6 messages and < 4 memories: short replies, one specific question about the user's life, little self-disclosure, teasing and flirting held back), `warming` (≤ 30 and < 10: occasional follow-ups, usual length), then `familiar` (usual style). Memories count so a cleared thread does not start over. 
 - **Starters:** `GET /conversations/:companionId/starters` asks `MEMORY_MODEL` for 4 tap-to-send lines in the user's voice from their profile and this companion's memories, cached in-process per user × companion until either changes (rate-limited per user). Without a memory model, under the kill switch, when rate-limited, or on failure, the companion's default `publicProfile.starters` are returned. The app shows them in the onboarding chat and in any empty thread (new or cleared).
 
+### Web access
+
+Built in D-038 (`chat/web-tools.ts`, `chat/page-image.ts`, `db/web-usage.ts`, the Anthropic provider):
+
+- **Server tools:** when the user has lookups left today, the chat request declares Anthropic's `web_search_20260209` (`max_uses` 2) and `web_fetch_20260209` (`max_uses` 2, `max_content_tokens` 6000), both with a blocked-domain list. Web fetch only opens URLs already in the conversation, so it reads links the user shared. A `pause_turn` is resumed (at most 3 times) by sending the paused turn back. Text that resumes after a tool block becomes a new bubble.
+- **`share_image`:** a client tool taking a page URL from search results. The server fetches the page and its `og:image` / `twitter:image` / `image_src`, HTTPS only, every hostname resolved and private, loopback, link-local, and metadata addresses refused (re-checked on each of at most 3 redirects), 6 s timeouts, a 512 KB page read, and a raster `image/*` under 15 MB. The result is an assistant `image` message with `media { kind: 'web', url, pageUrl, title }`, shown with its page link and kept out of the Gallery. History shows it to the model as `[shared picture: title]`.
+- **Caps:** `web_usage (user_id, day)` counts searches, link reads, and shared pictures per UTC day: 20 free, 100 with demo Plus. Once used up, the next request offers no web tools. A reply may overshoot by its per-reply caps. `WEB_ACCESS=false` disables everything.
+- **Known gap:** the DNS check and the fetch resolve separately, so a hostname that changes its answer between them (DNS rebinding) is not fully covered; the HTTPS-only rule and short timeouts limit it.
+
 ### Tool calls
 
 Built (D-026): chat offers exactly one tool, `send_photo` (`chat/photo-tool.ts`), declared `strict` and re-validated with Zod. `streamReply` runs one round of tool use per reply: if the model stops on tool calls, they run after every earlier bubble is delivered, and the model continues once with the results and `tool_choice: none`, with its own content blocks (thinking included) echoed back unchanged. At most one photo per reply; extra or invalid calls get error results and spend nothing. Later candidates (`web_search`, image generation) follow the same allowlist pattern.
@@ -137,7 +146,7 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 
 - **Targets:** `DATABASE_URL` set → node-postgres (hosted Supabase, session pooler URI). Unset → PGlite (in-process Postgres, no Docker) persisted to `PGLITE_DIR` (default `local-data/pglite`, git-ignored) and migrated at server startup. Tests use in-memory PGlite. PGlite is single-process; a pid `.lock` file next to the directory stops a second process (e.g. `db:migrate` during `pnpm dev`) from opening it.
 - **Scoping:** every query filters by `userId` (or a conversation id resolved through it). RLS is enabled on every table with no policies: the server connects as the table owner, and Supabase's public PostgREST roles see nothing. Route tests prove two users and two companions stay isolated.
-- **Built now:** `users` (id, image_credits, plus_plan, plus_since, bonus_messages, profile jsonb, created_at); `message_usage` (user_id, day; count); `message_grants` (id, user_id, kind `purchase`/`ad`, amount, ref unique per user, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
+- **Built now:** `users` (id, image_credits, plus_plan, plus_since, bonus_messages, profile jsonb, created_at); `web_usage` (user_id, day; count); `message_usage` (user_id, day; count); `message_grants` (id, user_id, kind `purchase`/`ad`, amount, ref unique per user, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
 
 | Table | Key columns |
 | --- | --- |
@@ -256,6 +265,7 @@ Names only. "Degrades" describes behavior when unset.
 | `WEB_SEARCH_PROVIDER`, `WEB_SEARCH_API_KEY` | No | Web search tool not offered |
 | `RATE_LIMIT_PER_MIN` | No | 20 chat messages per user per minute (in-memory) |
 | `KILL_SWITCH` | No (public demo emergency stop) | `false`; `true` makes chat sends return 503 |
+| `WEB_ACCESS` | No | `true`; `false` turns off web search, link reading, and found pictures (D-038) |
 | `DAILY_TOKEN_BUDGET`, `DAILY_IMAGE_BUDGET`, `DAILY_AUDIO_SECONDS`, `GLOBAL_DAILY_SPEND_CAP_USD` | No | Not implemented yet |
 | `MAX_TOOL_CALLS_PER_TURN` | No | Default 2 |
 | `BRIDGE_TOKENS` | No | Bridge API disabled |

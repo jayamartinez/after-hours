@@ -66,7 +66,7 @@ const shape = (list: ChatStreamEvent[]) =>
     .map((e) =>
       e.type === 'bubble'
         ? e.message.kind === 'image'
-          ? `photo:${e.message.image?.description}:${e.message.content}`
+          ? `photo:${e.message.image?.kind === 'placeholder' ? e.message.image.description : e.message.image?.url}:${e.message.content}`
           : `text:${e.message.content}`
         : e.type === 'credits'
           ? `credits:${e.balance}`
@@ -92,6 +92,19 @@ async function credits(token: string) {
 }
 
 describe('send_photo', () => {
+  it('never sends a second photo in the same reply, even in a later tool round', async () => {
+    const token = await photoSession();
+    chat.script.push(
+      { chunks: [], toolCalls: [photoCall('call_a')] },
+      { chunks: [], toolCalls: [photoCall('call_b')] },
+      { chunks: ['ok that one'] },
+    );
+    const list = await send(token, 'pics');
+    expect(list.filter((e) => e.type === 'bubble' && e.message.kind === 'image')).toHaveLength(1);
+    expect((await credits(token)).balance).toBe(STARTING - 1);
+    expect(chat.requests[2]?.toolChoice).toBe('none');
+  });
+
   it('sends a placeholder photo for one credit, then the companion finishes the reply', async () => {
     const token = await photoSession();
     chat.script.push({ chunks: ['one sec'], toolCalls: [photoCall()] }, { chunks: ['there'] });
@@ -109,7 +122,8 @@ describe('send_photo', () => {
     const [first, second] = chat.requests;
     expect(first?.tools?.map((t) => t.name)).toEqual([SEND_PHOTO]);
     expect(first?.system.stable).toContain('# Photos');
-    expect(second?.toolChoice).toBe('none');
+    // One more tool round is allowed (a picture retry); photos stay one per reply.
+    expect(second?.toolChoice).toBe('auto');
     const results = second?.messages.at(-1);
     expect(results?.role === 'user' && results.toolResults).toEqual([
       { callId: 'call-1', content: PHOTO_RESULTS.sent },

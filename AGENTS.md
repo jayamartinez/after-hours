@@ -56,7 +56,7 @@ Boundaries:
 - Provider keys are server-side only. Anything with an `EXPO_PUBLIC_` prefix is public.
 - Every conversation, memory, and media query is scoped to the authenticated user (row-level security or an explicit `userId` filter, tested).
 - Users can view and delete individual memories, clear a companion's history, and delete their account data.
-- Companions are fictional adult AI parody characters defined by character config (Roy and Roya presets). Show the AI PARODY badge and the short non-affiliation note in onboarding; after sign-up the app does not repeat them on other screens (D-029). Personas never claim to be, speak as, or quote a real person. No real-person likeness in committed art. PG-13 only.
+- Companions are fictional adult AI parody characters defined by character config (Roy and Roya presets). Show the AI PARODY badge and the short non-affiliation note in onboarding; after sign-up the app does not repeat them on other screens (D-029). Personas never claim to be, speak as, or quote a real person; they can discuss real people and current events, look things up within the capped web tools, and stay in character, but answer truthfully when sincerely asked whether they are an AI (D-038). No real-person likeness in committed art. PG-13 only.
 - No real user conversations, generated personal images, or `.env` files in Git.
 - Never commit private or third-party images or likenesses. Image overrides live in git-ignored `config/*.local.json` and `PRIVATE_ASSETS_DIR`; only `config/companion-assets.example.json` is committed.
 - Public demo deployments enforce per-user rate limits, per-user daily token/image budgets, and a global spend kill switch.

@@ -1,7 +1,13 @@
 import type { ChatModel, ChatRequest, ChatResult, ToolCall, ToolResult } from '../providers/types';
 import { ChatModelError } from '../providers/types';
 
-import { createBubbleSplitter, withoutEmDashes } from './bubbles';
+import { createBubbleSplitter, isToolMarkup, withoutEmDashes } from './bubbles';
+
+/**
+ * Tool rounds per reply: a second round lets a failed picture be retried with another page.
+ * The reply after the last round runs with tools off.
+ */
+export const MAX_TOOL_ROUNDS = 2;
 
 export interface StreamReplyHandlers {
   /** Raw streamed text. */
@@ -25,8 +31,8 @@ export interface StreamReplyResult {
  * provider failure before the first token is retried once; after the first token,
  * failures propagate (bubbles already delivered stay delivered).
  *
- * If the reply ends in tool calls, they run, and the model continues once with their
- * results and tools disabled, so one reply holds at most one round of tool use.
+ * If the reply ends in tool calls, they run and the model continues with their results,
+ * for at most `MAX_TOOL_ROUNDS` rounds; the last continuation runs with tools disabled.
  */
 export async function streamReply(
   model: ChatModel,
@@ -37,6 +43,7 @@ export async function streamReply(
   let chain: Promise<void> = Promise.resolve();
   const deliver = (texts: string[]) => {
     for (const raw of texts) {
+      if (isToolMarkup(raw)) continue;
       const text = withoutEmDashes(raw);
       const index = bubbles.push(text) - 1;
       chain = chain.then(() => handlers.onBubble(text, index));
@@ -74,19 +81,30 @@ export async function streamReply(
       result = await attempt(request);
     }
 
-    if (result.stopReason === 'tool_use' && result.toolCalls.length > 0 && handlers.onToolCalls) {
+    let history = request.messages;
+    for (
+      let round = 1;
+      round <= MAX_TOOL_ROUNDS &&
+      result.stopReason === 'tool_use' &&
+      result.toolCalls.length > 0 &&
+      handlers.onToolCalls;
+      round++
+    ) {
       await chain;
       const toolResults = await handlers.onToolCalls(result.toolCalls);
+      const earlierWeb = result.webRequests ?? 0;
+      history = [
+        ...history,
+        { role: 'assistant', content: result.text, raw: result.raw },
+        { role: 'user', content: '', toolResults },
+      ];
       // No retry here: part of the reply (and possibly a photo) is already delivered.
-      result = await attempt({
+      const continued = await attempt({
         ...request,
-        toolChoice: 'none',
-        messages: [
-          ...request.messages,
-          { role: 'assistant', content: result.text, raw: result.raw },
-          { role: 'user', content: '', toolResults },
-        ],
+        toolChoice: round < MAX_TOOL_ROUNDS ? 'auto' : 'none',
+        messages: history,
       });
+      result = { ...continued, webRequests: earlierWeb + (continued.webRequests ?? 0) };
     }
     await chain;
     return { bubbles, result };

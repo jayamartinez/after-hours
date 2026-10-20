@@ -16,6 +16,13 @@ import { conversations, messages, type MessageRow } from './schema';
  * ever reach their own rows.
  */
 
+/** Stored media as the API shape. Rows from before `kind` existed are placeholders. */
+function toImage(media: MessageRow['media']): ChatMessageDto['image'] {
+  if (!media) return null;
+  if (media.kind === 'web') return media;
+  return { kind: 'placeholder', description: media.description ?? '' };
+}
+
 export function toMessageDto(row: MessageRow): ChatMessageDto {
   return {
     id: row.id,
@@ -26,7 +33,7 @@ export function toMessageDto(row: MessageRow): ChatMessageDto {
     createdAt: row.createdAt.toISOString(),
     reactions: row.reactions as ReactionId[],
     clientId: row.clientId,
-    image: row.media ? { kind: 'placeholder', description: row.media.description ?? '' } : null,
+    image: toImage(row.media),
   };
 }
 
@@ -184,6 +191,31 @@ export async function insertAssistantBubble(
 }
 
 /**
+ * Stores a picture a companion found on the web for the user (D-038), with the page it
+ * came from. Not a photo of the companion, so it stays out of the Gallery.
+ */
+export async function insertAssistantWebImage(
+  db: Db,
+  conversationId: string,
+  replyTo: string,
+  image: { caption: string; url: string; pageUrl: string; title: string },
+): Promise<MessageRow> {
+  const [row] = await db
+    .insert(messages)
+    .values({
+      conversationId,
+      role: 'assistant',
+      kind: 'image',
+      content: image.caption,
+      replyTo,
+      media: { kind: 'web', url: image.url, pageUrl: image.pageUrl, title: image.title },
+    })
+    .returning();
+  if (!row) throw new Error('insert returned no row');
+  return row;
+}
+
+/**
  * Stores a photo the companion sent. Until image generation exists there is no image:
  * the app draws a labeled placeholder card with `description` (what it would show).
  */
@@ -223,7 +255,8 @@ export async function listPhotos(db: Db, userId: string): Promise<GalleryPhoto[]
     )
     .orderBy(desc(messages.seq));
   return rows.flatMap(({ message, companionId }) =>
-    message.media
+    // Only the companion's own photos; pictures found on the web are not theirs.
+    message.media && message.media.kind !== 'web'
       ? [
           {
             messageId: message.id,

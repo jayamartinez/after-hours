@@ -43,6 +43,11 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /** `false`: companions get no web search, link reading, or found pictures (D-038). */
+  WEB_ACCESS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   /** Chat messages per user per minute. */
   RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(20),
   NODE_ENV: z.string().default('development'),
@@ -68,6 +73,7 @@ export interface ServerConfig {
   /** Unset: `index.ts` resolves a local secret (PGlite only). */
   sessionSecret: string | undefined;
   killSwitch: boolean;
+  webAccess: boolean;
   rateLimitPerMin: number;
   /** Development: CORS also allows any http://localhost or 127.0.0.1 port. */
   allowLocalhostOrigins: boolean;
@@ -102,6 +108,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       : { kind: 'pglite', dataDir: path.resolve(REPO_ROOT, vars.PGLITE_DIR) },
     sessionSecret: vars.SESSION_SECRET,
     killSwitch: vars.KILL_SWITCH,
+    webAccess: vars.WEB_ACCESS,
     rateLimitPerMin: vars.RATE_LIMIT_PER_MIN,
     allowLocalhostOrigins: vars.NODE_ENV !== 'production',
   };

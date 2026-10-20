@@ -75,9 +75,10 @@ export type PhotoOutcome =
 export async function runPhotoCalls(
   calls: readonly ToolCall[],
   send: (input: SendPhotoInput, call: ToolCall) => Promise<PhotoOutcome>,
+  /** Shared across a reply's tool rounds so one reply never sends two photos. */
+  reply: { photoAttempted: boolean } = { photoAttempted: false },
 ): Promise<ToolResult[]> {
   const results: ToolResult[] = [];
-  let attempted = false;
   for (const call of calls) {
     if (call.name !== SEND_PHOTO) {
       results.push({ callId: call.id, content: PHOTO_RESULTS.unknownTool, isError: true });
@@ -88,11 +89,11 @@ export async function runPhotoCalls(
       results.push({ callId: call.id, content: PHOTO_RESULTS.invalid, isError: true });
       continue;
     }
-    if (attempted) {
+    if (reply.photoAttempted) {
       results.push({ callId: call.id, content: PHOTO_RESULTS.oncePerReply, isError: true });
       continue;
     }
-    attempted = true;
+    reply.photoAttempted = true;
     const input = {
       moment: parsed.data.moment.slice(0, MAX_MOMENT),
       caption: parsed.data.caption.slice(0, MAX_CAPTION),

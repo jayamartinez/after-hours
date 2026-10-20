@@ -21,6 +21,7 @@ export function testConfig(workDir: string, overrides: Partial<ServerConfig> = {
     database: { kind: 'pglite' },
     sessionSecret: 'test-session-secret-0123456789abcdef',
     killSwitch: false,
+    webAccess: false,
     rateLimitPerMin: 20,
     allowLocalhostOrigins: true,
     ...overrides,

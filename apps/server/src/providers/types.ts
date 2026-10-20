@@ -56,6 +56,17 @@ export interface ChatRequest {
   tools?: readonly ChatTool[];
   /** `none`: tools stay declared but may not be called (continuing after a call). */
   toolChoice?: 'auto' | 'none';
+  /**
+   * Provider-run web access (D-038): most searches and link reads in this reply, and
+   * domains never read. Unset: no web access.
+   */
+  web?: WebAccess;
+}
+
+export interface WebAccess {
+  searches: number;
+  fetches: number;
+  blockedDomains: readonly string[];
 }
 
 export interface ChatUsage {
@@ -73,6 +84,8 @@ export interface ChatResult {
   model: string;
   /** Tool calls the reply ended with (`stopReason` is then `tool_use`). */
   toolCalls: ToolCall[];
+  /** Web searches and link reads the provider ran for this reply. */
+  webRequests?: number;
   /** This turn as the provider recorded it; pass back as `ChatTurn.raw` to continue. */
   raw: unknown;
 }

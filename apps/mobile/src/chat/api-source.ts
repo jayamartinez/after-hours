@@ -14,7 +14,12 @@ import type { CreditSignal } from '@/api/credits';
 import { conversationReducer, type ConversationAction } from './reducer';
 import type { ConversationSource } from './source';
 import { createSseParser, toChatEvent } from './sse';
-import { EMPTY_CONVERSATION, type ChatMessage, type ConversationState } from './types';
+import {
+  EMPTY_CONVERSATION,
+  type ChatMessage,
+  type ConversationState,
+  type ImageRef,
+} from './types';
 
 /** The parts of a fetch Response the source uses (global fetch and expo/fetch both fit). */
 export interface ApiResponse {
@@ -86,6 +91,12 @@ interface Conversation {
 const wait = (ms: number) =>
   ms > 0 ? new Promise<void>((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 
+function toImageRef(image: NonNullable<ChatMessageDto['image']>): ImageRef {
+  return image.kind === 'web'
+    ? { source: 'web', uri: image.url, pageUrl: image.pageUrl, title: image.title }
+    : { source: 'placeholder', description: image.description };
+}
+
 export const fromDto = (dto: ChatMessageDto): ChatMessage => ({
   id: dto.id,
   role: dto.role,
@@ -95,9 +106,7 @@ export const fromDto = (dto: ChatMessageDto): ChatMessage => ({
   createdAt: dto.createdAt,
   reactions: dto.reactions,
   clientId: dto.clientId,
-  ...(dto.image
-    ? { image: { source: 'placeholder', description: dto.image.description } as const }
-    : {}),
+  ...(dto.image ? { image: toImageRef(dto.image) } : {}),
 });
 
 function defaultClientId(): string {

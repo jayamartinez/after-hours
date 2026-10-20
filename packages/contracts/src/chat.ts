@@ -16,15 +16,27 @@ export const MessageKindSchema = z.enum(['text', 'image', 'voice']);
 export const StoredMessageStatusSchema = z.enum(['sent', 'read', 'failed']);
 export const ReactionSchema = z.enum(['heart', 'ha', 'wow', 'question', 'like']);
 
+const HttpsUrlSchema = z.url({ protocol: /^https$/ }).max(2048);
+
 /**
- * The picture of an image message. `placeholder`: no image yet; the app draws a labeled
- * placeholder card with `description` (what the photo would show) until image generation
- * exists (D-026).
+ * The picture of an image message.
+ * - `placeholder`: a companion's own photo; no image yet, so the app draws a labeled card
+ *   with `description` (what the photo would show) until image generation exists (D-026).
+ * - `web`: a picture a companion found online for the user (D-038), shown with a link to
+ *   the page it came from.
  */
-export const MessageImageSchema = z.object({
-  kind: z.literal('placeholder'),
-  description: z.string().max(200).default(''),
-});
+export const MessageImageSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('placeholder'),
+    description: z.string().max(200).default(''),
+  }),
+  z.object({
+    kind: z.literal('web'),
+    url: HttpsUrlSchema,
+    pageUrl: HttpsUrlSchema,
+    title: z.string().max(200).default(''),
+  }),
+]);
 
 export const ChatMessageDtoSchema = z.object({
   id: z.string().min(1),
