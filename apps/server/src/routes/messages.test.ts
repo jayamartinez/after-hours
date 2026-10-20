@@ -17,10 +17,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app';
 import { openDatabase, type Database } from '../db/client';
-import { DAILY_COST_BUDGET_USD } from '../chat/costs';
+import { DAILY_COST_BUDGET_USD, replyCostMicroUsd } from '../chat/costs';
+import { SEND_PHOTO } from '../chat/photo-tool';
 import { addSpend, getAllowance, spendMessage } from '../db/message-allowance';
-import { spendUsage } from '../db/schema';
-import { call, events, newSession, nextClientId, scriptedModel } from '../test-chat';
+import { spendUsage, webUsage } from '../db/schema';
+import { ChatModelError } from '../providers/types';
+import { call, events, newSession, nextClientId, scriptedModel, USAGE } from '../test-chat';
 import { testConfig } from '../test-config';
 
 let workDir: string;
@@ -182,6 +184,102 @@ describe('message allowance', () => {
       .from(spendUsage)
       .where(eq(spendUsage.userId, userIdOf(token)));
     expect(row?.microUsd).toBeGreaterThan(0);
+  });
+
+  describe('every billed request counts against the cost budget', () => {
+    const spentBy = async (token: string) => {
+      const [row] = await database.db
+        .select()
+        .from(spendUsage)
+        .where(eq(spendUsage.userId, userIdOf(token)));
+      return row?.microUsd ?? 0;
+    };
+    const lookupsBy = async (token: string) => {
+      const [row] = await database.db
+        .select()
+        .from(webUsage)
+        .where(eq(webUsage.userId, userIdOf(token)));
+      return row?.count ?? 0;
+    };
+    /** One scripted request's estimated cost. */
+    const one = (model = 'test-model', lookups = 0) => replyCostMicroUsd(model, USAGE, lookups);
+    const billedOnce = (lookups = 0) => [
+      { model: 'test-model', usage: USAGE, webRequests: lookups },
+    ];
+    const photoCall = {
+      id: 'call_1',
+      name: SEND_PHOTO,
+      input: { moment: 'desk, cold coffee', caption: 'look' },
+    };
+
+    it('a refusal after output', async () => {
+      const token = await newSession(app);
+      chat.script.push({
+        chunks: ['so about that'],
+        error: new ChatModelError('refusal', 'declined', false, { billed: billedOnce(1) }),
+      });
+      const list = await events(await post(token, 'hm'));
+      expect(list.at(-1)?.type).toBe('error');
+      expect(await spentBy(token)).toBe(one('test-model', 1));
+      expect(await lookupsBy(token)).toBe(1);
+    });
+
+    it('an error in the second tool round', async () => {
+      const token = await newSession(app);
+      chat.script.push(
+        { chunks: ['one sec'], toolCalls: [photoCall] },
+        {
+          chunks: [],
+          error: new ChatModelError('api', 'boom', true, { billed: billedOnce() }),
+        },
+      );
+      const list = await events(await post(token, 'send a pic'));
+      expect(list.at(-1)?.type).toBe('error');
+      expect(await spentBy(token)).toBe(2 * one());
+    });
+
+    it('an empty reply', async () => {
+      const token = await newSession(app);
+      chat.script.push({ chunks: [] });
+      const list = await events(await post(token, 'hello?'));
+      expect(list.at(-1)?.type).toBe('error');
+      expect(await spentBy(token)).toBe(one());
+    });
+
+    it('a retried first attempt, and the retry of a failed message', async () => {
+      const token = await newSession(app);
+      const clientId = nextClientId();
+      chat.script.push(
+        {
+          chunks: [],
+          error: new ChatModelError('api', 'overloaded', true, { billed: billedOnce() }),
+        },
+        {
+          chunks: [],
+          error: new ChatModelError('api', 'overloaded', true, { billed: billedOnce() }),
+        },
+      );
+      expect((await events(await post(token, 'hey', clientId))).at(-1)?.type).toBe('error');
+      expect(await spentBy(token)).toBe(2 * one());
+
+      // Resending the undelivered message spends no message, but its cost still counts.
+      const before = await credits(token);
+      expect((await events(await post(token, 'hey', clientId))).at(-1)?.type).toBe('done');
+      expect(await spentBy(token)).toBe(3 * one());
+      expect((await credits(token)).messages.includedLeftToday).toBe(
+        before.messages.includedLeftToday,
+      );
+    });
+
+    it('prices each request at the model that served it', async () => {
+      const token = await newSession(app);
+      chat.script.push(
+        { chunks: ['one sec'], toolCalls: [photoCall], model: 'claude-opus-5-5' },
+        { chunks: ['there'], model: 'claude-sonnet-5-5' },
+      );
+      expect((await events(await post(token, 'send a pic'))).at(-1)?.type).toBe('done');
+      expect(await spentBy(token)).toBe(one('claude-opus-5-5') + one('claude-sonnet-5-5'));
+    });
   });
 
   it("one user's usage, ads, and packs never affect another's", async () => {

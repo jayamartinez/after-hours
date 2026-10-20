@@ -93,6 +93,19 @@ export async function listMessages(
   return newest.reverse();
 }
 
+/** Messages of every kind in a thread up to and including `uptoSeq`. */
+export async function countMessages(
+  db: Db,
+  conversationId: string,
+  uptoSeq: number,
+): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(messages)
+    .where(and(eq(messages.conversationId, conversationId), lte(messages.seq, uptoSeq)));
+  return row?.n ?? 0;
+}
+
 /** User messages in a thread up to and including `uptoSeq` (all when unset). */
 export async function countUserMessages(
   db: Db,

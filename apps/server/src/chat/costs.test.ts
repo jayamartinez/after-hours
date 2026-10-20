@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addUsage, replyCostMicroUsd } from './costs';
+import { addUsage, billedCostMicroUsd, replyCostMicroUsd } from './costs';
 
 const usage = (input: number, output: number, cacheRead = 0, cacheWrite = 0) => ({
   inputTokens: input,
@@ -27,5 +27,17 @@ describe('replyCostMicroUsd', () => {
 
   it('adds usage across rounds', () => {
     expect(addUsage(usage(1, 2, 3, 4), usage(10, 20, 30, 40))).toEqual(usage(11, 22, 33, 44));
+  });
+});
+
+describe('billedCostMicroUsd', () => {
+  it('prices each request at the model that served it, then sums', () => {
+    const opus = { model: 'claude-opus-5-5', usage: usage(1000, 100), webRequests: 1 };
+    const sonnet = { model: 'claude-sonnet-5-5', usage: usage(1000, 100), webRequests: 0 };
+    expect(billedCostMicroUsd([opus, sonnet])).toBe(
+      replyCostMicroUsd('claude-opus-5-5', opus.usage, 1) +
+        replyCostMicroUsd('claude-sonnet-5-5', sonnet.usage),
+    );
+    expect(billedCostMicroUsd([])).toBe(0);
   });
 });

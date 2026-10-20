@@ -5,6 +5,8 @@ import { SEND_PHOTO_TOOL } from '../chat/photo-tool';
 
 import type Anthropic from '@anthropic-ai/sdk';
 
+import { ChatModelError } from './types';
+
 import {
   createAnthropicChatModel,
   joinText,
@@ -209,5 +211,109 @@ describe('withHistoryCache', () => {
     );
     expect(JSON.stringify(params.messages)).toContain('"cache_control"');
     expect(params.max_tokens).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe('billing', () => {
+  const base = {
+    system: { stable: 'You are Roy.' },
+    messages: [{ role: 'user' as const, content: 'hi' }],
+  };
+  const usage = (output: number, searches = 0) => ({
+    input_tokens: 10,
+    output_tokens: output,
+    server_tool_use: { web_search_requests: searches, web_fetch_requests: 0 },
+  });
+  type Scripted = {
+    model: string;
+    stop_reason: string;
+    content: { type: string; text?: string }[];
+    usage: ReturnType<typeof usage>;
+    /** Breaks the stream after the text, with this much usage already reported. */
+    failAfter?: ReturnType<typeof usage>;
+  };
+  /** Fake SDK client: each request plays one scripted message. */
+  const fakeClient = (turns: Scripted[]) =>
+    ({
+      beta: {
+        messages: {
+          stream() {
+            const turn = turns.shift()!;
+            const handlers: Record<string, ((arg: never) => void)[]> = {};
+            let current: unknown;
+            return {
+              on(event: string, fn: (arg: never) => void) {
+                (handlers[event] ??= []).push(fn);
+                return this;
+              },
+              get currentMessage() {
+                return current;
+              },
+              async finalMessage() {
+                current = { ...turn, usage: turn.failAfter ?? turn.usage };
+                for (const block of turn.content) {
+                  if (block.type === 'text')
+                    handlers.text?.forEach((fn) => fn(block.text as never));
+                }
+                if (turn.failAfter) throw new Error('stream broke');
+                return turn;
+              },
+            };
+          },
+        },
+      },
+    }) as unknown as Anthropic;
+  const text = (value: string) => [{ type: 'text', text: value }];
+
+  it('bills each request of a paused reply at the model that served it', async () => {
+    const client = fakeClient([
+      {
+        model: 'claude-opus-5-5',
+        stop_reason: 'pause_turn',
+        content: text('a'),
+        usage: usage(5, 1),
+      },
+      { model: 'claude-opus-4-8', stop_reason: 'end_turn', content: text('b'), usage: usage(7) },
+    ]);
+    const result = await createAnthropicChatModel({ model: 'm', effort: 'low' }, client).stream(
+      base,
+    );
+    expect(result.billed).toEqual([
+      expect.objectContaining({ model: 'claude-opus-5-5', webRequests: 1 }),
+      expect.objectContaining({ model: 'claude-opus-4-8', webRequests: 0 }),
+    ]);
+    expect(result.billed.map((b) => b.usage.outputTokens)).toEqual([5, 7]);
+  });
+
+  it('a refusal after output carries its bill', async () => {
+    const client = fakeClient([
+      { model: 'claude-opus-5-5', stop_reason: 'refusal', content: text('so'), usage: usage(3) },
+    ]);
+    const error = await createAnthropicChatModel({ model: 'm', effort: 'low' }, client)
+      .stream(base)
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ChatModelError);
+    expect((error as ChatModelError).kind).toBe('refusal');
+    expect((error as ChatModelError).billed).toEqual([
+      expect.objectContaining({ model: 'claude-opus-5-5' }),
+    ]);
+  });
+
+  it('a stream that breaks mid-reply bills what was used, earlier requests included', async () => {
+    const client = fakeClient([
+      { model: 'claude-opus-5-5', stop_reason: 'pause_turn', content: text('a'), usage: usage(5) },
+      {
+        model: 'claude-opus-5-5',
+        stop_reason: 'end_turn',
+        content: text('b'),
+        usage: usage(9),
+        failAfter: usage(4),
+      },
+    ]);
+    const error = (await createAnthropicChatModel({ model: 'm', effort: 'low' }, client)
+      .stream(base)
+      .catch((e: unknown) => e)) as ChatModelError;
+    expect(error).toBeInstanceOf(ChatModelError);
+    expect(error.billed.map((b) => b.usage.outputTokens)).toEqual([5, 4]);
   });
 });

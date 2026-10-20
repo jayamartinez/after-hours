@@ -3,6 +3,7 @@ import type { Memory } from '@after-hours/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { toAnthropicParams } from '../providers/anthropic';
+import type { ChatTurn } from '../providers/types';
 
 import { relativeAge, selectMemories } from './context';
 import { buildChatRequest, HISTORY_WINDOW } from './request';
@@ -83,7 +84,7 @@ describe('buildChatRequest', () => {
     expect(request.messages.some((m) => m.content === 'm0')).toBe(false);
   });
 
-  it('reaches the Anthropic request: cached character prompt, context after it, effort set', () => {
+  it('reaches the Anthropic request: cached character prompt, context after the history, effort set', () => {
     const request = buildChatRequest(roya, {
       history: [{ role: 'user', content: 'hi' }],
       memories: MEMORIES,
@@ -94,14 +95,15 @@ describe('buildChatRequest', () => {
     expect(params.output_config).toEqual({ effort: 'low' });
     expect(params.system).toEqual([
       { type: 'text', text: buildSystemPrompt(roya), cache_control: { type: 'ephemeral' } },
-      { type: 'text', text: request.system.context },
     ]);
-    // The latest message is the history cache breakpoint (D-041).
+    // The latest message is the history cache breakpoint (D-041); the per-turn context
+    // follows it as a system message, outside the cached prefix.
     expect(params.messages).toEqual([
       {
         role: 'user',
         content: [{ type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } }],
       },
+      { role: 'system', content: request.system.context },
     ]);
     expect(JSON.stringify(params.system)).toContain(
       JSON.stringify(roya.persona.personality.modes.sincere).slice(1, -1),
@@ -132,5 +134,66 @@ describe('memory selection', () => {
   ])('%i days ago renders as "%s"', (days, expected) => {
     const createdAt = new Date(NOW.getTime() - days * 86_400_000).toISOString();
     expect(relativeAge(createdAt, NOW)).toBe(expected);
+  });
+});
+
+describe('prompt caching across turns', () => {
+  const history: ChatTurn[] = [
+    { role: 'user', content: 'hey' },
+    { role: 'assistant', content: 'yo' },
+    { role: 'user', content: 'what are you up to' },
+  ];
+  /** The serialized request up to and including the history cache breakpoint. */
+  const cachedPrefix = (now: Date, memories: readonly Memory[]) => {
+    const params = toAnthropicParams(
+      buildChatRequest(roy, { history, memories, now, userMessages: 2 }),
+      'claude-opus-5-5',
+      'low',
+    );
+    const breakpoint = params.messages.findLastIndex((message) =>
+      JSON.stringify(message).includes('"cache_control"'),
+    );
+    return JSON.stringify({
+      system: params.system,
+      messages: params.messages.slice(0, breakpoint + 1),
+    });
+  };
+
+  it('keeps the prefix byte-identical when only the time or the memories change', () => {
+    const first = cachedPrefix(NOW, MEMORIES);
+    expect(cachedPrefix(new Date(NOW.getTime() + 60_000), MEMORIES)).toBe(first);
+    expect(
+      cachedPrefix(new Date(NOW.getTime() + 60_000), [
+        ...MEMORIES,
+        memory('roy', 'Got the job', 0),
+      ]),
+    ).toBe(first);
+    expect(first).not.toContain('# Right now');
+  });
+
+  it('keeps the context after the answered turn through tool rounds', () => {
+    const request = buildChatRequest(roy, { history, now: NOW });
+    const params = toAnthropicParams(
+      {
+        ...request,
+        messages: [
+          ...request.messages,
+          { role: 'assistant', content: '', raw: [{ type: 'text', text: 'sec' }] },
+          { role: 'user', content: '', toolResults: [{ callId: 't1', content: 'sent' }] },
+        ],
+      },
+      'claude-opus-5-5',
+      'low',
+    );
+    expect(params.messages.map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+      'system',
+      'assistant',
+      'user',
+    ]);
+    expect(JSON.stringify(params.messages.at(-1))).toContain('"cache_control"');
+    expect(JSON.stringify(params.messages[3])).not.toContain('"cache_control"');
   });
 });

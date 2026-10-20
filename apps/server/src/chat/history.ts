@@ -1,8 +1,25 @@
 import type { MessageRow } from '../db/schema';
 import type { ChatTurn } from '../providers/types';
 
-/** Messages loaded from the database per model request (the newest ones). */
-export const HISTORY_MESSAGES = 30;
+/**
+ * History window in stored messages (D-041): at least `HISTORY_MIN_MESSAGES`, and the
+ * oldest `HISTORY_STEP` drop together, so the start of the history (and with it the cached
+ * prefix) only moves once every `HISTORY_STEP` messages instead of on every turn.
+ */
+export const HISTORY_MIN_MESSAGES = 30;
+const HISTORY_STEP = 10;
+/** Messages loaded from the database per model request (the newest ones); covers any window. */
+export const HISTORY_MAX_MESSAGES = HISTORY_MIN_MESSAGES + HISTORY_STEP;
+
+/**
+ * How many of the newest messages to send, given the thread's length up to the message
+ * being answered: all of a short thread, otherwise between 30 and 39.
+ */
+export function historyWindow(threadLength: number): number {
+  if (threadLength < HISTORY_MAX_MESSAGES) return threadLength;
+  const dropped = Math.floor((threadLength - HISTORY_MIN_MESSAGES) / HISTORY_STEP) * HISTORY_STEP;
+  return threadLength - dropped;
+}
 
 /**
  * A photo the companion sent reads as `[photo]` plus its caption (see `PHOTO_RULES`); a

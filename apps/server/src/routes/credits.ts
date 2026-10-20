@@ -35,7 +35,7 @@ const GONE: ApiError = {
 
 const NO_ADS_LEFT: ApiError = {
   code: 'rate_limited',
-  message: 'No more ads today. Your free messages come back at midnight UTC.',
+  message: 'No more ads today. Your messages come back at midnight UTC.',
   retryable: false,
 };
 
