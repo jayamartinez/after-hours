@@ -82,12 +82,16 @@ export function withHistoryCache(
   return [...messages.slice(0, -1), { ...last, content: blocks }];
 }
 
+/** First line of the per-turn context block, so the model never reads it as the user's words. */
+export const TURN_CONTEXT_HEADER = '[Context for this reply, from the app, not the user]';
+
 /**
- * Places the volatile per-turn context (time, memories, relationship stage) as a
- * mid-conversation system message right after the user turn being answered, the last user
- * turn that is not tool results. It sits after the history breakpoint of that turn, so a
- * new minute or memory never invalidates the cached conversation; within a reply (tool
- * rounds, pause continuations) it stays in place, so requests only ever append.
+ * Appends the volatile per-turn context (time, memories, relationship stage) as a last text
+ * block of the user turn being answered (the last user turn that is not tool results),
+ * after its history cache breakpoint. A new minute or memory never invalidates the cached
+ * conversation, and the context is never stored, so next turn that message is sent without
+ * it and the cached prefix still matches. Within a reply (tool rounds, pause continuations)
+ * the block stays in place, so requests only ever append.
  */
 export function withTurnContext(
   messages: Anthropic.Beta.BetaMessageParam[],
@@ -96,12 +100,14 @@ export function withTurnContext(
 ): Anthropic.Beta.BetaMessageParam[] {
   if (!context) return messages;
   const at = turns.findLastIndex((turn) => turn.role === 'user' && !turn.toolResults?.length);
-  if (at < 0) return messages;
-  return [
-    ...messages.slice(0, at + 1),
-    { role: 'system', content: context },
-    ...messages.slice(at + 1),
-  ];
+  const answered = messages[at];
+  if (!answered) return messages;
+  const blocks: Anthropic.Beta.BetaContentBlockParam[] =
+    typeof answered.content === 'string'
+      ? [{ type: 'text', text: answered.content }]
+      : [...answered.content];
+  blocks.push({ type: 'text', text: `${TURN_CONTEXT_HEADER}\n${context}` });
+  return [...messages.slice(0, at), { ...answered, content: blocks }, ...messages.slice(at + 1)];
 }
 
 /** Builds the Messages API params for one chat turn (exported for tests). */

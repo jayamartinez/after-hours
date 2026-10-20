@@ -2,7 +2,9 @@ import { presets } from '@after-hours/companions';
 import type { Memory } from '@after-hours/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { toAnthropicParams } from '../providers/anthropic';
+import type Anthropic from '@anthropic-ai/sdk';
+
+import { toAnthropicParams, TURN_CONTEXT_HEADER } from '../providers/anthropic';
 import type { ChatTurn } from '../providers/types';
 
 import { relativeAge, selectMemories } from './context';
@@ -96,14 +98,16 @@ describe('buildChatRequest', () => {
     expect(params.system).toEqual([
       { type: 'text', text: buildSystemPrompt(roya), cache_control: { type: 'ephemeral' } },
     ]);
-    // The latest message is the history cache breakpoint (D-041); the per-turn context
-    // follows it as a system message, outside the cached prefix.
+    // The latest message is the history cache breakpoint (D-041); the per-turn context is
+    // a later block of the same user message, outside the cached prefix.
     expect(params.messages).toEqual([
       {
         role: 'user',
-        content: [{ type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } }],
+        content: [
+          { type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: `${TURN_CONTEXT_HEADER}\n${request.system.context}` },
+        ],
       },
-      { role: 'system', content: request.system.context },
     ]);
     expect(JSON.stringify(params.system)).toContain(
       JSON.stringify(roya.persona.personality.modes.sincere).slice(1, -1),
@@ -143,37 +147,72 @@ describe('prompt caching across turns', () => {
     { role: 'assistant', content: 'yo' },
     { role: 'user', content: 'what are you up to' },
   ];
-  /** The serialized request up to and including the history cache breakpoint. */
-  const cachedPrefix = (now: Date, memories: readonly Memory[]) => {
-    const params = toAnthropicParams(
-      buildChatRequest(roy, { history, memories, now, userMessages: 2 }),
+  const paramsFor = (turns: ChatTurn[], now: Date, memories: readonly Memory[] = MEMORIES) =>
+    toAnthropicParams(
+      buildChatRequest(roy, { history: turns, memories, now, userMessages: 2 }),
       'claude-opus-5-5',
       'low',
     );
-    const breakpoint = params.messages.findLastIndex((message) =>
-      JSON.stringify(message).includes('"cache_control"'),
+  /** Every content block in request order, with its role. */
+  const blocksOf = (messages: Anthropic.Beta.BetaMessageParam[]) =>
+    messages.flatMap((message) =>
+      typeof message.content === 'string'
+        ? [{ role: message.role, block: { type: 'text', text: message.content } as object }]
+        : message.content.map((block) => ({ role: message.role, block: block as object })),
     );
-    return JSON.stringify({
-      system: params.system,
-      messages: params.messages.slice(0, breakpoint + 1),
-    });
+  /** The serialized request up to and including the history cache breakpoint. */
+  const cachedPrefix = (params: ReturnType<typeof paramsFor>) => {
+    const blocks = blocksOf(params.messages);
+    const breakpoint = blocks.findLastIndex(({ block }) => 'cache_control' in block);
+    return JSON.stringify({ system: params.system, blocks: blocks.slice(0, breakpoint + 1) });
   };
+  /** Rendered content only: cache markers do not change what the model reads. */
+  const unmarked = (value: unknown) =>
+    JSON.stringify(value).replaceAll(',"cache_control":{"type":"ephemeral"}', '');
 
   it('keeps the prefix byte-identical when only the time or the memories change', () => {
-    const first = cachedPrefix(NOW, MEMORIES);
-    expect(cachedPrefix(new Date(NOW.getTime() + 60_000), MEMORIES)).toBe(first);
+    const later = new Date(NOW.getTime() + 60_000);
+    const first = cachedPrefix(paramsFor(history, NOW));
+    expect(cachedPrefix(paramsFor(history, later))).toBe(first);
     expect(
-      cachedPrefix(new Date(NOW.getTime() + 60_000), [
-        ...MEMORIES,
-        memory('roy', 'Got the job', 0),
-      ]),
+      cachedPrefix(paramsFor(history, later, [...MEMORIES, memory('roy', 'Got the job', 0)])),
     ).toBe(first);
     expect(first).not.toContain('# Right now');
+    expect(first).not.toContain(TURN_CONTEXT_HEADER);
   });
 
-  it('keeps the context after the answered turn through tool rounds', () => {
+  it('puts the context after the cache-marked block of the answered user message', () => {
+    const params = paramsFor(history, NOW);
+    const last = params.messages.at(-1);
+    if (!last || typeof last.content === 'string') throw new Error('expected content blocks');
+    expect(last.role).toBe('user');
+    expect(last.content).toEqual([
+      { type: 'text', text: 'what are you up to', cache_control: { type: 'ephemeral' } },
+      {
+        type: 'text',
+        text: expect.stringMatching(
+          /^\[Context for this reply, from the app, not the user\]\n# Right now/,
+        ),
+      },
+    ]);
+  });
+
+  it('sends the previous user message without its context next turn, so the cached prefix matches', () => {
+    const turn = paramsFor(history, NOW);
+    const next = paramsFor(
+      [...history, { role: 'assistant', content: 'not much' }, { role: 'user', content: 'cool' }],
+      new Date(NOW.getTime() + 120_000),
+    );
+    const previous = JSON.parse(cachedPrefix(turn)) as { blocks: unknown[] };
+    const nextBlocks = blocksOf(next.messages).slice(0, previous.blocks.length);
+    expect(unmarked(nextBlocks)).toBe(unmarked(previous.blocks));
+    expect(JSON.stringify(next.messages.slice(0, -1))).not.toContain(TURN_CONTEXT_HEADER);
+  });
+
+  it('only appends through tool rounds: the context stays in the answered user message', () => {
     const request = buildChatRequest(roy, { history, now: NOW });
-    const params = toAnthropicParams(
+    const round1 = toAnthropicParams(request, 'claude-opus-5-5', 'low');
+    const round2 = toAnthropicParams(
       {
         ...request,
         messages: [
@@ -185,15 +224,18 @@ describe('prompt caching across turns', () => {
       'claude-opus-5-5',
       'low',
     );
-    expect(params.messages.map((message) => message.role)).toEqual([
+    expect(round2.messages.map((message) => message.role)).toEqual([
       'user',
       'assistant',
       'user',
-      'system',
       'assistant',
       'user',
     ]);
-    expect(JSON.stringify(params.messages.at(-1))).toContain('"cache_control"');
-    expect(JSON.stringify(params.messages[3])).not.toContain('"cache_control"');
+    expect(unmarked(round2.messages.slice(0, round1.messages.length))).toBe(
+      unmarked(round1.messages),
+    );
+    expect(JSON.stringify(round2.messages.at(-1))).toContain('"cache_control"');
+    expect(JSON.stringify(round2.messages[2])).toContain(TURN_CONTEXT_HEADER);
+    expect(JSON.stringify(round2.messages[2])).not.toContain('"cache_control"');
   });
 });
