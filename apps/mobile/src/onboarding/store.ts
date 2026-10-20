@@ -26,6 +26,8 @@ export interface OnboardingData {
   matchedCompanionId: string | null;
   /** Local mock entitlement. No payment is ever taken. */
   demoPurchase: { plan: DemoPlan; purchasedAt: string } | null;
+  /** The answers changed and the server has not saved them yet (`PUT /profile`, D-032). */
+  profilePending: boolean;
 }
 
 export interface OnboardingActions {
@@ -46,6 +48,8 @@ export interface OnboardingActions {
   replay: () => void;
   purchaseDemo: (plan: DemoPlan, now?: Date) => void;
   resetDemoPurchase: () => void;
+  /** The server saved `preferences`; ignored if the answers changed since they were sent. */
+  markProfileSaved: (preferences: OnboardingPreferences) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -57,6 +61,7 @@ export const initialOnboardingData = (): OnboardingData => ({
   completed: false,
   matchedCompanionId: null,
   demoPurchase: null,
+  profilePending: false,
 });
 
 const toggle = <T>(list: readonly T[], item: T): T[] =>
@@ -68,7 +73,10 @@ export function createOnboardingStore(storage: StateStorage) {
     persist(
       (set) => {
         const updatePrefs = (fn: (p: OnboardingPreferences) => Partial<OnboardingPreferences>) =>
-          set((s) => ({ preferences: { ...s.preferences, ...fn(s.preferences) } }));
+          set((s) => ({
+            preferences: { ...s.preferences, ...fn(s.preferences) },
+            profilePending: true,
+          }));
 
         return {
           ...initialOnboardingData(),
@@ -88,11 +96,15 @@ export function createOnboardingStore(storage: StateStorage) {
           setAllowCalls: (allowCalls) => updatePrefs(() => ({ allowCalls })),
           setMatchedCompanion: (matchedCompanionId) => set({ matchedCompanionId }),
           complete: () => set({ completed: true }),
-          skip: () => set({ completed: true, preferences: defaultPreferences() }),
+          // Nothing to save: skipping gives no answers.
+          skip: () =>
+            set({ completed: true, preferences: defaultPreferences(), profilePending: false }),
           replay: () => set((s) => ({ ...initialOnboardingData(), demoPurchase: s.demoPurchase })),
           purchaseDemo: (plan, now = new Date()) =>
             set({ demoPurchase: { plan, purchasedAt: now.toISOString() } }),
           resetDemoPurchase: () => set({ demoPurchase: null }),
+          markProfileSaved: (preferences) =>
+            set((s) => (s.preferences === preferences ? { profilePending: false } : {})),
         };
       },
       {
@@ -104,6 +116,7 @@ export function createOnboardingStore(storage: StateStorage) {
           completed: s.completed,
           matchedCompanionId: s.matchedCompanionId,
           demoPurchase: s.demoPurchase,
+          profilePending: s.profilePending,
         }),
         // Fill in fields added after a user's data was saved.
         merge: (persisted, current) => {

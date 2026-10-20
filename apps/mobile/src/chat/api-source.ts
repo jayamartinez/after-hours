@@ -61,6 +61,8 @@ export interface ApiSourceOptions {
   makeClientId?: () => string;
   /** Photo credit events from reply streams (balance after a photo, or none left). */
   onCredits?: (signal: CreditSignal) => void;
+  /** A message was stored on the server (the user's on ack, the reply on done). */
+  onStored?: (companionId: string) => void;
 }
 
 export interface ApiConversationSource extends ConversationSource {
@@ -135,7 +137,7 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
       }
     });
   const makeClientId = options.makeClientId ?? defaultClientId;
-  const { onCredits } = options;
+  const { onCredits, onStored } = options;
   const conversations = new Map<string, Conversation>();
   let offline = false;
 
@@ -266,6 +268,7 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
           const from = messageId;
           messageId = stored.id;
           enqueue(id, () => dispatch(id, { type: 'ack', localId: from, message: stored }));
+          onStored?.(id);
           return;
         }
         case 'typing':
@@ -293,7 +296,10 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
         }
         case 'done':
           finished = true;
-          enqueue(id, () => dispatch(id, { type: 'typing', typing: false }));
+          enqueue(id, () => {
+            dispatch(id, { type: 'typing', typing: false });
+            onStored?.(id);
+          });
           return;
         case 'error':
           finished = true;

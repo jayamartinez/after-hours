@@ -33,6 +33,11 @@ export const PROGRESS: Partial<Record<OnboardingStep, number>> = {
   memory: 0.7,
 };
 
+/** Whether `step` comes after the questions (matching onward), so the answers are final. */
+export function isPastQuestions(step: string | undefined): boolean {
+  return STEPS.indexOf(step as OnboardingStep) >= STEPS.indexOf('matching');
+}
+
 export const stepHref = (step: OnboardingStep): Href =>
   (step === 'index' ? '/onboarding' : `/onboarding/${step}`) as Href;
 
