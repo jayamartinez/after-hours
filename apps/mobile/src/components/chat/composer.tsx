@@ -34,6 +34,9 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
   const [text, setText] = useState('');
   // Web textareas do not grow on their own; native inputs do.
   const [webHeight, setWebHeight] = useState<number | null>(null);
+  // Native: a multiline input keeps its grown height after being cleared until the next
+  // keystroke, so a sent message remounts the input (focused) at its one-line height.
+  const [inputKey, setInputKey] = useState(0);
   const canSend = text.trim().length > 0;
 
   const send = () => {
@@ -41,6 +44,7 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
     onSend(text);
     setText('');
     setWebHeight(null);
+    if (Platform.OS !== 'web') setInputKey((key) => key + 1);
   };
 
   // Web: Enter sends, Shift+Enter adds a line (native keyboards keep their return key).
@@ -66,6 +70,8 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
         </Pressable>
         <View style={styles.field}>
           <TextInput
+            key={inputKey}
+            autoFocus={inputKey > 0}
             value={text}
             onChangeText={setText}
             onKeyPress={onKeyPress}

@@ -62,10 +62,8 @@ export function PhotoViewer({ photos, openAt, onChange }: PhotoViewerProps) {
                 </GlassButton>
               ) : null}
               <View style={styles.caption}>
+                {/* No description line: configured photo descriptions were often wrong (D-039). */}
                 <Text style={styles.name}>{photo.companion.name}</Text>
-                <Text style={type.caption} numberOfLines={2}>
-                  {photo.companion.images.gallery[photo.index].alt}
-                </Text>
               </View>
               {photos.length > 1 ? (
                 <GlassButton label="Next photo" onPress={() => step(1)}>

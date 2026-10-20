@@ -23,9 +23,9 @@ const hostOf = (url: string) => {
 };
 
 /**
- * A picture a companion found on the web (D-038): the image, then the page it came from.
- * Tapping either opens the page. If the image will not load (some sites block embedding),
- * only the link card shows.
+ * A picture a companion found on the web (D-038, D-039): the image with a small source
+ * credit; tapping opens the page. If the image will not load (some sites block embedding),
+ * a link card with the page title shows instead.
  */
 export function WebPicture({
   uri,
@@ -58,13 +58,13 @@ export function WebPicture({
         />
       )}
       <View style={styles.source}>
-        {title ? (
+        {failed && title ? (
           <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
         ) : null}
         <Text style={styles.host} numberOfLines={1}>
-          {host}
+          {failed ? host : `via ${host}`}
         </Text>
       </View>
     </Pressable>
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.85 },
   image: { width: '100%', aspectRatio: 1, backgroundColor: colors.surfaceRaised },
-  source: { gap: 2, paddingHorizontal: 12, paddingVertical: 10 },
+  source: { gap: 2, paddingHorizontal: 12, paddingVertical: 8 },
   title: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 18, color: colors.text },
   host: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, color: colors.textMuted },
 });

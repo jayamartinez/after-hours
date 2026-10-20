@@ -131,6 +131,17 @@ describe('findPageImage', () => {
     expect(evil.calls).toEqual(['https://a.example.com/x']);
   });
 
+  it('accepts a direct link to an image', async () => {
+    const { fetch } = fakeFetch({ 'https://cdn.example.com/levi.png': () => image('image/png') });
+    await expect(
+      findPageImage('https://cdn.example.com/levi.png', { fetch, lookup: publicLookup }),
+    ).resolves.toEqual({
+      url: 'https://cdn.example.com/levi.png',
+      pageUrl: 'https://cdn.example.com/levi.png',
+      title: '',
+    });
+  });
+
   it('refuses pages without a preview, SVGs, and oversized images', async () => {
     const page = (img: string) => () => html(`<meta property="og:image" content="${img}">`);
     const cases: [Record<string, () => Response>, string][] = [

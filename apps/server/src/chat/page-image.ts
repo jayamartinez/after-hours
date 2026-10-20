@@ -214,6 +214,14 @@ export async function findPageImage(pageUrl: string, deps: PageImageDeps = {}): 
   };
   const page = await guardedFetch(pageUrl, 'GET', resolved);
   const type = page.response.headers.get('content-type') ?? '';
+  // A direct link to a raster image is the picture itself.
+  if (type.startsWith('image/') && !type.includes('svg')) {
+    const size = Number(page.response.headers.get('content-length') ?? 0);
+    await page.response.body?.cancel().catch(() => {});
+    if (size > MAX_IMAGE_BYTES) throw new PageImageFailure('not_an_image');
+    const url = page.url.toString();
+    return { url, pageUrl: url, title: '' };
+  }
   if (!type.includes('html')) {
     await page.response.body?.cancel().catch(() => {});
     throw new PageImageFailure('no_image');
