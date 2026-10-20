@@ -1,6 +1,7 @@
 import { FREE_STARTING_CREDITS, type MessageImage, type UserProfile } from '@after-hours/contracts';
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   bigserial,
   boolean,
   check,
@@ -76,7 +77,7 @@ export const spendUsage = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     day: date('day', { mode: 'string' }).notNull(),
-    microUsd: integer('micro_usd').notNull().default(0),
+    microUsd: bigint('micro_usd', { mode: 'number' }).notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 ).enableRLS();
@@ -87,14 +88,14 @@ export const spendUsage = pgTable(
  */
 export const networkSpend = pgTable('network_spend', {
   network: text('network').primaryKey(),
-  microUsd: integer('micro_usd').notNull().default(0),
+  microUsd: bigint('micro_usd', { mode: 'number' }).notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
 
 /** Estimated spend across everyone per UTC day (D-042): the global daily cap. */
 export const globalSpend = pgTable('global_spend', {
   day: date('day', { mode: 'string' }).primaryKey(),
-  microUsd: integer('micro_usd').notNull().default(0),
+  microUsd: bigint('micro_usd', { mode: 'number' }).notNull().default(0),
 }).enableRLS();
 
 /** New anonymous accounts per network per UTC day (D-042). */

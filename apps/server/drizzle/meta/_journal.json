@@ -57,6 +57,13 @@
       "when": 1792522303472,
       "tag": "0007_condemned_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792529064287,
+      "tag": "0008_premium_overlord",
+      "breakpoints": true
     }
   ]
 }
