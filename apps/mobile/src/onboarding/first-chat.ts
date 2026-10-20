@@ -1,7 +1,10 @@
 import type { ChatMessage } from '@/chat/types';
 
-/** Messages the user can send in the onboarding chat before the (demo) paywall. */
-export const FREE_MESSAGES = 2;
+/**
+ * Messages the user sends in the onboarding chat before the paywall; the reply to the last
+ * one ends onboarding (D-034, D-035).
+ */
+export const FREE_MESSAGES = 3;
 
 /**
  * Where the onboarding chat stands:

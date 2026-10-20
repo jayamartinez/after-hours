@@ -60,7 +60,7 @@ export default function ValuesScreen() {
               <View key={i} style={styles.rankRow}>
                 <Text style={styles.rankNumber}>{i + 1}</Text>
                 <Text style={[styles.rankLabel, !id && styles.rankEmpty]}>
-                  {id ? labelOf(id) : '—'}
+                  {id ? labelOf(id) : '·'}
                 </Text>
               </View>
             );

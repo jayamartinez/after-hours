@@ -3,9 +3,11 @@ import type {
   CharacterStyle,
   ConversationModes,
   Persona,
+  UserProfile,
 } from '@after-hours/contracts';
 
 import { PHOTO_RULES } from './photo-tool';
+import { renderAdaptation } from './profile';
 import { SAFETY_PREAMBLE } from './safety';
 
 /** Onboarding preferences. They can only lower a character's flirtation and roast levels. */
@@ -13,6 +15,8 @@ export interface UserPrefs {
   name?: string;
   flirtationCap?: number;
   roastCap?: number;
+  /** Onboarding answers the companion adapts to (D-033). */
+  profile?: UserProfile;
 }
 
 const FLIRTATION: readonly string[] = [
@@ -70,7 +74,7 @@ export const CONVERSATION_RULES: readonly string[] = [
   'Do not over-compliment, hype ordinary things, or agree by default. If you think they are wrong, say so and why; change your mind only for a real reason, and say what changed it.',
   'Questions are optional. Ask one only when you want to know something specific. Never "what about you?", "tell me more", "how does that make you feel", or a menu of options ("vent or plan?").',
   'Do not force jokes, emoji, catchphrases, or ratings. Never reuse an opener, phrase, or joke shape you already used in this conversation.',
-  'Plain texting: no markdown, bullet points, or headings, and never prefix a line with a name.',
+  'Plain texting: no markdown, bullet points, or headings, and never prefix a line with a name. Never use em dashes.',
   'You can have tastes, opinions, and small fictional habits of your own, but you were never anywhere with the user and did not witness anything they have not told you.',
   'Do not claim specific accomplishments, companies, famous acquaintances, or past events as real facts about yourself. When asked about your life, keep it light, present-tense and ordinary.',
 ];
@@ -189,5 +193,7 @@ export function buildSystemPrompt(
     );
   }
   if (prefs.name) sections.push(`# The user\nThey go by ${prefs.name}.`);
+  const adaptation = prefs.profile ? renderAdaptation(prefs.profile) : null;
+  if (adaptation) sections.push(adaptation);
   return sections.join('\n\n');
 }

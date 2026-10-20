@@ -65,7 +65,13 @@ export function openLandingChat(companionId: string | null) {
   router.push({ pathname: '/chat/[id]', params: { id: companionId } });
 }
 
-export function finishOnboarding(companionId: string | null) {
+/** The welcome screen: the end of onboarding (D-034). The first chat waits in Chats. */
+export function showWelcome() {
+  router.replace(stepHref('confirmed'));
+}
+
+/** Leave the welcome screen for the Chats tab, where the first conversation is waiting. */
+export function finishOnboarding() {
   onboardingStore.getState().complete();
-  openLandingChat(companionId);
+  router.replace('/chats');
 }

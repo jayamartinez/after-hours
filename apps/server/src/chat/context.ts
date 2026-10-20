@@ -1,5 +1,7 @@
 import type { CharacterConfig, Memory } from '@after-hours/contracts';
 
+import { relationshipStage, renderStage } from './relationship';
+
 const DAY = 86_400_000;
 
 /** Rough, human recency for a memory ("yesterday", "3 weeks ago"). */
@@ -35,11 +37,13 @@ export interface TurnContext {
   now?: Date;
   /** IANA time zone of the user, e.g. "America/New_York". Default UTC. */
   timeZone?: string;
+  /** User messages in the thread, the one being answered included. Unset: no pacing. */
+  userMessages?: number;
 }
 
 /**
- * Volatile per-turn context (current time, remembered facts). Kept out of the cached
- * character prompt so that prompt stays byte-stable across turns.
+ * Volatile per-turn context (current time, relationship stage, remembered facts). Kept out of the cached character prompt so that prompt stays
+ * byte-stable across turns.
  */
 export function buildTurnContext(character: CharacterConfig, context: TurnContext = {}): string {
   const now = context.now ?? new Date();
@@ -57,6 +61,14 @@ For the user it is ${when}. Background only: do not bring up the day or time unl
   ];
 
   const memories = selectMemories(character, context.memories ?? []);
+  if (context.userMessages !== undefined) {
+    // All of this companion's memories count, not just the ones retrieved this turn.
+    const known = character.memory.enabled
+      ? (context.memories ?? []).filter((m) => m.companionId === character.id).length
+      : 0;
+    const stage = relationshipStage({ userMessages: context.userMessages, memories: known });
+    sections.push(renderStage(stage));
+  }
   if (memories.length > 0) {
     const lines = memories.map((m) => `- ${m.content} (told you ${relativeAge(m.createdAt, now)})`);
     sections.push(

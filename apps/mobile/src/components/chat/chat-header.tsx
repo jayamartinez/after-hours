@@ -13,23 +13,32 @@ import { BackIcon, InfoIcon, PhoneIcon } from './icons';
 interface ChatHeaderProps {
   companion: PublicCharacter;
   onCall: () => void;
+  /** Default: leave for the Chats tab. */
+  onBack?: () => void;
+  /** False hides the profile link (the onboarding chat, where the tabs are not reachable). */
+  profileLink?: boolean;
 }
 
 /** Chat A header: back, avatar, serif name, call + info. */
-export function ChatHeader({ companion, onCall }: ChatHeaderProps) {
-  const goBack = closeChat;
+export function ChatHeader({
+  companion,
+  onCall,
+  onBack = closeChat,
+  profileLink = true,
+}: ChatHeaderProps) {
   const openProfile = () =>
     router.push({ pathname: '/companion/[id]', params: { id: companion.id } });
 
   return (
     <View style={styles.row}>
-      <IconButton label="Back" width={36} onPress={goBack}>
+      <IconButton label="Back" width={36} onPress={onBack}>
         <BackIcon />
       </IconButton>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Open ${companion.name}'s profile`}
         onPress={openProfile}
+        disabled={!profileLink}
         style={({ pressed }) => [styles.profileLink, pressed && styles.pressed]}
       >
         <CompanionImage companion={companion} slot="avatar" style={styles.avatar} />
@@ -44,9 +53,11 @@ export function ChatHeader({ companion, onCall }: ChatHeaderProps) {
       <IconButton label={`Call ${companion.name}, coming soon`} width={40} onPress={onCall}>
         <PhoneIcon />
       </IconButton>
-      <IconButton label={`About ${companion.name}`} width={36} onPress={openProfile}>
-        <InfoIcon />
-      </IconButton>
+      {profileLink ? (
+        <IconButton label={`About ${companion.name}`} width={36} onPress={openProfile}>
+          <InfoIcon />
+        </IconButton>
+      ) : null}
     </View>
   );
 }

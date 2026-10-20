@@ -191,7 +191,7 @@
     }
   },
   "voice": {
-    "description": "Fast, bright tenor — always mid-pitch",
+    "description": "Fast, bright tenor, always mid-pitch",
     "voiceIdEnv": "ROY_TTS_VOICE_ID",
     "speed": 1.15
   },

@@ -49,6 +49,10 @@ interface ChatViewProps {
   onRemember?: (message: ChatMessage) => Promise<string>;
   /** Shown between the thread and the composer (onboarding quick replies). */
   accessory?: ReactNode;
+  /** Header back; default leaves for the Chats tab. */
+  onBack?: () => void;
+  /** False hides the header's profile link. */
+  profileLink?: boolean;
 }
 
 /** Chat A "Lamplight": header, thread, composer, long-press menu, and toasts. */
@@ -65,6 +69,8 @@ export function ChatView({
   onToggleReaction,
   onRemember,
   accessory,
+  onBack,
+  profileLink,
 }: ChatViewProps) {
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
@@ -108,7 +114,12 @@ export function ChatView({
       <View style={styles.column}>
         <LampGlow />
         <View style={{ paddingTop: insets.top }}>
-          <ChatHeader companion={companion} onCall={() => show('Calls · coming soon')} />
+          <ChatHeader
+            companion={companion}
+            onCall={() => show('Calls · coming soon')}
+            onBack={onBack}
+            profileLink={profileLink}
+          />
         </View>
 
         <KeyboardAvoidingView

@@ -1,7 +1,7 @@
 import type { ChatModel, ChatRequest, ChatResult, ToolCall, ToolResult } from '../providers/types';
 import { ChatModelError } from '../providers/types';
 
-import { createBubbleSplitter } from './bubbles';
+import { createBubbleSplitter, withoutEmDashes } from './bubbles';
 
 export interface StreamReplyHandlers {
   /** Raw streamed text. */
@@ -36,7 +36,8 @@ export async function streamReply(
   const bubbles: string[] = [];
   let chain: Promise<void> = Promise.resolve();
   const deliver = (texts: string[]) => {
-    for (const text of texts) {
+    for (const raw of texts) {
+      const text = withoutEmDashes(raw);
       const index = bubbles.push(text) - 1;
       chain = chain.then(() => handlers.onBubble(text, index));
     }

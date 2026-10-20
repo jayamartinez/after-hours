@@ -205,7 +205,7 @@
     }
   },
   "voice": {
-    "description": "Smoky, amused mezzo — always half-laughing",
+    "description": "Smoky, amused mezzo, always half-laughing",
     "voiceIdEnv": "ROYA_TTS_VOICE_ID",
     "speed": 1
   },

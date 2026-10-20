@@ -23,7 +23,7 @@ android/
 *.tsbuildinfo
 coverage/
 
-# local data — never commit real conversations or generated media
+# local data, never commit real conversations or generated media
 *.db
 *.sqlite
 *.sqlite3

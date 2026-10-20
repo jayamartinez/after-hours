@@ -6,6 +6,10 @@ const BASE_DELAY_MS = 120;
 const STEP_MS = 90;
 const DURATION_MS = 480;
 
+/** When a screen's entrance has finished, for elements up to `lastOrder`. */
+export const entranceEndMs = (lastOrder: number) =>
+  BASE_DELAY_MS + lastOrder * STEP_MS + DURATION_MS;
+
 interface StaggerInProps extends ViewProps {
   /** Position in the screen's entrance sequence: 0 enters first. */
   order?: number;

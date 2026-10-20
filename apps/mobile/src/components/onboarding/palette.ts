@@ -3,7 +3,7 @@
  * (Paper 04 Onboarding). Only decoration lives here; UI colors come from theme tokens.
  */
 export const gradient = {
-  /** oklab(76.5% 0.040 0.109) — same as the accent token. */
+  /** oklab(76.5% 0.040 0.109), same as the accent token. */
   brass: '#E2A55B',
   /** oklab(62.6% 0.051 0.107) */
   brassMid: '#C0844A',
@@ -13,13 +13,13 @@ export const gradient = {
   umber: '#5A3A22',
   /** oklab(20.3% 0.013 0.012) */
   ember: '#221A15',
-  /** oklab(39.8% 0.114 0.032) — wine, close to the live token. */
+  /** oklab(39.8% 0.114 0.032), wine, close to the live token. */
   wine: '#7A2431',
   /** oklab(33% 0.086 0.020) */
   wineDeep: '#5A2028',
   /** oklab(50.5% 0.089 0.073) */
   rust: '#A0503A',
-  /** oklab(61.4% -0.013 -0.054) — dusk blue behind the second card. */
+  /** oklab(61.4% -0.013 -0.054), dusk blue behind the second card. */
   dusk: '#6F86A6',
   /** oklab(32.5% -0.004 -0.034) */
   duskDeep: '#2B3444',

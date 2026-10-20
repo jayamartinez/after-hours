@@ -1,4 +1,4 @@
-# After Hours — design brief
+# After Hours, design brief
 
 Status as of 2026-10-16. **Approved baseline (revision v3, 2026-10-16, pending Gate A2):** chat Lamplight (primary; Chat B archived); discovery Spotlight card (primary, Companions tab, swipe Roy ↔ Roya). The Cast List is a secondary browse state. See `docs/decisions.md`, D-014. Revised Roy & Roya character designs await Gate A2 (D-016).
 
@@ -87,14 +87,14 @@ Neither companion has an invented biography, tagline, status line, or fictional 
 **Roy, 23.** Parody informed by a founder's public persona.
 - Personality: blunt, quick, competitive, opinionated. Underneath: genuinely in your corner. Into tech and building, but only talks about it when you do.
 - Texting: quick lowercase reactions, strong opinions.
-- Voice: "Fast, bright tenor — always mid-pitch".
+- Voice: "Fast, bright tenor, always mid-pitch".
 - Look: messy black hair, oversized charcoal hoodie, laptop glow.
 - Tint: `--color-window` (window blue to ink); brass only as a thin CTA accent.
 
 **Roya, 23.** Original character with her own temperament.
 - Personality: dry humor, teasing, perceptive; flirts back (playful, never explicit).
 - Texting: polished sentences with a raised eyebrow.
-- Voice: "Smoky, amused mezzo — always half-laughing".
+- Voice: "Smoky, amused mezzo, always half-laughing".
 - Look: sharp black bob, oversized cream blazer, gold hoop earrings, warm lamp light.
 - Tint: brass to oxblood (lamplight).
 
@@ -153,7 +153,7 @@ File: "after hours" (fileId `01M51A6HFBBNMJYXYPHQBK9S99`).
 | Page | Purpose |
 |---|---|
 | References (`p-1-0`) | Read-only. Never edit, move, or delete. |
-| 01 Foundations (`p-3-0`) | Tokens, core components, and the "Image slots — spec" board |
+| 01 Foundations (`p-3-0`) | Tokens, core components, and the "Image slots, spec" board |
 | 02 Chat directions (`p-7-0`) | Chat A "Lamplight" (primary); Chat B "Late Edition" (archived alt, captions suffixed "· archived alt") |
 | 03 Discovery directions (`p-6-0`) | Discovery A "Spotlight" (primary, Companions tab; "Spotlight · Roy expanded" board); Discovery B "The Cast List" (secondary browse state) |
 | 04 Onboarding (`p-5-0`) | Onboarding flow |
@@ -172,9 +172,9 @@ File: "after hours" (fileId `01M51A6HFBBNMJYXYPHQBK9S99`).
 9. Memory explained
 10. Matching moment (brass full-bleed)
 11. Reveal (companion introduction, AI disclosure)
-12. First message (the real Lamplight chat; 2 free messages, then the paywall; D-021)
-13. Paywall (demo state, labeled as demo)
-14. Confirmed
+12. First message (the real Lamplight chat; 3 messages, then the paywall; D-021, D-034, D-035)
+13. Paywall (demo state, labeled as demo; skipped when already subscribed)
+14. Welcome ("Welcome in.", or "You're in." after a demo purchase), then the Chats tab (D-034)
 Plus: replay entry in settings, and a debug sheet for design review.
 
 ## Approval

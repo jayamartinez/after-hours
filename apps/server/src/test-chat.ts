@@ -16,7 +16,7 @@ import type {
 
 /** Test doubles and HTTP helpers shared by the chat route tests. */
 
-const USAGE = {
+export const USAGE = {
   inputTokens: 1,
   outputTokens: 1,
   cacheReadInputTokens: 0,

@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreditSignals } from '@/api/credits';
 import { useMemoryActions } from '@/api/memories';
+import { useStarters } from '@/api/starters';
 import { ApiRequestError } from '@/api/transport';
 import type { ChatMessage, ChatNotice } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { BackButton } from '@/components/back-button';
 import { CHAT_MAX_WIDTH, ChatView } from '@/components/chat/chat-view';
+import { StarterChips } from '@/components/chat/starter-chips';
 import { closeChat } from '@/components/discovery/chat-link';
 import { CreditsSheet } from '@/components/credits/credits-sheet';
 import { colors, spacing, type } from '@/theme/tokens';
@@ -24,6 +26,9 @@ export default function ChatScreen() {
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [status, setStatus] = useState<ChatNotice | null>(null);
   const showStatus = (text: string) => setStatus({ id: Date.now(), text });
+  // An empty thread (new, or just cleared) offers starters written for this user (D-032).
+  const isEmpty = !isLoading && messages.length === 0;
+  const starters = useStarters(companion, { enabled: isEmpty, isDemo });
 
   // Out of photo credits mid-reply: offer more (D-026).
   useCreditSignals((signal) => {
@@ -79,6 +84,7 @@ export default function ChatScreen() {
         onToggleReaction={toggleReaction}
         onRemember={onRemember}
         status={status}
+        accessory={isEmpty ? <StarterChips starters={starters} onPick={send} /> : null}
       />
       <CreditsSheet
         visible={creditsOpen}

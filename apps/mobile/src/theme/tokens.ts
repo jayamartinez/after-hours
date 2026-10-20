@@ -1,6 +1,6 @@
 /**
  * Design tokens from docs/design-brief.md (frozen baseline). The single source for
- * colors, type, spacing, and radius in the app — do not hard-code these values elsewhere.
+ * colors, type, spacing, and radius in the app, do not hard-code these values elsewhere.
  */
 import type { TextStyle } from 'react-native';
 
@@ -95,7 +95,7 @@ export const layout = {
   tapTarget: 44,
   ctaHeight: 56,
   /** Space reserved at the bottom of scrolling screens for the floating tab bar. */
-  tabBarClearance: 96,
+  tabBarClearance: 120,
 } as const;
 
 /** Tones used on discovery and profile surfaces (Paper 03 Discovery, 05 Core screens). */

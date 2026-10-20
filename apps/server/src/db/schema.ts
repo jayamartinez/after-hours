@@ -1,4 +1,4 @@
-import { FREE_STARTING_CREDITS, type MessageImage } from '@after-hours/contracts';
+import { FREE_STARTING_CREDITS, type MessageImage, type UserProfile } from '@after-hours/contracts';
 import { sql } from 'drizzle-orm';
 import {
   bigserial,
@@ -22,7 +22,10 @@ import {
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
-/** Anonymous device users (D-023), with their photo credits and demo Plus state (D-026). */
+/**
+ * Anonymous device users (D-023), with their photo credits and demo Plus state (D-026) and
+ * onboarding profile (D-032).
+ */
 export const users = pgTable(
   'users',
   {
@@ -32,6 +35,8 @@ export const users = pgTable(
     plusPlan: text('plus_plan', { enum: ['annual', 'monthly'] }),
     /** Start of the current demo Plus subscription; credit periods count from here. */
     plusSince: timestamp('plus_since', { withTimezone: true }),
+    /** Onboarding answers (`PUT /profile`); null until the app sends them. */
+    profile: jsonb('profile').$type<UserProfile>(),
     createdAt: createdAt(),
   },
   (t) => [check('users_image_credits_check', sql`${t.imageCredits} >= 0`)],

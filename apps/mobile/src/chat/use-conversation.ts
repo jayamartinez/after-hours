@@ -98,17 +98,22 @@ export function useIsDemoConversations() {
   return source.isDemo;
 }
 
+/** Stored thread summaries (`GET /conversations`), shared by the Chats tab and its rows. */
+export function useConversationSummaries() {
+  return useQuery({
+    queryKey: CONVERSATIONS_QUERY_KEY,
+    queryFn: () => source.fetchSummaries(),
+    staleTime: 0,
+  });
+}
+
 /**
  * Chats tab row: the live thread once it is loaded in this session, otherwise the last
  * stored message from `GET /conversations`. A new thread has no preview until the user writes.
  */
 export function useConversationPreview(companion: PublicCharacter) {
   const state = useSourceState(companion.id);
-  const summaries = useQuery({
-    queryKey: CONVERSATIONS_QUERY_KEY,
-    queryFn: () => source.fetchSummaries(),
-    staleTime: 0,
-  });
+  const summaries = useConversationSummaries();
 
   const isDemo = source.isDemo;
   useEffect(() => {
