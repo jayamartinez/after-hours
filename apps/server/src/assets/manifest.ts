@@ -14,14 +14,16 @@ export function parseManifest(
 ): CompanionAssetManifest | null {
   const json = parseJson(text);
   if (!json.ok) {
-    warn(`[assets] Ignoring ${source}: invalid JSON (${json.reason}). Using default art.`);
+    warn(
+      `[assets] Ignoring ${source}: invalid JSON (${json.reason}). No companion images will show.`,
+    );
     return null;
   }
 
   const result = CompanionAssetManifestSchema.safeParse(json.value);
   if (!result.success) {
     warn(
-      `[assets] Ignoring ${source}: it does not match the manifest schema. Using default art.\n${z.prettifyError(result.error)}`,
+      `[assets] Ignoring ${source}: it does not match the manifest schema. No companion images will show.\n${z.prettifyError(result.error)}`,
     );
     return null;
   }
@@ -43,7 +45,7 @@ export function createManifestLoader(
     filePath,
     (text) => parseManifest(text, filePath, knownIds, warn),
     (reason) => {
-      warn(`[assets] Could not read ${filePath} (${reason}). Using default art.`);
+      warn(`[assets] Could not read ${filePath} (${reason}). No companion images will show.`);
       return null;
     },
   );

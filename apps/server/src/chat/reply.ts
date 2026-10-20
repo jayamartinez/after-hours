@@ -6,7 +6,7 @@ import type {
   ToolCall,
   ToolResult,
 } from '../providers/types';
-import { ChatModelError } from '../providers/types';
+import { addWebUsage, ChatModelError } from '../providers/types';
 
 import { createBubbleSplitter, isToolMarkup, withoutEmDashes } from './bubbles';
 import { addUsage } from './costs';
@@ -46,6 +46,9 @@ export interface StreamReplyResult {
  *
  * If the reply ends in tool calls, they run and the model continues with their results,
  * for at most `MAX_TOOL_ROUNDS` rounds; the last continuation runs with tools disabled.
+ * `request.web` is the whole reply's web allowance. Every continuation declares the same
+ * tools (thinking blocks are bound to them); tool rounds stay open until the last so a
+ * failed picture can be retried, and paused lookups stop once the allowance is used up.
  */
 export async function streamReply(
   model: ChatModel,
@@ -110,6 +113,7 @@ export async function streamReply(
       await chain;
       const toolResults = await handlers.onToolCalls(result.toolCalls);
       const earlier = result;
+      const earlierUsed = addWebUsage(undefined, result.webUsed);
       history = [
         ...history,
         { role: 'assistant', content: result.text, raw: result.raw },
@@ -118,14 +122,20 @@ export async function streamReply(
       // No retry here: part of the reply (and possibly a photo) is already delivered.
       const continued = await attempt({
         ...request,
+        // Tool rounds stay open until the last one so a failed picture can be retried with
+        // another page; one round can add at most its declared `max_uses` lookups, and the
+        // daily lookup and cost caps bound the rest. Paused lookups respect the reply's
+        // allowance in the provider.
         toolChoice: round < MAX_TOOL_ROUNDS ? 'auto' : 'none',
         messages: history,
+        webUsedBefore: earlierUsed,
       });
       // One reply's usage and lookups cover every round.
       result = {
         ...continued,
         usage: addUsage(earlier.usage, continued.usage),
         webRequests: (earlier.webRequests ?? 0) + (continued.webRequests ?? 0),
+        webUsed: addWebUsage(earlierUsed, continued.webUsed),
         billed: [...earlier.billed, ...continued.billed],
       };
     }

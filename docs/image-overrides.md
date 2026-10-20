@@ -19,9 +19,9 @@ The app ships no companion art. Until an image is configured, each slot shows a 
 3. Optional environment variables (in `.env`): `PRIVATE_ASSETS_DIR` (default `private-assets`), `COMPANION_ASSET_MANIFEST` (default `config/companion-assets.local.json`), `PUBLIC_SERVER_URL` (origin used in image URLs; default is the request's origin).
 4. Start or restart the server (`pnpm dev` or `pnpm dev:server`). Manifest edits are picked up on the next `GET /companions`; a restart is only needed after changing env vars. Reload the app.
 
-If the manifest is invalid JSON or fails validation, the server logs a warning and uses the default art for everything. A relative `src` whose file does not exist falls back to that slot's default. Unknown companion ids are ignored.
+If the manifest is invalid JSON or fails validation, the server logs a warning and ignores the whole file, so no companion images show. A relative `src` whose file does not exist leaves that slot empty. There is no bundled art (D-030); an empty slot shows a loading pulse. Unknown companion ids are ignored.
 
-Check the result: `curl http://localhost:8787/companions` shows each slot's `uri` (`null` means default art).
+Check the result: `curl http://localhost:8787/companions` shows each slot's `uri` (`null` means no image).
 
 ## Web
 

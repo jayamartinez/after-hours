@@ -12,7 +12,9 @@ import {
   type ChatResult,
   type ChatTurn,
   type ChatUsage,
+  addWebUsage,
   type StructuredModel,
+  webAllowanceUsedUp,
 } from './types';
 
 /**
@@ -288,9 +290,9 @@ export function createAnthropicChatModel(
       /** The request in flight; its partial usage is billed if it fails. */
       let open: ReturnType<typeof client.beta.messages.stream> | undefined;
       try {
-        const params = toAnthropicParams(request, config.model, config.effort);
         const content: Anthropic.Beta.BetaContentBlock[] = [];
         let message: Anthropic.Beta.BetaMessage | undefined;
+        const webUsed = { searches: 0, fetches: 0 };
         // Text that resumes after a tool block (a lookup, a picture) starts a new bubble.
         let wroteText = false;
         let afterTool = false;
@@ -300,9 +302,20 @@ export function createAnthropicChatModel(
           wroteText = true;
           onText?.(delta);
         };
+        // The tools stay byte-identical for the whole reply (thinking blocks are bound to
+        // them), so params are built once.
+        const params = toAnthropicParams(request, config.model, config.effort);
         // A long server-side lookup can pause the reply; resume it by sending the paused
-        // turn back (no extra user message).
+        // turn back (no extra user message). `max_uses` counts per request and cannot change
+        // mid-reply, so once the reply's web allowance is used up a paused turn is not
+        // resumed: the reply ends with the text it has.
         for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
+          if (
+            attempt > 0 &&
+            webAllowanceUsedUp(request.web, addWebUsage(request.webUsedBefore, webUsed))
+          ) {
+            break;
+          }
           const messages: Anthropic.Beta.BetaMessageParam[] = content.length
             ? [...params.messages, { role: 'assistant', content: [...content] }]
             : params.messages;
@@ -318,6 +331,9 @@ export function createAnthropicChatModel(
           open = undefined;
           billed.push(toBilled(message));
           content.push(...message.content);
+          const server = message.usage.server_tool_use;
+          webUsed.searches += server?.web_search_requests ?? 0;
+          webUsed.fetches += server?.web_fetch_requests ?? 0;
           if (message.stop_reason !== 'pause_turn') break;
         }
         if (!message) throw new ChatModelError('api', 'No reply from the model.', true);
@@ -334,7 +350,8 @@ export function createAnthropicChatModel(
           model: message.model,
           usage: billed.map((b) => b.usage).reduce(addUsage),
           toolCalls,
-          webRequests: billed.reduce((sum, b) => sum + b.webRequests, 0),
+          webRequests: webUsed.searches + webUsed.fetches,
+          webUsed,
           billed,
           raw: content,
         };

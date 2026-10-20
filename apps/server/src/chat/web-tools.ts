@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import type { ChatTool, ToolCall, ToolResult } from '../providers/types';
 
-import { findPageImage, PageImageFailure, type PageImage } from './page-image';
+import { withoutEmDashes } from './bubbles';
+import { findPageImage, isBlockedHost, PageImageFailure, type PageImage } from './page-image';
 
 /**
  * Limited web access (D-038): Anthropic's server-side web search and link reading, plus
@@ -78,6 +79,8 @@ export const SHARE_IMAGE_RESULTS = {
     blocked_url:
       'Not shared: that link cannot be opened. Use a normal https page from your results.',
     fetch_failed: 'Not shared: that page could not be loaded. Try a different page.',
+    blocked_site:
+      'Not shared: pictures from that site are off limits. Use a page from a different site.',
     no_image: 'Not shared: that page has no preview picture. Try a different page.',
     not_an_image: "Not shared: that page's picture is not a usable image. Try a different page.",
   },
@@ -85,14 +88,28 @@ export const SHARE_IMAGE_RESULTS = {
 
 export type ShareImageOutcome = { kind: 'sent' } | { kind: 'failed' };
 
+/** `findPageImage` with the blocklist applied to the page, every redirect, and the image. */
+const findAllowedPageImage = (pageUrl: string) =>
+  findPageImage(pageUrl, { blockedDomains: BLOCKED_DOMAINS });
+
+/** True when `url` parses and its host is on `BLOCKED_DOMAINS` (or a subdomain of one). */
+function isBlockedUrl(url: string): boolean {
+  try {
+    return isBlockedHost(new URL(url).hostname, BLOCKED_DOMAINS);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Runs `share_image` calls: at most one picture per reply. `find` is `findPageImage`
- * (injectable for tests); `share` stores and delivers it.
+ * with the blocklist (injectable for tests); `share` stores and delivers it. Blocked sites
+ * are refused here too, before and after `find`, so an injected finder cannot skip them.
  */
 export async function runShareImageCalls(
   calls: readonly ToolCall[],
   share: (image: PageImage & { caption: string }, call: ToolCall) => Promise<ShareImageOutcome>,
-  find: (pageUrl: string) => Promise<PageImage> = findPageImage,
+  find: (pageUrl: string) => Promise<PageImage> = findAllowedPageImage,
   /** Shared across a reply's tool rounds so one reply never shows two pictures. */
   reply: { pictureShared: boolean } = { pictureShared: false },
 ): Promise<ToolResult[]> {
@@ -108,11 +125,13 @@ export async function runShareImageCalls(
       continue;
     }
     try {
+      if (isBlockedUrl(parsed.data.pageUrl)) throw new PageImageFailure('blocked_site');
       const image = await find(parsed.data.pageUrl);
-      const outcome = await share(
-        { ...image, caption: parsed.data.caption.slice(0, MAX_CAPTION) },
-        call,
-      );
+      if (isBlockedUrl(image.url) || isBlockedUrl(image.pageUrl)) {
+        throw new PageImageFailure('blocked_site');
+      }
+      const caption = withoutEmDashes(parsed.data.caption).trim().slice(0, MAX_CAPTION);
+      const outcome = await share({ ...image, caption }, call);
       if (outcome.kind === 'sent') {
         reply.pictureShared = true;
         results.push({ callId: call.id, content: SHARE_IMAGE_RESULTS.sent });

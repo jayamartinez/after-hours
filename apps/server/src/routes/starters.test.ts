@@ -4,11 +4,14 @@ import path from 'node:path';
 
 import { presets } from '@after-hours/companions';
 import { StartersResponseSchema, type UserProfile } from '@after-hours/contracts';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app';
 import type { ServerConfig } from '../config';
 import { openDatabase, type Database } from '../db/client';
+import { users } from '../db/schema';
+import { createUser, getProfile } from '../db/users';
 import type { StructuredModel, StructuredRequest } from '../providers/types';
 import { call, events, newSession, postMessage, scriptedModel, USAGE } from '../test-chat';
 import { testConfig } from '../test-config';
@@ -98,6 +101,13 @@ describe('PUT /profile', () => {
       (await call(app, token, 'PUT', '/profile', { ...profile, values: ['rich'] })).status,
     ).toBe(400);
     expect((await call(app, token, 'PUT', '/profile', 'nope')).status).toBe(400);
+  });
+
+  it('reads a stored profile that no longer parses as none', async () => {
+    const userId = await createUser(database.db);
+    const stale = { ...profile, values: ['rich'] } as unknown as UserProfile;
+    await database.db.update(users).set({ profile: stale }).where(eq(users.id, userId));
+    expect(await getProfile(database.db, userId)).toBeNull();
   });
 
   it('requires a session', async () => {

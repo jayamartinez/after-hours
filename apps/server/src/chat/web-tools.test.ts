@@ -42,6 +42,40 @@ describe('runShareImageCalls', () => {
   });
 });
 
+describe('runShareImageCalls blocklist and captions', () => {
+  it('refuses a blocked page or a blocked image, and strips em dashes from captions', async () => {
+    const shared: { caption: string }[] = [];
+    const share = async (image: { caption: string }) => {
+      shared.push(image);
+      return { kind: 'sent' as const };
+    };
+    const blockedPage = await runShareImageCalls(
+      [call('1', { pageUrl: 'https://m.xvideos.com/v/1', caption: '' })],
+      share,
+      async () => {
+        throw new Error('a blocked page is never opened');
+      },
+    );
+    expect(blockedPage).toEqual([
+      { callId: '1', content: SHARE_IMAGE_RESULTS.failed.blocked_site, isError: true },
+    ]);
+    const blockedImage = await runShareImageCalls(
+      [call('2', { pageUrl: 'https://x/a', caption: '' })],
+      share,
+      async () => ({ ...found, url: 'https://cdn.onlyfans.com/a.jpg' }),
+    );
+    expect(blockedImage[0]?.content).toBe(SHARE_IMAGE_RESULTS.failed.blocked_site);
+    expect(shared).toEqual([]);
+
+    await runShareImageCalls(
+      [call('3', { pageUrl: 'https://x/a', caption: 'this one \u2014 trust me' })],
+      share,
+      async () => found,
+    );
+    expect(shared).toEqual([{ ...found, caption: 'this one, trust me' }]);
+  });
+});
+
 describe('webLimitsFor', () => {
   it('caps each tool per reply and turns web off when the day is used up', () => {
     expect(webLimitsFor(20)).toEqual({ searches: 2, fetches: 2, images: 1 });
