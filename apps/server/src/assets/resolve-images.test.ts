@@ -36,7 +36,7 @@ const resolve = (manifest: CompanionAssetManifest | null, definition = roy) =>
   resolveCompanionImages(definition, manifest, ctx());
 
 describe('resolveCompanionImages', () => {
-  it('uses bundled defaults (uri null) with default focal and alt when there is no manifest', () => {
+  it('leaves slots empty (uri null) with default focal and alt when there is no manifest', () => {
     const images = resolve(null);
     expect(images.hero).toEqual({
       uri: null,

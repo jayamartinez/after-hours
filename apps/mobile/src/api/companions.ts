@@ -10,11 +10,11 @@ export const COMPANIONS_QUERY_KEY = ['companions'] as const;
 
 export interface CompanionsResult {
   companions: PublicCharacter[];
-  /** `local`: the server was unreachable or invalid; bundled presets and default art are shown. */
+  /** `local`: the server was unreachable or invalid; bundled presets are shown, with no images. */
   source: 'server' | 'local';
 }
 
-/** Bundled presets projected to the public shape (no overrides; images on bundled defaults). */
+/** Bundled presets projected to the public shape (no overrides, so every image slot is empty). */
 const bundledCompanions = (): PublicCharacter[] =>
   presets.map((preset) => toPublicCharacter(preset));
 

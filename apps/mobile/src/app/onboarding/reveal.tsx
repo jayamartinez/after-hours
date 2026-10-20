@@ -56,6 +56,7 @@ export default function RevealScreen() {
           <Text style={styles.subline}>
             {companion.age} · {companion.publicProfile.copy.revealSubline}
           </Text>
+          <Text style={styles.note}>{companion.disclosure.note}</Text>
         </StaggerIn>
       </View>
       <View style={styles.bottom}>
@@ -136,6 +137,8 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   subline: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.textMuted },
+  // The non-affiliation note (D-029): onboarding is the only place it appears.
+  note: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, color: colors.textMuted },
   bottom: { gap: spacing.lg, paddingHorizontal: spacing.gutter, paddingTop: spacing.xxl },
   why: { gap: 10, paddingBottom: spacing.sm },
   reasons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

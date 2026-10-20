@@ -20,8 +20,8 @@ import { colors, fonts, layout, radius, spacing } from '@/theme/tokens';
 const PAYWALL_DELAY_MS = 1600;
 
 /**
- * 12 · First message: the real chat. The first message and its reply end onboarding: the
- * paywall (unless already subscribed), then the welcome screen (D-034).
+ * 12 · First message: the real chat. The reply to the last free message (FREE_MESSAGES) ends
+ * onboarding: the paywall (unless already subscribed), then the welcome screen (D-034).
  */
 export default function FirstMessageScreen() {
   const { companion } = useMatch();
@@ -35,10 +35,10 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
   const priorSent = usePriorSent(messages, isLoading);
   const { phase, left } = firstChatPhase(messages, isTyping, priorSent);
   const answered = phase === 'answered';
-  const preferences = useOnboarding((s) => s.preferences);
+  const profilePending = useOnboarding((s) => s.profilePending);
   const subscribed = useOnboarding((s) => s.demoPurchase !== null);
-  // Written from the answers just given (sent to the server first), so every user gets their own.
-  const allStarters = useStarters(companion, { isDemo, profile: preferences });
+  // Written from the answers just given, so they wait for those to save (useProfileSync).
+  const allStarters = useStarters(companion, { enabled: !profilePending, isDemo });
 
   // Already "subscribed" (demo): skip the paywall.
   const continueOn = useCallback(() => {
