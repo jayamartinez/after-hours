@@ -10,12 +10,16 @@ import {
   CreditsResponseSchema,
   FREE_DAILY_MESSAGES,
   MAX_ADS_PER_DAY,
+  PLUS_DAILY_MESSAGES,
 } from '@after-hours/contracts';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app';
 import { openDatabase, type Database } from '../db/client';
-import { getAllowance, spendMessage } from '../db/message-allowance';
+import { DAILY_COST_BUDGET_USD } from '../chat/costs';
+import { addSpend, getAllowance, spendMessage } from '../db/message-allowance';
+import { spendUsage } from '../db/schema';
 import { call, events, newSession, nextClientId, scriptedModel } from '../test-chat';
 import { testConfig } from '../test-config';
 
@@ -69,8 +73,9 @@ describe('message allowance', () => {
     const body = await credits(token);
     expect(body.balance).toBe(0);
     expect(body.messages).toMatchObject({
-      unlimited: false,
-      freeLeftToday: FREE_DAILY_MESSAGES,
+      plan: 'free',
+      dailyIncluded: FREE_DAILY_MESSAGES,
+      includedLeftToday: FREE_DAILY_MESSAGES,
       bonus: 0,
       adsLeftToday: MAX_ADS_PER_DAY,
     });
@@ -79,7 +84,7 @@ describe('message allowance', () => {
   it('refuses a new message once the free ones are used, without storing it or calling the model', async () => {
     const token = await newSession(app);
     await useFreeMessages(token);
-    expect((await credits(token)).messages.freeLeftToday).toBe(0);
+    expect((await credits(token)).messages.includedLeftToday).toBe(0);
     const calls = chat.requests.length;
 
     const res = await post(token, 'one more');
@@ -103,7 +108,7 @@ describe('message allowance', () => {
     const token = await newSession(app);
     await useFreeMessages(token);
     await call(app, token, 'DELETE', '/conversations/roy');
-    expect((await credits(token)).messages.freeLeftToday).toBe(0);
+    expect((await credits(token)).messages.includedLeftToday).toBe(0);
     expect((await post(token, 'fresh start?')).status).toBe(402);
   });
 
@@ -141,15 +146,42 @@ describe('message allowance', () => {
     );
   });
 
-  it('Plus is unlimited and never touches the free count', async () => {
+  it('Plus includes more messages a day, counted the same way', async () => {
     const token = await newSession(app);
     await call(app, token, 'POST', '/plus', { plan: 'monthly' });
     for (let i = 0; i < FREE_DAILY_MESSAGES + 2; i++) {
       expect((await post(token, `plus ${i}`)).status).toBe(200);
     }
     const { messages } = await credits(token);
-    expect(messages.unlimited).toBe(true);
-    expect(messages.freeLeftToday).toBe(FREE_DAILY_MESSAGES);
+    expect(messages).toMatchObject({
+      plan: 'plus',
+      dailyIncluded: PLUS_DAILY_MESSAGES,
+      includedLeftToday: PLUS_DAILY_MESSAGES - FREE_DAILY_MESSAGES - 2,
+    });
+  });
+
+  it('past the daily cost budget only bonus messages go through, and the budget stays hidden', async () => {
+    const token = await newSession(app);
+    const userId = userIdOf(token);
+    await addSpend(database.db, userId, Math.round(DAILY_COST_BUDGET_USD.free * 1_000_000));
+    const { messages } = await credits(token);
+    expect(messages.includedLeftToday).toBe(0);
+    expect(JSON.stringify(messages)).not.toMatch(/budget|usd|spend/i);
+    expect((await post(token, 'over budget')).status).toBe(402);
+
+    await call(app, token, 'POST', '/messages/ad', { adId: 'budget-ad-01' });
+    expect((await post(token, 'paid for this one')).status).toBe(200);
+    expect((await credits(token)).messages.bonus).toBe(AD_REWARD_MESSAGES - 1);
+  });
+
+  it('records the estimated cost of each reply', async () => {
+    const token = await newSession(app);
+    await events(await post(token, 'hi'));
+    const [row] = await database.db
+      .select()
+      .from(spendUsage)
+      .where(eq(spendUsage.userId, userIdOf(token)));
+    expect(row?.microUsd).toBeGreaterThan(0);
   });
 
   it("one user's usage, ads, and packs never affect another's", async () => {
@@ -160,7 +192,7 @@ describe('message allowance', () => {
     // B reusing A's ad id gets B's own reward.
     await call(app, b, 'POST', '/messages/ad', { adId: 'shared-ad-id' });
     expect((await credits(b)).messages).toMatchObject({
-      freeLeftToday: FREE_DAILY_MESSAGES,
+      includedLeftToday: FREE_DAILY_MESSAGES,
       bonus: AD_REWARD_MESSAGES,
     });
     expect((await credits(a)).messages.bonus).toBe(AD_REWARD_MESSAGES);
@@ -171,14 +203,14 @@ describe('message allowance', () => {
     const userId = userIdOf(token);
     const day = new Date('2026-10-20T23:00:00Z');
     for (let i = 0; i < FREE_DAILY_MESSAGES; i++) {
-      expect(await spendMessage(database.db, userId, day)).toBe('free');
+      expect(await spendMessage(database.db, userId, day)).toBe('included');
     }
     expect(await spendMessage(database.db, userId, day)).toBeNull();
     const next = new Date('2026-10-21T00:00:01Z');
-    expect((await getAllowance(database.db, userId, next))?.freeLeftToday).toBe(
+    expect((await getAllowance(database.db, userId, next))?.includedLeftToday).toBe(
       FREE_DAILY_MESSAGES,
     );
-    expect(await spendMessage(database.db, userId, next)).toBe('free');
+    expect(await spendMessage(database.db, userId, next)).toBe('included');
     expect((await getAllowance(database.db, userId, day))?.resetsAt).toBe(
       '2026-10-21T00:00:00.000Z',
     );
@@ -214,7 +246,7 @@ describe('free and Plus tiers (D-040)', () => {
     expect(res.status).toBe(400);
     expect(ApiErrorSchema.parse(await res.json()).code).toBe('message_too_long');
     // Refused before anything is stored or spent.
-    expect((await credits(token)).messages.freeLeftToday).toBe(FREE_DAILY_MESSAGES - 1);
+    expect((await credits(token)).messages.includedLeftToday).toBe(FREE_DAILY_MESSAGES - 1);
   });
 
   it('Plus users get the Plus model and the full limit', async () => {

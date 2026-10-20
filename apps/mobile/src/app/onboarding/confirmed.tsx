@@ -1,4 +1,8 @@
-import { FREE_DAILY_MESSAGES, PLUS_MONTHLY_CREDITS } from '@after-hours/contracts';
+import {
+  FREE_DAILY_MESSAGES,
+  PLUS_DAILY_MESSAGES,
+  PLUS_MONTHLY_CREDITS,
+} from '@after-hours/contracts';
 import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
@@ -40,7 +44,7 @@ export default function ConfirmedScreen() {
   if (subscribed) {
     kicker = 'After Hours Plus';
     title = purchased ? "You're in." : 'Welcome back.';
-    perks = ['Unlimited messages', `${PLUS_MONTHLY_CREDITS} photos a month`];
+    perks = [`${PLUS_DAILY_MESSAGES} messages a day`, `${PLUS_MONTHLY_CREDITS} photos a month`];
   }
 
   return (

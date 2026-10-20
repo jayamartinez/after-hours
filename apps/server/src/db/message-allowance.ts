@@ -4,27 +4,63 @@ import {
   MAX_ADS_PER_DAY,
   MAX_BONUS_MESSAGES,
   MESSAGE_PACKS,
+  PLUS_DAILY_MESSAGES,
   type MessageAllowance,
   type MessagePackId,
+  type Plan,
 } from '@after-hours/contracts';
 import { and, count, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
+import { DAILY_COST_BUDGET_USD } from '../chat/costs';
+
 import type { Db } from './client';
-import { messageGrants, messageUsage, users } from './schema';
+import { messageGrants, messageUsage, spendUsage, users } from './schema';
 
 /**
- * Message allowance (D-036): Plus is unlimited; everyone else gets `FREE_DAILY_MESSAGES`
- * per UTC day, then spends bonus messages from demo packs and demo ads.
+ * Message allowance (D-036, D-041): each plan includes messages per UTC day (free 10,
+ * Plus 300), then bonus messages from demo packs and ads are spent. A hidden daily cost
+ * budget (`DAILY_COST_BUDGET_USD`, from real token usage) backs this up: once a user's
+ * estimated spend for the day reaches it, only bonus messages go through.
  */
 
 const DAY_MS = 86_400_000;
 
-/** The UTC day `now` falls in, as stored in `message_usage.day`. */
+/** The UTC day `now` falls in, as stored in the per-day tables. */
 export const utcDay = (now: Date) => now.toISOString().slice(0, 10);
 const dayStart = (now: Date) => new Date(`${utcDay(now)}T00:00:00.000Z`);
 const nextReset = (now: Date) => new Date(dayStart(now).getTime() + DAY_MS);
 
-export type MessageSpend = 'unlimited' | 'free' | 'bonus';
+export type MessageSpend = 'included' | 'bonus';
+
+const planOf = (plusPlan: string | null): Plan => (plusPlan ? 'plus' : 'free');
+const dailyIncluded = (plan: Plan) => (plan === 'plus' ? PLUS_DAILY_MESSAGES : FREE_DAILY_MESSAGES);
+const budgetMicroUsd = (plan: Plan) => Math.round(DAILY_COST_BUDGET_USD[plan] * 1_000_000);
+
+/** Estimated spend so far today, in micro-dollars. */
+async function spentToday(db: Db, userId: string, now: Date): Promise<number> {
+  const [row] = await db
+    .select({ microUsd: spendUsage.microUsd })
+    .from(spendUsage)
+    .where(and(eq(spendUsage.userId, userId), eq(spendUsage.day, utcDay(now))));
+  return row?.microUsd ?? 0;
+}
+
+/** Records the estimated cost of a reply against today's budget. */
+export async function addSpend(
+  db: Db,
+  userId: string,
+  microUsd: number,
+  now = new Date(),
+): Promise<void> {
+  if (microUsd <= 0) return;
+  await db
+    .insert(spendUsage)
+    .values({ userId, day: utcDay(now), microUsd })
+    .onConflictDoUpdate({
+      target: [spendUsage.userId, spendUsage.day],
+      set: { microUsd: sql`${spendUsage.microUsd} + ${microUsd}` },
+    });
+}
 
 export async function getAllowance(
   db: Db,
@@ -36,6 +72,7 @@ export async function getAllowance(
     .from(users)
     .where(eq(users.id, userId));
   if (!user) return null;
+  const plan = planOf(user.plusPlan);
   const [usage] = await db
     .select({ count: messageUsage.count })
     .from(messageUsage)
@@ -51,9 +88,13 @@ export async function getAllowance(
         lt(messageGrants.createdAt, nextReset(now)),
       ),
     );
+  const overBudget = (await spentToday(db, userId, now)) >= budgetMicroUsd(plan);
   return {
-    unlimited: user.plusPlan !== null,
-    freeLeftToday: Math.max(0, FREE_DAILY_MESSAGES - (usage?.count ?? 0)),
+    plan,
+    dailyIncluded: dailyIncluded(plan),
+    // Past the hidden budget the plan's messages read as used up (the budget itself is
+    // never shown).
+    includedLeftToday: overBudget ? 0 : Math.max(0, dailyIncluded(plan) - (usage?.count ?? 0)),
     bonus: user.bonus,
     adsLeftToday: Math.max(0, MAX_ADS_PER_DAY - (ads?.n ?? 0)),
     resetsAt: nextReset(now).toISOString(),
@@ -61,8 +102,9 @@ export async function getAllowance(
 }
 
 /**
- * Takes one message from the allowance: free first, then bonus. Null when nothing is left
- * (the send is refused). Plus users are never charged, and their free count is untouched.
+ * Takes one message from the allowance: the plan's daily messages first (unless today's
+ * cost budget is used up), then bonus messages. Null when nothing is left (the send is
+ * refused).
  */
 export async function spendMessage(
   db: Db,
@@ -75,19 +117,21 @@ export async function spendMessage(
       .from(users)
       .where(eq(users.id, userId));
     if (!user) return null;
-    if (user.plusPlan !== null) return 'unlimited';
+    const plan = planOf(user.plusPlan);
 
-    // Counts one free message unless today's are used up (atomic under concurrent sends).
-    const [free] = await tx
-      .insert(messageUsage)
-      .values({ userId, day: utcDay(now), count: 1 })
-      .onConflictDoUpdate({
-        target: [messageUsage.userId, messageUsage.day],
-        set: { count: sql`${messageUsage.count} + 1` },
-        setWhere: lt(messageUsage.count, FREE_DAILY_MESSAGES),
-      })
-      .returning({ count: messageUsage.count });
-    if (free) return 'free';
+    if ((await spentToday(tx, userId, now)) < budgetMicroUsd(plan)) {
+      // Counts one included message unless today's are used up (atomic under concurrent sends).
+      const [included] = await tx
+        .insert(messageUsage)
+        .values({ userId, day: utcDay(now), count: 1 })
+        .onConflictDoUpdate({
+          target: [messageUsage.userId, messageUsage.day],
+          set: { count: sql`${messageUsage.count} + 1` },
+          setWhere: lt(messageUsage.count, dailyIncluded(plan)),
+        })
+        .returning({ count: messageUsage.count });
+      if (included) return 'included';
+    }
 
     const [bonus] = await tx
       .update(users)

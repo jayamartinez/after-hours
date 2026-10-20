@@ -1,4 +1,4 @@
-import { PLUS_MONTHLY_CREDITS } from '@after-hours/contracts';
+import { PLUS_DAILY_MESSAGES, PLUS_MONTHLY_CREDITS } from '@after-hours/contracts';
 
 /**
  * DEMO DATA for onboarding. Example memories illustrate the memory controls (nothing is
@@ -30,25 +30,25 @@ export const DEMO_PLANS: readonly DemoPlanOption[] = [
   {
     id: 'annual',
     name: 'Annual',
-    detail: '$5.00/mo, billed yearly',
-    price: '$59.99 / year',
+    detail: '$16.67/mo, billed yearly',
+    price: '$199.99 / year',
     badge: 'Best value',
     finePrint:
-      'Free for 7 days, then $59.99/year. Cancel anytime before the trial ends and you won’t be charged.',
+      'Free for 7 days, then $199.99/year. Cancel anytime before the trial ends and you won’t be charged.',
   },
   {
     id: 'monthly',
     name: 'Monthly',
     detail: 'Billed monthly',
-    price: '$9.99 / month',
+    price: '$19.99 / month',
     finePrint:
-      'Free for 7 days, then $9.99/month. Cancel anytime before the trial ends and you won’t be charged.',
+      'Free for 7 days, then $19.99/month. Cancel anytime before the trial ends and you won’t be charged.',
   },
 ];
 
 /** Plus features. `{names}` is replaced with the companions' names from config. */
 export const PLUS_FEATURES = [
-  'Unlimited messages',
+  `${PLUS_DAILY_MESSAGES} messages a day`,
   'Voice notes & calls',
   `${PLUS_MONTHLY_CREDITS} photos a month from {names}`,
   'Longer memory',

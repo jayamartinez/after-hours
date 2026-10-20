@@ -96,7 +96,13 @@ describe('buildChatRequest', () => {
       { type: 'text', text: buildSystemPrompt(roya), cache_control: { type: 'ephemeral' } },
       { type: 'text', text: request.system.context },
     ]);
-    expect(params.messages).toEqual([{ role: 'user', content: 'hi' }]);
+    // The latest message is the history cache breakpoint (D-041).
+    expect(params.messages).toEqual([
+      {
+        role: 'user',
+        content: [{ type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } }],
+      },
+    ]);
     expect(JSON.stringify(params.system)).toContain(
       JSON.stringify(roya.persona.personality.modes.sincere).slice(1, -1),
     );

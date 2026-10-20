@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 
+import { addUsage } from '../chat/costs';
 import type { ChatConfig } from '../config';
 
 import {
@@ -13,8 +14,11 @@ import {
   type StructuredModel,
 } from './types';
 
-/** Short texting replies; generous enough that thinking at low effort never truncates them. */
-const DEFAULT_MAX_TOKENS = 4000;
+/**
+ * Texting replies are short. The cap bounds what one reply can cost (D-041) while leaving
+ * room for low-effort thinking, so a normal reply is never cut off.
+ */
+const DEFAULT_MAX_TOKENS = 2000;
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 /** A reply that pauses mid server-side lookup is resumed at most this many times. */
 const MAX_CONTINUATIONS = 3;
@@ -59,6 +63,24 @@ export function joinText(content: readonly Anthropic.Beta.BetaContentBlock[]): s
   return text;
 }
 
+/**
+ * Marks the latest message as a cache breakpoint (D-041), so the next turn reads the whole
+ * conversation so far from the cache instead of paying full price for it again. The
+ * character prompt is the other breakpoint.
+ */
+export function withHistoryCache(
+  messages: Anthropic.Beta.BetaMessageParam[],
+): Anthropic.Beta.BetaMessageParam[] {
+  const last = messages.at(-1);
+  if (!last) return messages;
+  const blocks: Anthropic.Beta.BetaContentBlockParam[] =
+    typeof last.content === 'string' ? [{ type: 'text', text: last.content }] : [...last.content];
+  const tail = blocks.at(-1);
+  if (!tail || tail.type === 'thinking' || tail.type === 'redacted_thinking') return messages;
+  blocks[blocks.length - 1] = { ...tail, cache_control: { type: 'ephemeral' } } as typeof tail;
+  return [...messages.slice(0, -1), { ...last, content: blocks }];
+}
+
 /** Builds the Messages API params for one chat turn (exported for tests). */
 export function toAnthropicParams(
   request: ChatRequest,
@@ -101,7 +123,7 @@ export function toAnthropicParams(
     model,
     max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
     system,
-    messages: request.messages.map(toMessageParam),
+    messages: withHistoryCache(request.messages.map(toMessageParam)),
     ...tools,
     output_config: { effort },
     betas: [FALLBACK_BETA],
@@ -216,6 +238,7 @@ export function createAnthropicChatModel(
         const content: Anthropic.Beta.BetaContentBlock[] = [];
         let message: Anthropic.Beta.BetaMessage | undefined;
         let webRequests = 0;
+        let usage: ChatUsage | undefined;
         // Text that resumes after a tool block (a lookup, a picture) starts a new bubble.
         let wroteText = false;
         let afterTool = false;
@@ -240,6 +263,8 @@ export function createAnthropicChatModel(
           });
           message = await stream.finalMessage();
           content.push(...message.content);
+          const segment = toUsage(message.usage);
+          usage = usage ? addUsage(usage, segment) : segment;
           const server = message.usage.server_tool_use;
           webRequests += (server?.web_search_requests ?? 0) + (server?.web_fetch_requests ?? 0);
           if (message.stop_reason !== 'pause_turn') break;
@@ -256,7 +281,7 @@ export function createAnthropicChatModel(
           text,
           stopReason: message.stop_reason,
           model: message.model,
-          usage: toUsage(message.usage),
+          usage: usage ?? toUsage(message.usage),
           toolCalls,
           webRequests,
           raw: content,

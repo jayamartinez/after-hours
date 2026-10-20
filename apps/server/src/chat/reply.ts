@@ -2,6 +2,7 @@ import type { ChatModel, ChatRequest, ChatResult, ToolCall, ToolResult } from '.
 import { ChatModelError } from '../providers/types';
 
 import { createBubbleSplitter, isToolMarkup, withoutEmDashes } from './bubbles';
+import { addUsage } from './costs';
 
 /**
  * Tool rounds per reply: a second round lets a failed picture be retried with another page.
@@ -92,7 +93,7 @@ export async function streamReply(
     ) {
       await chain;
       const toolResults = await handlers.onToolCalls(result.toolCalls);
-      const earlierWeb = result.webRequests ?? 0;
+      const earlier = result;
       history = [
         ...history,
         { role: 'assistant', content: result.text, raw: result.raw },
@@ -104,7 +105,12 @@ export async function streamReply(
         toolChoice: round < MAX_TOOL_ROUNDS ? 'auto' : 'none',
         messages: history,
       });
-      result = { ...continued, webRequests: earlierWeb + (continued.webRequests ?? 0) };
+      // One reply's usage and lookups cover every round (the cost budget counts them all).
+      result = {
+        ...continued,
+        usage: addUsage(earlier.usage, continued.usage),
+        webRequests: (earlier.webRequests ?? 0) + (continued.webRequests ?? 0),
+      };
     }
     await chain;
     return { bubbles, result };

@@ -65,6 +65,22 @@ export const messageUsage = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 ).enableRLS();
 
+/**
+ * Estimated provider spend per user per UTC day, in micro-dollars (D-041), from the token
+ * usage of every chat reply and its web lookups. Drives the hidden daily cost budget.
+ */
+export const spendUsage = pgTable(
+  'spend_usage',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    microUsd: integer('micro_usd').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+).enableRLS();
+
 /** Web lookups (searches, link reads, shared pictures) per user per UTC day (D-038). */
 export const webUsage = pgTable(
   'web_usage',

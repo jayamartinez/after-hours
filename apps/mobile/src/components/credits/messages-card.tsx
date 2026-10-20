@@ -16,7 +16,6 @@ export function MessagesCard({ onMessage }: { onMessage: (text: string) => void 
 
   let detail = `${FREE_DAILY_MESSAGES} free every day`;
   if (isError) detail = 'Couldn’t load your messages. Tap to try again.';
-  else if (allowance?.unlimited) detail = 'Included with Plus';
   else if (allowance) detail = resetsInLabel(allowance.resetsAt);
 
   return (

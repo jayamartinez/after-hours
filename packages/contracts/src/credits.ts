@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { CompanionIdSchema } from './companion';
 
 /**
- * Photo credits (D-026) and messages (D-036). A companion's photo costs one credit; free
- * users get none. Messages: a daily free allowance, then bonus messages from demo packs or
- * demo ads; Plus is unlimited. Purchases and ads are a demo: no payment is taken, no ad is
+ * Photo credits (D-026) and messages (D-036, D-041). A companion's photo costs one credit;
+ * free users get none. Messages: a daily allowance per plan (free or Plus), then bonus
+ * messages from demo packs or demo ads. Purchases and ads are a demo: no payment is taken, no ad is
  * shown, and the UI labels them as such (D-008).
  */
 
@@ -14,6 +14,8 @@ export const FREE_STARTING_CREDITS = 0;
 
 /** Messages a free user can send per UTC day, across companions. */
 export const FREE_DAILY_MESSAGES = 10;
+/** Messages included with demo Plus per UTC day (D-041). */
+export const PLUS_DAILY_MESSAGES = 300;
 /** Bonus messages one (demo) ad grants. */
 export const AD_REWARD_MESSAGES = 5;
 /** Ads a user can watch per UTC day. */
@@ -43,15 +45,19 @@ export const CREDIT_PACKS = [
 export const CreditPackIdSchema = z.enum(['photos-10', 'photos-30', 'photos-100']);
 export const PlusPlanSchema = z.enum(['annual', 'monthly']);
 
+export const PlanSchema = z.enum(['free', 'plus']);
+
 /** What the user can still send. */
 export const MessageAllowanceSchema = z.object({
-  /** Plus: no limit. The counts below still report usage. */
-  unlimited: z.boolean(),
-  freeLeftToday: z.number().int().min(0),
+  plan: PlanSchema,
+  /** Messages the plan includes per day. */
+  dailyIncluded: z.number().int().min(0),
+  /** Included messages left today (0 once the day's usage limit is reached). */
+  includedLeftToday: z.number().int().min(0),
   /** Bought or earned messages, spent after the free ones. */
   bonus: z.number().int().min(0),
   adsLeftToday: z.number().int().min(0),
-  /** Next UTC midnight, when the free allowance and ads reset (ISO 8601). */
+  /** Next UTC midnight, when the daily allowance and ads reset (ISO 8601). */
   resetsAt: z.iso.datetime({ offset: true }),
 });
 
@@ -115,6 +121,7 @@ export type CreditPackId = z.infer<typeof CreditPackIdSchema>;
 export type PlusPlan = z.infer<typeof PlusPlanSchema>;
 export type CreditsResponse = z.infer<typeof CreditsResponseSchema>;
 export type MessageAllowance = z.infer<typeof MessageAllowanceSchema>;
+export type Plan = z.infer<typeof PlanSchema>;
 export type MessagePack = (typeof MESSAGE_PACKS)[number];
 export type MessagePackId = z.infer<typeof MessagePackIdSchema>;
 export type PurchaseMessagesRequest = z.infer<typeof PurchaseMessagesRequestSchema>;

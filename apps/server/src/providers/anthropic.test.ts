@@ -5,7 +5,13 @@ import { SEND_PHOTO_TOOL } from '../chat/photo-tool';
 
 import type Anthropic from '@anthropic-ai/sdk';
 
-import { createAnthropicChatModel, joinText, toAnthropicParams, toOutputSchema } from './anthropic';
+import {
+  createAnthropicChatModel,
+  joinText,
+  toAnthropicParams,
+  toOutputSchema,
+  withHistoryCache,
+} from './anthropic';
 
 describe('toOutputSchema', () => {
   it('drops keywords structured outputs reject, keeping the shape', () => {
@@ -66,7 +72,14 @@ describe('toAnthropicParams with tools', () => {
     expect(params.messages[1]).toEqual({ role: 'assistant', content: raw });
     expect(params.messages[2]).toEqual({
       role: 'user',
-      content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'sent' }],
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'toolu_1',
+          content: 'sent',
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
     });
   });
 });
@@ -174,5 +187,27 @@ describe('web access', () => {
     // The paused turn goes back as an assistant message, with no extra user message.
     expect(requests[1]?.messages.at(-1)).toMatchObject({ role: 'assistant' });
     expect(requests[1]?.messages).toHaveLength(2);
+  });
+});
+
+describe('withHistoryCache', () => {
+  it('marks the latest message so the next turn reads the conversation from cache', () => {
+    const messages = withHistoryCache([
+      { role: 'user', content: 'hey' },
+      { role: 'assistant', content: 'yo' },
+      { role: 'user', content: 'what now' },
+    ]);
+    expect(messages[0]).toEqual({ role: 'user', content: 'hey' });
+    expect(messages[2]).toEqual({
+      role: 'user',
+      content: [{ type: 'text', text: 'what now', cache_control: { type: 'ephemeral' } }],
+    });
+    const params = toAnthropicParams(
+      { system: { stable: 'You are Roy.' }, messages: [{ role: 'user', content: 'hi' }] },
+      'm',
+      'low',
+    );
+    expect(JSON.stringify(params.messages)).toContain('"cache_control"');
+    expect(params.max_tokens).toBeLessThanOrEqual(2000);
   });
 });

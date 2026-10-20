@@ -86,6 +86,16 @@ Built in D-032 (`chat/relationship.ts`, `chat/starters.ts`, `routes/profile.ts`)
 - **Pacing:** each turn's volatile context gets a relationship stage from the thread's user-message count and how many memories this companion has: `new` (≤ 6 messages and < 4 memories: short replies, one specific question about the user's life, little self-disclosure, teasing and flirting held back), `warming` (≤ 30 and < 10: occasional follow-ups, usual length), then `familiar` (usual style). Memories count so a cleared thread does not start over. 
 - **Starters:** `GET /conversations/:companionId/starters` asks `MEMORY_MODEL` for 4 tap-to-send lines in the user's voice from their profile and this companion's memories, cached in-process per user × companion until either changes (rate-limited per user). Without a memory model, under the kill switch, when rate-limited, or on failure, the companion's default `publicProfile.starters` are returned. The app shows them in the onboarding chat and in any empty thread (new or cleared).
 
+### Cost controls
+
+Built in D-040 and D-041 (`chat/costs.ts`, `db/message-allowance.ts`, the Anthropic provider):
+
+- **Models by plan:** free users' replies use `CHAT_FREE_MODEL`, demo Plus `CHAT_PRIMARY_MODEL`; background work uses `MEMORY_MODEL`. Free messages are capped at 850 characters, Plus at 2,000.
+- **Allowance:** each plan includes messages per UTC day (free 10, Plus 300), counted in `message_usage`; bonus messages from packs and ads come after.
+- **Hidden cost budget:** after each reply the server estimates its cost from the summed token usage of every request in the reply (pause continuations and tool rounds included) at list prices, plus $0.01 per web lookup, and adds it to `spend_usage (user_id, day, micro_usd)`. Once a user's day reaches the plan budget ($1.50 Plus, $0.15 free), included messages stop and only bonus messages are spent; `GET /credits` reports the plan's messages as used up and never exposes the budget. Unknown models are priced conservatively. Memory-model calls are not counted (they are a small fraction).
+- **Caching:** two cache breakpoints per request: the character prompt and the latest message, so each turn reads the conversation so far from the cache.
+- **Output cap:** 2,000 tokens per reply (room for low-effort thinking plus a few texts).
+
 ### Web access
 
 Built in D-038 (`chat/web-tools.ts`, `chat/page-image.ts`, `db/web-usage.ts`, the Anthropic provider):
@@ -146,7 +156,7 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 
 - **Targets:** `DATABASE_URL` set → node-postgres (hosted Supabase, session pooler URI). Unset → PGlite (in-process Postgres, no Docker) persisted to `PGLITE_DIR` (default `local-data/pglite`, git-ignored) and migrated at server startup. Tests use in-memory PGlite. PGlite is single-process; a pid `.lock` file next to the directory stops a second process (e.g. `db:migrate` during `pnpm dev`) from opening it.
 - **Scoping:** every query filters by `userId` (or a conversation id resolved through it). RLS is enabled on every table with no policies: the server connects as the table owner, and Supabase's public PostgREST roles see nothing. Route tests prove two users and two companions stay isolated.
-- **Built now:** `users` (id, image_credits, plus_plan, plus_since, bonus_messages, profile jsonb, created_at); `web_usage` (user_id, day; count); `message_usage` (user_id, day; count); `message_grants` (id, user_id, kind `purchase`/`ad`, amount, ref unique per user, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
+- **Built now:** `users` (id, image_credits, plus_plan, plus_since, bonus_messages, profile jsonb, created_at); `web_usage` (user_id, day; count); `message_usage` (user_id, day; count); `spend_usage` (user_id, day; micro_usd); `message_grants` (id, user_id, kind `purchase`/`ad`, amount, ref unique per user, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
 
 | Table | Key columns |
 | --- | --- |

@@ -43,6 +43,13 @@
       "when": 1792512807131,
       "tag": "0005_elite_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792521262716,
+      "tag": "0006_chilly_steve_rogers",
+      "breakpoints": true
     }
   ]
 }

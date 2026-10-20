@@ -50,7 +50,8 @@ import {
   toMessageDto,
 } from '../db/conversations';
 import { listMemories } from '../db/memories';
-import { spendMessage } from '../db/message-allowance';
+import { addSpend, spendMessage } from '../db/message-allowance';
+import { replyCostMicroUsd } from '../chat/costs';
 import type { MessageRow } from '../db/schema';
 import { getProfile, isPlus } from '../db/users';
 import { addWebLookups, remainingWebLookups } from '../db/web-usage';
@@ -341,6 +342,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               return { kind: 'sent' };
             };
             let webRequests = 0;
+            let replyCost = 0;
             /** One photo and one picture per reply, across tool rounds. */
             const replyTools = { photoAttempted: false, pictureShared: false };
             try {
@@ -372,6 +374,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
                 ],
               });
               webRequests = result.webRequests ?? 0;
+              replyCost = replyCostMicroUsd(result.model, result.usage, webRequests);
               if (saved.length === 0) {
                 throw new ChatModelError('api', 'The model returned an empty reply.', true);
               }
@@ -393,6 +396,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
             }
 
             await addWebLookups(db, userId, webRequests + picturesShared);
+            await addSpend(db, userId, replyCost);
             await setMessageStatus(db, conversationId, [userRow.id], 'read');
             await send({ type: 'done', userMessageId: userRow.id, messageIds: saved });
 

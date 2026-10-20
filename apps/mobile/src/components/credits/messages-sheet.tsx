@@ -1,6 +1,7 @@
 import {
   AD_REWARD_MESSAGES,
   MESSAGE_PACKS,
+  PLUS_DAILY_MESSAGES,
   type CreditsResponse,
   type MessagePackId,
 } from '@after-hours/contracts';
@@ -28,7 +29,7 @@ interface MessagesSheetProps {
 }
 
 /**
- * "More messages" (D-036): a demo ad, demo message packs, and a pointer to Plus (unlimited).
+ * "More messages" (D-036): a demo ad, demo message packs, and a pointer to Plus (D-041).
  * Opens from chat when the allowance runs out, and from You. Nothing is charged and no ad
  * is shown: the ad row runs a short labeled countdown instead.
  */
@@ -39,9 +40,7 @@ export function MessagesSheet({ visible, onClose, onMessage, onRefill }: Message
   const [adLeft, setAdLeft] = useState<number | null>(null);
   const busy = buy.isPending || claimAd.isPending || adLeft !== null;
   const allowance = credits?.messages;
-  const out = allowance
-    ? !allowance.unlimited && allowance.freeLeftToday + allowance.bonus === 0
-    : false;
+  const out = allowance ? allowance.includedLeftToday + allowance.bonus === 0 : false;
 
   const done = (result: CreditsResponse, what: string) => {
     onClose();
@@ -157,7 +156,9 @@ export function MessagesSheet({ visible, onClose, onMessage, onRefill }: Message
         style={s.link}
       >
         <Text style={s.linkText}>
-          {allowance?.unlimited ? 'Plus is on · unlimited messages' : 'Plus: unlimited messages →'}
+          {allowance?.plan === 'plus'
+            ? `Plus is on · ${PLUS_DAILY_MESSAGES} messages a day`
+            : `Plus: ${PLUS_DAILY_MESSAGES} messages a day →`}
         </Text>
       </Pressable>
 
