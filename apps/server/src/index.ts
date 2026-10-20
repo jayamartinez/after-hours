@@ -21,7 +21,8 @@ if (database.target === 'pglite') {
 const app = createApp(config, console.warn, {
   chat: {
     db: database.db,
-    model: createChatModel(config.chat),
+    model: createChatModel(config.chat, 'plus'),
+    freeModel: createChatModel(config.chat, 'free'),
     memoryModel: createMemoryModel(config.chat),
     sessionSecret: resolveSessionSecret(config),
   },
@@ -36,7 +37,9 @@ const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
         : 'Postgres (DATABASE_URL)'
     }`,
   );
-  console.log(`[server] chat model: ${config.chat.model} (effort ${config.chat.effort})`);
+  console.log(
+    `[server] chat models: ${config.chat.model} (Plus), ${config.chat.freeModel} (free), effort ${config.chat.effort}`,
+  );
   console.log(`[server] memory model: ${config.chat.memoryModel}`);
   console.log(`[server] asset manifest: ${config.manifestPath}`);
   console.log(`[server] private assets: ${config.privateAssetsDir}`);

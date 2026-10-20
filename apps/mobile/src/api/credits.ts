@@ -1,5 +1,7 @@
 import {
   CreditsResponseSchema,
+  FREE_MAX_MESSAGE_CHARS,
+  MAX_MESSAGE_CHARS,
   GalleryResponseSchema,
   type CreditPackId,
   type CreditsResponse,
@@ -84,6 +86,15 @@ export function useBuyCredits() {
       ),
     onSuccess: (credits) => queryClient.setQueryData(CREDITS_QUERY_KEY, credits),
   });
+}
+
+/**
+ * Longest message this user can send (D-040): Plus gets the full limit, everyone else the
+ * free one. While credits load, the free limit applies (the server enforces it anyway).
+ */
+export function useMessageCharLimit(): number {
+  const { data } = useCredits();
+  return data?.messages.unlimited ? MAX_MESSAGE_CHARS : FREE_MAX_MESSAGE_CHARS;
 }
 
 const store = (credits: CreditsResponse) => queryClient.setQueryData(CREDITS_QUERY_KEY, credits);

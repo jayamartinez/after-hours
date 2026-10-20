@@ -1,4 +1,5 @@
 import {
+  FREE_MAX_MESSAGE_CHARS,
   SendMessageRequestSchema,
   type ApiError,
   type CharacterConfig,
@@ -51,7 +52,7 @@ import {
 import { listMemories } from '../db/memories';
 import { spendMessage } from '../db/message-allowance';
 import type { MessageRow } from '../db/schema';
-import { getProfile } from '../db/users';
+import { getProfile, isPlus } from '../db/users';
 import { addWebLookups, remainingWebLookups } from '../db/web-usage';
 import { createRateLimiter } from '../limits/rate-limit';
 import {
@@ -64,7 +65,10 @@ import {
 export interface ConversationRoutesOptions {
   db: Db;
   store: CharacterStore;
+  /** Plus subscribers' chat model. */
   model: ChatModel;
+  /** Free users' chat model (D-040). Default: `model`. */
+  freeModel?: ChatModel;
   sessionSecret: string;
   killSwitch: boolean;
   rateLimitPerMin: number;
@@ -208,6 +212,18 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
         }
         const { text, clientId } = parsed.data;
         const userId = c.var.userId;
+        const plus = await isPlus(db, userId);
+        if (!plus && text.length > FREE_MAX_MESSAGE_CHARS) {
+          return c.json(
+            apiError(
+              'message_too_long',
+              `Free messages can be up to ${FREE_MAX_MESSAGE_CHARS} characters. Shorten it, or get Plus for longer ones.`,
+              false,
+            ),
+            400,
+          );
+        }
+        const replyModel = plus ? model : (options.freeModel ?? model);
 
         if (!limiter.take(userId)) {
           return c.json(
@@ -328,7 +344,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
             /** One photo and one picture per reply, across tool rounds. */
             const replyTools = { photoAttempted: false, pictureShared: false };
             try {
-              const { result } = await streamReply(model, request, {
+              const { result } = await streamReply(replyModel, request, {
                 onDelta: (delta) => void send({ type: 'delta', text: delta }),
                 onBubble: async (bubbleText) => {
                   const row = await insertAssistantBubble(

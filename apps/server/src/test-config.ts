@@ -15,6 +15,7 @@ export function testConfig(workDir: string, overrides: Partial<ServerConfig> = {
     chat: {
       provider: 'anthropic',
       model: 'claude-opus-5-5',
+      freeModel: 'claude-sonnet-5-5',
       effort: 'low',
       memoryModel: 'claude-haiku-5-5',
     },

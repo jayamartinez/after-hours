@@ -1,9 +1,9 @@
-import { MAX_MESSAGE_CHARS } from '@after-hours/contracts';
 import { useState } from 'react';
 import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   View,
   type TextInputKeyPressEvent,
@@ -21,7 +21,12 @@ interface ComposerProps {
   onMic: () => void;
   /** Space under the field: the home-indicator inset, or a small gap above the keyboard. */
   bottomInset: number;
+  /** Longest message the user may send (free vs Plus, D-040). */
+  maxChars: number;
 }
+
+/** The character counter shows once a message is this close to the limit. */
+const COUNTER_WITHIN = 100;
 
 const MAX_INPUT_HEIGHT = 120;
 
@@ -30,7 +35,14 @@ const webInput: TextStyle | null =
   Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
 /** Chat A composer: +, pill text field ("Message <name>"), mic (coming soon) or send. */
-export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }: ComposerProps) {
+export function Composer({
+  companionName,
+  onSend,
+  onAttach,
+  onMic,
+  bottomInset,
+  maxChars,
+}: ComposerProps) {
   const [text, setText] = useState('');
   // Web textareas do not grow on their own; native inputs do.
   const [webHeight, setWebHeight] = useState<number | null>(null);
@@ -59,6 +71,11 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
 
   return (
     <View style={[styles.container, { paddingBottom: bottomInset }]}>
+      {text.length >= maxChars - COUNTER_WITHIN ? (
+        <Text style={styles.counter} accessibilityLiveRegion="polite">
+          {text.length} / {maxChars}
+        </Text>
+      ) : null}
       <View style={styles.row}>
         <Pressable
           accessibilityRole="button"
@@ -82,7 +99,7 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
             // Web only: a one-row textarea that grows by measurement. On iOS `rows` pins the
             // field to one line instead of letting it grow (D-037).
             rows={Platform.OS === 'web' ? 1 : undefined}
-            maxLength={MAX_MESSAGE_CHARS}
+            maxLength={maxChars}
             onContentSizeChange={(event) => {
               if (Platform.OS === 'web') setWebHeight(event.nativeEvent.contentSize.height);
             }}
@@ -121,6 +138,15 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
 
 const styles = StyleSheet.create({
   container: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  counter: {
+    alignSelf: 'flex-end',
+    paddingRight: spacing.sm,
+    paddingBottom: 4,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textMuted,
+  },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   attach: {
     width: layout.tapTarget,

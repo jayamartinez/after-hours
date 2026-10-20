@@ -21,7 +21,10 @@ import { sessionRoutes } from './routes/session';
 /** Persistence and the chat model. Without them only the read-only routes exist. */
 export interface ChatServices {
   db: Db;
+  /** Plus subscribers' chat model. */
   model: ChatModel;
+  /** Free users' chat model (D-040). Default: `model`. */
+  freeModel?: ChatModel;
   sessionSecret: string;
   /** Memory extraction after each reply; unset disables automatic memories. */
   memoryModel?: StructuredModel;
@@ -96,6 +99,7 @@ export function createApp(
           killSwitch: config.killSwitch,
           rateLimitPerMin: config.rateLimitPerMin,
           webAccess: config.webAccess,
+          freeModel: overrides.chat.freeModel,
           findPageImage: overrides.chat.findPageImage,
           memoryModel,
           waitUntil,

@@ -350,6 +350,11 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
           onCredits?.({ type: 'messages_required', companionId: id });
           return;
         }
+        if (error.code === 'message_too_long') {
+          // Shown as not delivered (never as read), with the limit in the notice.
+          fail({ ...error, retryable: true }, true);
+          return;
+        }
         fail(error, true);
         return;
       }

@@ -25,7 +25,10 @@ const EnvSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:8081'),
   /** Chat provider. Only `anthropic` is implemented; the key itself is read by the SDK. */
   CHAT_PRIMARY_PROVIDER: z.enum(['anthropic']).default('anthropic'),
+  /** Chat model for demo Plus subscribers. */
   CHAT_PRIMARY_MODEL: z.string().default('claude-opus-5-5'),
+  /** Chat model for free users (D-040). */
+  CHAT_FREE_MODEL: z.string().default('claude-sonnet-5-5'),
   /** Reasoning effort for chat replies. Casual texting does not need deep thinking. */
   CHAT_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
   /** Cheap secondary model (memory extraction, eval judge). */
@@ -55,7 +58,10 @@ const EnvSchema = z.object({
 
 export interface ChatConfig {
   provider: 'anthropic';
+  /** Plus subscribers. */
   model: string;
+  /** Free users. */
+  freeModel: string;
   effort: 'low' | 'medium' | 'high';
   memoryModel: string;
 }
@@ -100,6 +106,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     chat: {
       provider: vars.CHAT_PRIMARY_PROVIDER,
       model: vars.CHAT_PRIMARY_MODEL,
+      freeModel: vars.CHAT_FREE_MODEL,
       effort: vars.CHAT_EFFORT,
       memoryModel: vars.MEMORY_MODEL,
     },

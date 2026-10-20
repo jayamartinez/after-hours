@@ -265,6 +265,7 @@ Names only. "Degrades" describes behavior when unset.
 | `WEB_SEARCH_PROVIDER`, `WEB_SEARCH_API_KEY` | No | Web search tool not offered |
 | `RATE_LIMIT_PER_MIN` | No | 20 chat messages per user per minute (in-memory) |
 | `KILL_SWITCH` | No (public demo emergency stop) | `false`; `true` makes chat sends return 503 |
+| `CHAT_FREE_MODEL` | No | `claude-sonnet-5-5`; chat model for free users (D-040). `CHAT_PRIMARY_MODEL` serves demo Plus |
 | `WEB_ACCESS` | No | `true`; `false` turns off web search, link reading, and found pictures (D-038) |
 | `DAILY_TOKEN_BUDGET`, `DAILY_IMAGE_BUDGET`, `DAILY_AUDIO_SECONDS`, `GLOBAL_DAILY_SPEND_CAP_USD` | No | Not implemented yet |
 | `MAX_TOOL_CALLS_PER_TURN` | No | Default 2 |
