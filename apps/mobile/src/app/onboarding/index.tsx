@@ -24,7 +24,7 @@ export default function WelcomeScreen() {
   return (
     <OnboardingScreen
       background={
-        <Glow width={width} height={height} cx={0.5} cy={0.22} r={0.6} stops={GLOW_STOPS} />
+        <Glow width={width} height={height} cx={0.5} cy={0.12} r={0.6} stops={GLOW_STOPS} />
       }
     >
       <View style={styles.body}>
@@ -69,10 +69,12 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // With no imagery above it, the copy sits in the upper part of the screen and the
+  // actions at the bottom (D-037).
   body: {
     flex: 1,
-    justifyContent: 'flex-end',
-    gap: spacing.xxxl,
+    justifyContent: 'space-between',
+    paddingTop: 120,
     paddingHorizontal: spacing.xxl,
     paddingBottom: spacing.sm,
   },

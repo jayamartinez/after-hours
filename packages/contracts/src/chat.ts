@@ -82,6 +82,8 @@ export const ChatErrorCodeSchema = z.enum([
   'unavailable',
   'refusal',
   'provider',
+  /** Out of free and bonus messages (D-036): get Plus, a pack, or watch an ad. */
+  'messages_required',
 ]);
 
 /** Error body for non-streaming responses, and the payload of the SSE `error` event. */

@@ -58,7 +58,7 @@ Use cases:
 | --- | --- |
 | Image generation | Conversational requests ("send me a pic") and a per-companion gallery; consistent stylized look; non-explicit. |
 | Voice messages | Record → STT → reply; companion replies as TTS voice notes. |
-| Mock subscription / paywall | Plans and a demo purchase that flips local entitlement state. No billing. |
+| Mock subscription / paywall | Plans and a demo purchase that flips local entitlement state. No billing. Freemium (D-036): the full app is free with 10 messages a day; more come from Plus (unlimited), demo message packs, or a demo "watch an ad" reward. Photos need a demo pack or Plus (free users start with 0 photo credits). |
 | Email account upgrade | Link anonymous account to email; preserve data. |
 | Web search tool | For time-sensitive questions only; allowlisted and capped. |
 | Account data deletion | Delete all user data across both companions. |

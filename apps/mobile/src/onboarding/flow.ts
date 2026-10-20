@@ -65,6 +65,14 @@ export function openLandingChat(companionId: string | null) {
   router.push({ pathname: '/chat/[id]', params: { id: companionId } });
 }
 
+/** The Plus paywall, from inside the app (photo or message sheets, You). */
+export function openPlus() {
+  router.push(stepHref('paywall'));
+}
+
+/** Whether the paywall was opened from inside the app rather than during onboarding. */
+export const inApp = () => onboardingStore.getState().completed;
+
 /** The welcome screen: the end of onboarding (D-034). The first chat waits in Chats. */
 export function showWelcome() {
   router.replace(stepHref('confirmed'));

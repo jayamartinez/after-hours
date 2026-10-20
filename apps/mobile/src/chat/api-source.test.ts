@@ -143,7 +143,28 @@ describe('createApiConversationSource', () => {
     expect(signals).toEqual([
       { type: 'credits', balance: 2, companionId: 'roy' },
       { type: 'credits_required', companionId: 'roy' },
+      { type: 'message_sent', companionId: 'roy' },
     ]);
+  });
+
+  it('out of messages: keeps the message as undelivered and asks for more', async () => {
+    const signals: CreditSignal[] = [];
+    const { source, settle } = setup(
+      {
+        postStream: async () =>
+          json({ code: 'messages_required', message: 'Out of messages.', retryable: true }, 402),
+      },
+      (signal) => signals.push(signal),
+    );
+    source.load(roy);
+    await settle();
+    source.send(roy, 'one more');
+    await settle();
+    const state = source.getSnapshot('roy');
+    expect(state.messages.at(-1)).toMatchObject({ role: 'user', status: 'failed' });
+    // No toast: the "More messages" sheet explains it.
+    expect(state.notice).toBeNull();
+    expect(signals).toEqual([{ type: 'messages_required', companionId: 'roy' }]);
   });
 
   it('marks a send failed on a retryable error and retries with the same clientId', async () => {

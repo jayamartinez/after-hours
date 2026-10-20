@@ -28,8 +28,9 @@ import { validTimeZone } from '../chat/time-zone';
 import type { Db } from '../db/client';
 import { spendCredit } from '../db/credits';
 import {
-  deleteConversation,
   countUserMessages,
+  deleteConversation,
+  findUserMessage,
   getOrCreateConversation,
   insertAssistantBubble,
   insertAssistantPhoto,
@@ -41,6 +42,7 @@ import {
   toMessageDto,
 } from '../db/conversations';
 import { listMemories } from '../db/memories';
+import { spendMessage } from '../db/message-allowance';
 import type { MessageRow } from '../db/schema';
 import { getProfile } from '../db/users';
 import { createRateLimiter } from '../limits/rate-limit';
@@ -212,6 +214,21 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
         let userRow: MessageRow;
         let replay: MessageRow[] = [];
         try {
+          // A new message spends one from the allowance (D-036); a resend of a stored one
+          // (retry, idempotent replay) was paid for already.
+          if (!(await findUserMessage(db, conversationId, clientId))) {
+            if (!(await spendMessage(db, userId))) {
+              inFlight.delete(key);
+              return c.json(
+                apiError(
+                  'messages_required',
+                  'You’re out of free messages for today. Get more to keep talking.',
+                  true,
+                ),
+                402,
+              );
+            }
+          }
           const { row, created } = await insertUserMessage(db, conversationId, text, clientId);
           userRow = row;
           if (!created) replay = await listReplies(db, row.id);

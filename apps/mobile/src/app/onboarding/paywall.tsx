@@ -1,4 +1,5 @@
-import { router } from 'expo-router';
+import { FREE_DAILY_MESSAGES } from '@after-hours/contracts';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -10,7 +11,7 @@ import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { TopBar } from '@/components/onboarding/top-bar';
 import { DEMO_PLANS, PLUS_FEATURES, type DemoPlanOption } from '@/onboarding/demo-data';
-import { showWelcome, stepHref } from '@/onboarding/flow';
+import { goBack, inApp, showWelcome, stepHref } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
 import { onboardingStore } from '@/onboarding/use-onboarding';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -24,14 +25,17 @@ export default function PaywallScreen() {
   const plan = DEMO_PLANS.find((p) => p.id === planId) ?? DEMO_PLANS[0];
   const names = companions.map((c) => c.name).join(' & ');
 
-  const notNow = showWelcome;
+  // In onboarding, "no thanks" still ends onboarding (free plan, D-036); in the app it
+  // just closes the paywall.
+  const notNow = () => (inApp() ? goBack() : showWelcome());
   const purchase = () => {
     onboardingStore.getState().purchaseDemo(planId);
     // Plus adds monthly photo credits on the server; offline, the local demo flag still holds.
     setDemoPlus(planId).catch((error: unknown) =>
       console.warn('[plus] Could not start demo Plus on the server.', error),
     );
-    router.replace(stepHref('confirmed'));
+    if (inApp()) goBack();
+    else router.replace(`${stepHref('confirmed') as string}?purchased=1` as Href);
   };
 
   return (
@@ -79,7 +83,9 @@ export default function PaywallScreen() {
         </StaggerIn>
         <StaggerIn order={5}>
           <Pressable accessibilityRole="button" onPress={notNow} hitSlop={6} style={styles.notNow}>
-            <Text style={styles.notNowText}>Not now</Text>
+            <Text style={styles.notNowText}>
+              {inApp() ? 'Not now' : `Continue free · ${FREE_DAILY_MESSAGES} messages a day`}
+            </Text>
           </Pressable>
         </StaggerIn>
         <StaggerIn order={6} style={styles.links}>

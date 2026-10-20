@@ -14,6 +14,7 @@ import { CHAT_MAX_WIDTH, ChatView } from '@/components/chat/chat-view';
 import { StarterChips } from '@/components/chat/starter-chips';
 import { closeChat } from '@/components/discovery/chat-link';
 import { CreditsSheet } from '@/components/credits/credits-sheet';
+import { MessagesSheet } from '@/components/credits/messages-sheet';
 import { colors, spacing, type } from '@/theme/tokens';
 
 /** Chat A "Lamplight". Companion identity from config; messages from `useConversation`. */
@@ -24,18 +25,25 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { remember } = useMemoryActions(companion?.id ?? '');
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
   const [status, setStatus] = useState<ChatNotice | null>(null);
   const showStatus = (text: string) => setStatus({ id: Date.now(), text });
   // An empty thread (new, or just cleared) offers starters written for this user (D-032).
   const isEmpty = !isLoading && messages.length === 0;
   const starters = useStarters(companion, { enabled: isEmpty, isDemo });
 
-  // Out of photo credits mid-reply: offer more (D-026).
+  // Out of photo credits mid-reply (D-026) or out of messages (D-036): offer more.
   useCreditSignals((signal) => {
-    if (signal.type === 'credits_required' && signal.companionId === companion?.id) {
-      setCreditsOpen(true);
-    }
+    if (signal.companionId !== companion?.id) return;
+    if (signal.type === 'credits_required') setCreditsOpen(true);
+    if (signal.type === 'messages_required') setMessagesOpen(true);
   });
+
+  /** Once there are messages again, resend the one that was refused. */
+  const resendRefused = () => {
+    const refused = messages.findLast((m) => m.role === 'user' && m.status === 'failed');
+    if (refused) retry(refused.id);
+  };
 
   const onRemember = async (message: ChatMessage): Promise<string> => {
     if (isDemo) return 'Memories need a connection to After Hours.';
@@ -85,6 +93,12 @@ export default function ChatScreen() {
         onRemember={onRemember}
         status={status}
         accessory={isEmpty ? <StarterChips starters={starters} onPick={send} /> : null}
+      />
+      <MessagesSheet
+        visible={messagesOpen}
+        onClose={() => setMessagesOpen(false)}
+        onMessage={showStatus}
+        onRefill={resendRefused}
       />
       <CreditsSheet
         visible={creditsOpen}

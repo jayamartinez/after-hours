@@ -20,6 +20,9 @@ import { creditEvents, users, type UserRow } from './schema';
 
 const PERIOD_MS = PLUS_PERIOD_DAYS * 86_400_000;
 
+/** Photo credits and Plus state; routes add the message allowance (`withMessages`). */
+export type PhotoCredits = Omit<CreditsResponse, 'messages'>;
+
 /** Plus credit period `now` falls in (0 = the first 30 days). */
 const plusPeriod = (since: Date, now: Date) =>
   Math.max(0, Math.floor((now.getTime() - since.getTime()) / PERIOD_MS));
@@ -35,7 +38,7 @@ function toCredits(user: Pick<UserRow, 'imageCredits' | 'plusPlan' | 'plusSince'
           ).toISOString(),
         }
       : null;
-  return { balance: user.imageCredits, plus } satisfies CreditsResponse;
+  return { balance: user.imageCredits, plus } satisfies PhotoCredits;
 }
 
 /**
@@ -70,7 +73,7 @@ export async function getCredits(
   db: Db,
   userId: string,
   now = new Date(),
-): Promise<CreditsResponse | null> {
+): Promise<PhotoCredits | null> {
   return db.transaction(async (tx) => {
     const [user] = await tx.select().from(users).where(eq(users.id, userId));
     if (!user) return null;
@@ -123,7 +126,7 @@ export async function purchaseCredits(
   userId: string,
   packId: CreditPackId,
   purchaseId: string,
-): Promise<CreditsResponse | null> {
+): Promise<PhotoCredits | null> {
   const pack = CREDIT_PACKS.find((p) => p.id === packId);
   if (!pack) return null;
   await db.transaction((tx) =>
@@ -142,7 +145,7 @@ export async function startPlus(
   userId: string,
   plan: PlusPlan,
   now = new Date(),
-): Promise<CreditsResponse | null> {
+): Promise<PhotoCredits | null> {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   if (!user) return null;
   await db
@@ -153,7 +156,7 @@ export async function startPlus(
 }
 
 /** Ends demo Plus. Credits already granted stay. */
-export async function endPlus(db: Db, userId: string): Promise<CreditsResponse | null> {
+export async function endPlus(db: Db, userId: string): Promise<PhotoCredits | null> {
   await db.update(users).set({ plusPlan: null, plusSince: null }).where(eq(users.id, userId));
   return getCredits(db, userId);
 }
