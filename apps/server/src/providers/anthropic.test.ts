@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { SEND_PHOTO_TOOL } from '../chat/photo-tool';
+import { streamReply } from '../chat/reply';
 
 import type Anthropic from '@anthropic-ai/sdk';
 
@@ -126,7 +127,11 @@ describe('web access', () => {
   });
   /** Plays `turns` as streamed messages and records every request. */
   function fakeClient(turns: FakeTurn[]) {
-    const requests: { messages: unknown[]; tools?: { name: string; max_uses?: number }[] }[] = [];
+    const requests: {
+      messages: unknown[];
+      tools?: { name: string; max_uses?: number }[];
+      tool_choice?: unknown;
+    }[] = [];
     const client = {
       beta: {
         messages: {
@@ -157,8 +162,6 @@ describe('web access', () => {
     } as unknown as Anthropic;
     return { client, requests };
   }
-  const allowances = (tools: { name: string; max_uses?: number }[] | undefined) =>
-    Object.fromEntries((tools ?? []).map((tool) => [tool.name, tool.max_uses]));
   const web = { searches: 2, fetches: 2, blockedDomains: [] };
 
   it('resumes a paused reply and counts its lookups', async () => {
@@ -186,7 +189,7 @@ describe('web access', () => {
     expect(requests[1]?.messages).toHaveLength(2);
   });
 
-  it('declares only the remaining allowance when resuming, and drops a spent tool', async () => {
+  it('resumes with byte-identical tools while lookups are left', async () => {
     const { client, requests } = fakeClient([
       {
         stop_reason: 'pause_turn',
@@ -198,45 +201,90 @@ describe('web access', () => {
         ],
         usage: usage(1, 1),
       },
-      {
-        stop_reason: 'pause_turn',
-        content: [
-          { type: 'server_tool_use', id: 's2', name: 'web_search', input: {} },
-          { type: 'web_search_tool_result', tool_use_id: 's2', content: [] },
-        ],
-        usage: usage(1),
-      },
       { stop_reason: 'end_turn', content: [{ type: 'text', text: 'found it' }], usage: usage(0) },
     ]);
     const model = createAnthropicChatModel({ model: 'm', effort: 'low' }, client);
     const result = await model.stream({ ...base, web });
 
-    expect(requests.map((request) => allowances(request.tools))).toEqual([
-      { web_search: 2, web_fetch: 2 },
-      { web_search: 1, web_fetch: 1 },
-      { web_fetch: 1 },
-    ]);
-    expect(result.webUsed).toEqual({ searches: 2, fetches: 1 });
+    expect(requests).toHaveLength(2);
+    expect(JSON.stringify(requests[1]?.tools)).toBe(JSON.stringify(requests[0]?.tools));
+    expect(result.webUsed).toEqual({ searches: 1, fetches: 1 });
   });
 
-  it('does not resume a turn waiting on a lookup that has no uses left', async () => {
+  it('does not resume once the reply has used up a lookup allowance', async () => {
+    const paused = (searches: number) => ({
+      stop_reason: 'pause_turn',
+      content: [
+        { type: 'text', text: 'one sec' },
+        { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
+      ],
+      usage: usage(searches),
+    });
+    const spent = fakeClient([paused(2)]);
+    const result = await createAnthropicChatModel(
+      { model: 'm', effort: 'low' },
+      spent.client,
+    ).stream({ ...base, web });
+    expect(spent.requests).toHaveLength(1);
+    expect(result.text).toBe('one sec');
+    expect(result.stopReason).toBe('pause_turn');
+
+    // Lookups from earlier requests of the same reply count too.
+    const earlier = fakeClient([paused(1)]);
+    await createAnthropicChatModel({ model: 'm', effort: 'low' }, earlier.client).stream({
+      ...base,
+      web,
+      webUsedBefore: { searches: 1, fetches: 0 },
+    });
+    expect(earlier.requests).toHaveLength(1);
+  });
+
+  it('sends byte-identical tools on every request of a multi-round reply', async () => {
     const { client, requests } = fakeClient([
       {
         stop_reason: 'pause_turn',
         content: [
-          { type: 'text', text: 'one sec' },
           { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
           { type: 'web_search_tool_result', tool_use_id: 's1', content: [] },
-          { type: 'server_tool_use', id: 's2', name: 'web_search', input: {} },
         ],
-        usage: usage(2),
+        usage: usage(1),
       },
+      {
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', id: 't1', name: 'share_image', input: {} }],
+        usage: usage(1),
+      },
+      {
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', id: 't2', name: 'share_image', input: {} }],
+        usage: usage(0),
+      },
+      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'there' }], usage: usage(0) },
     ]);
     const model = createAnthropicChatModel({ model: 'm', effort: 'low' }, client);
-    const result = await model.stream({ ...base, web });
+    const tool = {
+      name: 'share_image',
+      description: 'd',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    };
+    await streamReply(
+      model,
+      { ...base, tools: [tool], web: { ...web, blockedDomains: ['bad.example'] } },
+      {
+        onBubble: async () => {},
+        onToolCalls: async (calls) => calls.map((c) => ({ callId: c.id, content: 'ok' })),
+      },
+    );
 
-    expect(requests).toHaveLength(1);
-    expect(result.text).toBe('one sec');
-    expect(result.stopReason).toBe('pause_turn');
+    expect(requests).toHaveLength(4);
+    const tools = requests.map((request) => JSON.stringify(request.tools));
+    expect(new Set(tools).size).toBe(1);
+    // Two searches used: the tool rounds may not start new lookups.
+    expect(requests.map((request) => request.tool_choice)).toEqual([
+      { type: 'auto' },
+      { type: 'auto' },
+      { type: 'none' },
+      { type: 'none' },
+    ]);
   });
 });

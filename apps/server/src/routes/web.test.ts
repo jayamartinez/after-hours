@@ -162,7 +162,7 @@ describe('web access', () => {
     expect(chat.requests.map((r) => r.toolChoice)).toEqual([undefined, 'auto', 'none']);
   });
 
-  it('gives later tool rounds only what is left of the per-reply web caps', async () => {
+  it('keeps the tools identical across tool rounds and stops new lookups once the caps are used', async () => {
     const token = await newSession(app);
     const share = (id: string) => ({
       id,
@@ -171,19 +171,40 @@ describe('web access', () => {
     });
     chat.script.push(
       { chunks: [], webUsed: { searches: 2, fetches: 1 }, toolCalls: [share('c1')] },
+      { chunks: ['no luck'] },
+    );
+    await events(await postMessage(app, token, 'roy', 'find a pic'));
+    // Searches are used up after the first request, so the next one may not call tools.
+    expect(chat.requests.map((r) => r.toolChoice)).toEqual([undefined, 'none']);
+    expect(chat.requests[1]?.webUsedBefore).toEqual({ searches: 2, fetches: 1 });
+    // 2 searches + 1 link read, no picture shared.
+    expect(await remainingWebLookups(database.db, userIdOf(token))).toBe(
+      WEB_LOOKUPS_PER_DAY.free - 3,
+    );
+  });
+
+  it('declares the same tools and web caps on every request of a multi-round reply', async () => {
+    const token = await newSession(app);
+    const share = (id: string) => ({
+      id,
+      name: SHARE_IMAGE,
+      input: { pageUrl: 'https://none.example/', caption: '' },
+    });
+    chat.script.push(
+      { chunks: [], webUsed: { searches: 1, fetches: 0 }, toolCalls: [share('c1')] },
       { chunks: [], webUsed: { searches: 0, fetches: 1 }, toolCalls: [share('c2')] },
       { chunks: ['no luck'] },
     );
     await events(await postMessage(app, token, 'roy', 'find a pic'));
-    expect(chat.requests.map((r) => [r.web?.searches, r.web?.fetches])).toEqual([
-      [2, 2],
-      [0, 1],
-      [0, 0],
+    expect(chat.requests).toHaveLength(3);
+    const declared = chat.requests.map((r) => JSON.stringify({ tools: r.tools, web: r.web }));
+    expect(new Set(declared).size).toBe(1);
+    expect(chat.requests.map((r) => r.toolChoice)).toEqual([undefined, 'auto', 'none']);
+    expect(chat.requests.map((r) => r.webUsedBefore)).toEqual([
+      undefined,
+      { searches: 1, fetches: 0 },
+      { searches: 1, fetches: 1 },
     ]);
-    // 2 searches + 2 link reads, no picture shared.
-    expect(await remainingWebLookups(database.db, userIdOf(token))).toBe(
-      WEB_LOOKUPS_PER_DAY.free - 4,
-    );
   });
 
   it('refuses pictures from blocked sites, subdomains included, without opening them', async () => {

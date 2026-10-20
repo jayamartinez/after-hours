@@ -57,11 +57,14 @@ export interface ChatRequest {
   /** `none`: tools stay declared but may not be called (continuing after a call). */
   toolChoice?: 'auto' | 'none';
   /**
-   * Provider-run web access (D-038): searches and link reads still allowed in this reply
-   * (callers pass what is left after earlier requests of the same reply), and domains
-   * never read. Unset: no web access.
+   * Provider-run web access (D-038): most searches and link reads in this reply, and
+   * domains never read. Unset: no web access. Every request of one reply must pass the
+   * same value: the declared tools are part of the conversation that thinking blocks are
+   * bound to, so they cannot change mid-reply.
    */
   web?: WebAccess;
+  /** Web lookups earlier requests of this reply already ran (counts against `web`). */
+  webUsedBefore?: WebUsage;
 }
 
 export interface WebAccess {
@@ -75,12 +78,20 @@ export interface WebUsage {
   fetches: number;
 }
 
-/** `web` with `used` taken off, never below 0 (a tool at 0 is not offered). */
-export function remainingWeb(web: WebAccess, used: WebUsage | undefined): WebAccess {
+/** True once `used` reaches the cap of any web tool `web` offers: no new lookups may start. */
+export function webAllowanceUsedUp(web: WebAccess | undefined, used: WebUsage): boolean {
+  if (!web) return false;
+  return (
+    (web.searches > 0 && used.searches >= web.searches) ||
+    (web.fetches > 0 && used.fetches >= web.fetches)
+  );
+}
+
+/** `a` plus `b`, tool by tool. */
+export function addWebUsage(a: WebUsage | undefined, b: WebUsage | undefined): WebUsage {
   return {
-    ...web,
-    searches: Math.max(0, web.searches - (used?.searches ?? 0)),
-    fetches: Math.max(0, web.fetches - (used?.fetches ?? 0)),
+    searches: (a?.searches ?? 0) + (b?.searches ?? 0),
+    fetches: (a?.fetches ?? 0) + (b?.fetches ?? 0),
   };
 }
 
