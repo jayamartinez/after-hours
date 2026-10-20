@@ -279,11 +279,11 @@ describe('web access', () => {
     expect(requests).toHaveLength(4);
     const tools = requests.map((request) => JSON.stringify(request.tools));
     expect(new Set(tools).size).toBe(1);
-    // Two searches used: the tool rounds may not start new lookups.
+    // Tool rounds stay open until the last (picture retries); only the last is closed.
     expect(requests.map((request) => request.tool_choice)).toEqual([
       { type: 'auto' },
       { type: 'auto' },
-      { type: 'none' },
+      { type: 'auto' },
       { type: 'none' },
     ]);
   });

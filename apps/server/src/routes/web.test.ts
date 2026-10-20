@@ -162,7 +162,7 @@ describe('web access', () => {
     expect(chat.requests.map((r) => r.toolChoice)).toEqual([undefined, 'auto', 'none']);
   });
 
-  it('keeps the tools identical across tool rounds and stops new lookups once the caps are used', async () => {
+  it('keeps the tools identical across tool rounds and still lets a picture be retried', async () => {
     const token = await newSession(app);
     const share = (id: string) => ({
       id,
@@ -174,8 +174,8 @@ describe('web access', () => {
       { chunks: ['no luck'] },
     );
     await events(await postMessage(app, token, 'roy', 'find a pic'));
-    // Searches are used up after the first request, so the next one may not call tools.
-    expect(chat.requests.map((r) => r.toolChoice)).toEqual([undefined, 'none']);
+    // Searches are used up, but the round before the last stays open for a picture retry.
+    expect(chat.requests.map((r) => r.toolChoice)).toEqual([undefined, 'auto']);
     expect(chat.requests[1]?.webUsedBefore).toEqual({ searches: 2, fetches: 1 });
     // 2 searches + 1 link read, no picture shared.
     expect(await remainingWebLookups(database.db, userIdOf(token))).toBe(

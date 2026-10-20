@@ -1,5 +1,5 @@
 import type { ChatModel, ChatRequest, ChatResult, ToolCall, ToolResult } from '../providers/types';
-import { addWebUsage, ChatModelError, webAllowanceUsedUp } from '../providers/types';
+import { addWebUsage, ChatModelError } from '../providers/types';
 
 import { createBubbleSplitter, isToolMarkup, withoutEmDashes } from './bubbles';
 
@@ -34,8 +34,8 @@ export interface StreamReplyResult {
  * If the reply ends in tool calls, they run and the model continues with their results,
  * for at most `MAX_TOOL_ROUNDS` rounds; the last continuation runs with tools disabled.
  * `request.web` is the whole reply's web allowance. Every continuation declares the same
- * tools (thinking blocks are bound to them); once the allowance is used up, continuations
- * run with `toolChoice: 'none'` so no new lookup can start.
+ * tools (thinking blocks are bound to them); tool rounds stay open until the last so a
+ * failed picture can be retried, and paused lookups stop once the allowance is used up.
  */
 export async function streamReply(
   model: ChatModel,
@@ -105,10 +105,11 @@ export async function streamReply(
       // No retry here: part of the reply (and possibly a photo) is already delivered.
       const continued = await attempt({
         ...request,
-        toolChoice:
-          round < MAX_TOOL_ROUNDS && !webAllowanceUsedUp(request.web, earlierUsed)
-            ? 'auto'
-            : 'none',
+        // Tool rounds stay open until the last one so a failed picture can be retried with
+        // another page; one round can add at most its declared `max_uses` lookups, and the
+        // daily lookup and cost caps bound the rest. Paused lookups respect the reply's
+        // allowance in the provider.
+        toolChoice: round < MAX_TOOL_ROUNDS ? 'auto' : 'none',
         messages: history,
         webUsedBefore: earlierUsed,
       });
