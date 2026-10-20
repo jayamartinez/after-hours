@@ -1,1 +1,0 @@
-ALTER TABLE "spend_usage" ALTER COLUMN "micro_usd" SET DATA TYPE bigint;

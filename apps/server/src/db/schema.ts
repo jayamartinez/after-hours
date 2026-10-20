@@ -1,7 +1,6 @@
 import { FREE_STARTING_CREDITS, type MessageImage, type UserProfile } from '@after-hours/contracts';
 import { sql } from 'drizzle-orm';
 import {
-  bigint,
   bigserial,
   boolean,
   check,
@@ -77,7 +76,7 @@ export const spendUsage = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     day: date('day', { mode: 'string' }).notNull(),
-    microUsd: bigint('micro_usd', { mode: 'number' }).notNull().default(0),
+    microUsd: integer('micro_usd').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 ).enableRLS();
