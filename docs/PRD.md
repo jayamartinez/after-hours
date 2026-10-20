@@ -40,7 +40,7 @@ Use cases:
 
 | Feature | Notes |
 | --- | --- |
-| Companion picker and profiles | Spotlight cards as primary discovery (swipe Roy ↔ Roya); "The Cast List" as secondary browse; profile shows "AI parody" disclosure, bio, look, and two gallery images. |
+| Companion picker and profiles | Spotlight cards as primary discovery (swipe Roy ↔ Roya); "The Cast List" as secondary browse; profile shows name, age, memories, and two gallery images (disclosure is in onboarding, D-029). |
 | Streaming chat | Token streaming with typing indicator; persisted history per user × companion. |
 | Read receipts and delivery status | `sending → sent → read`, companion "typing" before first token. |
 | Reactions | Tapback-style reactions on any message. |
@@ -84,7 +84,7 @@ Each companion is a data record in `packages/companions` (spec: `docs/companions
 | Texting style | Quick bursts of short lowercase bubbles, few emoji | Sentence case, punchy lines, pointed questions |
 | Voice | Fast, bright tenor | Smoky, amused mezzo |
 | Visual identity / tint | `--color-window` (laptop-glow blue → ink) | Brass → oxblood (lamplight) |
-| Public profile | Portrait, name, AI PARODY badge, age, actions, memories, photos, settings (D-024) | Same |
+| Public profile | Portrait, name, age, actions, memories, photos, settings (D-024; no badge after onboarding, D-029) | Same |
 
 Onboarding answers set user-level preferences (texting style, pacing, companion match) that the prompt assembler combines with companion style params.
 
@@ -97,8 +97,8 @@ Onboarding answers set user-level preferences (texting style, pacing, companion 
 
 ## Parody & likeness guardrails
 
-- **Labeled.** An "AI PARODY" badge in the chat header and beside each name; one short non-affiliation note in the profile footer; onboarding welcome caption "AI-generated parody characters. 18+." No repeated disclaimers in chat.
-- **Original art.** Stylized editorial illustration (gouache/grain, painterly), never photoreal, and never depicting or resembling a specific real person.
+- **Labeled (D-029).** Disclosure lives in onboarding: the welcome caption "AI-generated parody characters. 18+.", and on the reveal screen the "AI PARODY" badge beside the name with one short non-affiliation note below it. After sign-up the badge and note are not repeated on other screens, and there are no disclaimers in chat.
+- **No bundled art (D-030).** The repo and app ship no companion images; a slot without a server image shows a loading pulse. Deployers supply their own images through the git-ignored override manifest, which must never depict or resemble a specific real person.
 - **No real references.** No real names, companies, schools, products, or quotes in character data, prompts, copy, or generated output, except the referenced person's name in the non-affiliation note. All places and brands are fictional.
 - **No factual claims about real people**, and no implied endorsement by or affiliation with anyone the characters may resemble.
 - **PG-13.** Flirtation stays playful; never explicit, in text or images.
