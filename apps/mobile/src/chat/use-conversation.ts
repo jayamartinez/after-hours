@@ -5,6 +5,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useCompanion } from '@/api/companions';
 import { emitCreditSignal } from '@/api/credits';
 import { queryClient } from '@/api/query-client';
+import { onSessionReplaced } from '@/api/session';
 import { apiTransport } from '@/api/transport';
 
 import { createApiConversationSource, fromDto } from './api-source';
@@ -23,6 +24,16 @@ const source = createApiConversationSource({
   onCredits: emitCreditSignal,
   // Tab screens stay mounted: refresh the Chats list once a thread has new stored messages.
   onStored: () => void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY }),
+});
+
+/**
+ * A replaced session is a different (empty) account: threads on screen belong to the old one,
+ * so they are dropped and every query refetches, as after "Delete all my data". Without this
+ * the old thread stayed visible while replies came from an empty history.
+ */
+onSessionReplaced(() => {
+  source.forget();
+  void queryClient.resetQueries();
 });
 
 /** Drops cached threads (one companion, or all) so screens reload them from the server. */

@@ -11,6 +11,20 @@ const STORAGE_KEY = 'after-hours.session.v1';
 
 let pending: Promise<string> | null = null;
 
+const replacedListeners = new Set<() => void>();
+
+/**
+ * Runs `listener` when the server rejected the stored session and a new one replaced it
+ * (the account was deleted elsewhere, or the database was reset). Cached data then belongs
+ * to the old account and must be dropped. Returns an unsubscribe function.
+ */
+export function onSessionReplaced(listener: () => void): () => void {
+  replacedListeners.add(listener);
+  return () => {
+    replacedListeners.delete(listener);
+  };
+}
+
 async function createSession(): Promise<string> {
   const res = await fetch(`${API_URL}/session`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /session failed with ${res.status}`);
@@ -60,5 +74,7 @@ export async function authedFetch<R extends { status: number }>(
   const res = await request(await getSessionToken());
   if (res.status !== 401) return res;
   await resetSession();
-  return request(await getSessionToken());
+  const token = await getSessionToken();
+  replacedListeners.forEach((listener) => listener());
+  return request(token);
 }

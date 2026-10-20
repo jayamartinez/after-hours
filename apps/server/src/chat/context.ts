@@ -39,6 +39,34 @@ export interface TurnContext {
   timeZone?: string;
   /** User messages in the thread, the one being answered included. Unset: no pacing. */
   userMessages?: number;
+  /** When the thread's previous message (either side) was sent. Unset: a new thread. */
+  lastMessageAt?: Date;
+}
+
+/** A gap this long since the last message is worth reacting to (D-043). */
+export const RETURN_GAP_HOURS = 3;
+
+function gapPhrase(ms: number): string {
+  const hours = Math.round(ms / 3_600_000);
+  if (hours < 24) return `about ${hours} hours`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return 'about a day';
+  if (days < 14) return `${days} days`;
+  return `${Math.round(days / 7)} weeks`;
+}
+
+/**
+ * Coming back after a while: the companion notices, the way a friend would (D-043).
+ * Null when the last message was recent or there is none.
+ */
+export function renderReturn(lastMessageAt: Date | undefined, now: Date): string | null {
+  if (!lastMessageAt) return null;
+  const gap = now.getTime() - lastMessageAt.getTime();
+  if (gap < RETURN_GAP_HOURS * 3_600_000) return null;
+  return [
+    '# They are back',
+    `Your last texts were ${gapPhrase(gap)} ago. Notice it the way a friend would before anything else, in a short line: playful ("there you are", "what took you so long", "where'd you disappear to") or curious about what they got up to. Never needy or guilt-tripping, and skip it if they already explained.`,
+  ].join('\n');
 }
 
 /**
@@ -59,6 +87,9 @@ export function buildTurnContext(character: CharacterConfig, context: TurnContex
     `# Right now
 For the user it is ${when}. Background only: do not bring up the day or time unless they do or it changes your answer.`,
   ];
+
+  const back = renderReturn(context.lastMessageAt, now);
+  if (back) sections.push(back);
 
   const memories = selectMemories(character, context.memories ?? []);
   if (context.userMessages !== undefined) {

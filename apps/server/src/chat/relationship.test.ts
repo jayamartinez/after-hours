@@ -2,7 +2,7 @@ import { presets } from '@after-hours/companions';
 import type { Memory } from '@after-hours/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { buildTurnContext } from './context';
+import { buildTurnContext, renderReturn } from './context';
 import { relationshipStage, STAGE_LIMITS } from './relationship';
 
 const [roy] = presets;
@@ -66,5 +66,27 @@ describe('buildTurnContext pacing', () => {
 
   it('no pacing section without a message count', () => {
     expect(buildTurnContext(roy, { now })).not.toContain('# Where you two are');
+  });
+});
+
+describe('coming back after a gap (D-043)', () => {
+  const now = new Date('2026-10-20T20:00:00Z');
+  const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
+
+  it('says nothing for a recent conversation or a new thread', () => {
+    expect(renderReturn(hoursAgo(2), now)).toBeNull();
+    expect(renderReturn(undefined, now)).toBeNull();
+    expect(buildTurnContext(roy, { now, lastMessageAt: hoursAgo(1) })).not.toContain(
+      '# They are back',
+    );
+  });
+
+  it('notices a long gap, playfully and never guilt-tripping', () => {
+    expect(renderReturn(hoursAgo(5), now)).toContain('about 5 hours ago');
+    expect(renderReturn(hoursAgo(26), now)).toContain('about a day ago');
+    expect(renderReturn(hoursAgo(24 * 4), now)).toContain('4 days ago');
+    const context = buildTurnContext(roy, { now, lastMessageAt: hoursAgo(8) });
+    expect(context).toContain('# They are back');
+    expect(context).toContain('Never needy or guilt-tripping');
   });
 });

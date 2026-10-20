@@ -49,8 +49,6 @@ export const DEMO_PLANS: readonly DemoPlanOption[] = [
 /** Plus features. `{names}` is replaced with the companions' names from config. */
 export const PLUS_FEATURES = [
   `${PLUS_DAILY_MESSAGES} messages a day`,
-  'Voice notes & calls',
+  'Sharper, more thoughtful replies',
   `${PLUS_MONTHLY_CREDITS} photos a month from {names}`,
-  'Longer memory',
-  'iMessage mode',
 ] as const;

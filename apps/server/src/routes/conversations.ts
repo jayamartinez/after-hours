@@ -335,6 +335,8 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               ]);
             const request = buildChatRequest(character, {
               history: toHistoryTurns(rows.slice(-historyWindow(threadLength)), userRow.id),
+              // The message before this one, for "you're back" after a long gap (D-043).
+              lastMessageAt: rows.filter((row) => row.seq < userRow.seq).at(-1)?.createdAt,
               memories,
               userMessages,
               prefs: prefsFromProfile(profile),
