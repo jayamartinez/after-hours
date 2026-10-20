@@ -350,8 +350,9 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
           onCredits?.({ type: 'messages_required', companionId: id });
           return;
         }
-        if (error.code === 'message_too_long') {
-          // Shown as not delivered (never as read), with the limit in the notice.
+        if (error.code === 'message_too_long' || error.code === 'demo_limit_reached') {
+          // Shown as not delivered (never as read), with the reason in the notice. The demo
+          // limit (D-042) offers no "get more": free demo packs must not get around it.
           fail({ ...error, retryable: true }, true);
           return;
         }

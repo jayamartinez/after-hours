@@ -51,10 +51,28 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  /** `true`: the client address comes from the first `X-Forwarded-For` entry (behind a proxy). */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /** Estimated provider spend across everyone per UTC day; past it chat pauses (D-042). */
+  GLOBAL_DAILY_SPEND_CAP_USD: z.coerce.number().positive().default(25),
+  /** Estimated provider spend per network, ever; survives account deletion (D-042). */
+  NETWORK_LIFETIME_CAP_USD: z.coerce.number().positive().default(3),
+  /** New anonymous accounts per network per UTC day (D-042). */
+  SESSIONS_PER_NETWORK_PER_DAY: z.coerce.number().int().min(1).default(10),
   /** Chat messages per user per minute. */
   RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(20),
   NODE_ENV: z.string().default('development'),
 });
+
+export interface DemoLimits {
+  trustProxy: boolean;
+  globalDailyUsd: number;
+  networkLifetimeUsd: number;
+  sessionsPerNetworkPerDay: number;
+}
 
 export interface ChatConfig {
   provider: 'anthropic';
@@ -80,6 +98,8 @@ export interface ServerConfig {
   sessionSecret: string | undefined;
   killSwitch: boolean;
   webAccess: boolean;
+  /** Abuse limits for a public demo (D-042). */
+  limits: DemoLimits;
   rateLimitPerMin: number;
   /** Development: CORS also allows any http://localhost or 127.0.0.1 port. */
   allowLocalhostOrigins: boolean;
@@ -115,6 +135,12 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       : { kind: 'pglite', dataDir: path.resolve(REPO_ROOT, vars.PGLITE_DIR) },
     sessionSecret: vars.SESSION_SECRET,
     killSwitch: vars.KILL_SWITCH,
+    limits: {
+      trustProxy: vars.TRUST_PROXY,
+      globalDailyUsd: vars.GLOBAL_DAILY_SPEND_CAP_USD,
+      networkLifetimeUsd: vars.NETWORK_LIFETIME_CAP_USD,
+      sessionsPerNetworkPerDay: vars.SESSIONS_PER_NETWORK_PER_DAY,
+    },
     webAccess: vars.WEB_ACCESS,
     rateLimitPerMin: vars.RATE_LIMIT_PER_MIN,
     allowLocalhostOrigins: vars.NODE_ENV !== 'production',

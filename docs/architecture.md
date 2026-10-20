@@ -96,6 +96,15 @@ Built in D-040 and D-041 (`chat/costs.ts`, `db/message-allowance.ts`, the Anthro
 - **Caching:** two cache breakpoints per request: the character prompt and the latest message, so each turn reads the conversation so far from the cache.
 - **Output cap:** 2,000 tokens per reply (room for low-effort thinking plus a few texts).
 
+### Public demo limits
+
+Built in D-042 (`limits/network.ts`, `db/demo-limits.ts`, the send and session routes):
+
+- **Network key:** the client address (socket peer, or the first `X-Forwarded-For` entry with `TRUST_PROXY=true`), IPv6 reduced to its /64, IPv4-mapped IPv6 unwrapped, then HMAC-SHA256 with a key derived from the session secret. Only the hash is stored.
+- **Recording:** after each reply its estimated cost is added, in one transaction, to the user's day (`spend_usage`), the network's lifetime total (`network_spend`), and the global day (`global_spend`).
+- **Checks before a new message:** global day at or over `GLOBAL_DAILY_SPEND_CAP_USD` returns 503 `unavailable`; network lifetime at or over `NETWORK_LIFETIME_CAP_USD` returns 402 `demo_limit_reached` (not retryable; the app shows a notice and no "get more" sheet). Both apply to every plan and to bonus messages.
+- **New accounts:** `POST /session` is limited per network per UTC day (`network_sessions`), on top of the existing per-minute limit.
+
 ### Web access
 
 Built in D-038 (`chat/web-tools.ts`, `chat/page-image.ts`, `db/web-usage.ts`, the Anthropic provider):
@@ -276,6 +285,10 @@ Names only. "Degrades" describes behavior when unset.
 | `RATE_LIMIT_PER_MIN` | No | 20 chat messages per user per minute (in-memory) |
 | `KILL_SWITCH` | No (public demo emergency stop) | `false`; `true` makes chat sends return 503 |
 | `CHAT_FREE_MODEL` | No | `claude-sonnet-5-5`; chat model for free users (D-040). `CHAT_PRIMARY_MODEL` serves demo Plus |
+| `GLOBAL_DAILY_SPEND_CAP_USD` | No | `25`; chat pauses for everyone past this estimated daily spend (D-042) |
+| `NETWORK_LIFETIME_CAP_USD` | No | `3`; estimated spend per network, ever (D-042) |
+| `SESSIONS_PER_NETWORK_PER_DAY` | No | `10`; new anonymous accounts per network per day (D-042) |
+| `TRUST_PROXY` | No | `false`; `true` reads the client address from `X-Forwarded-For` |
 | `WEB_ACCESS` | No | `true`; `false` turns off web search, link reading, and found pictures (D-038) |
 | `DAILY_TOKEN_BUDGET`, `DAILY_IMAGE_BUDGET`, `DAILY_AUDIO_SECONDS`, `GLOBAL_DAILY_SPEND_CAP_USD` | No | Not implemented yet |
 | `MAX_TOOL_CALLS_PER_TURN` | No | Default 2 |

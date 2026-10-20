@@ -50,12 +50,15 @@ import {
   toMessageDto,
 } from '../db/conversations';
 import { listMemories } from '../db/memories';
-import { addSpend, spendMessage } from '../db/message-allowance';
+import { demoLimitReached, recordReplyCost } from '../db/demo-limits';
+import { spendMessage } from '../db/message-allowance';
 import { replyCostMicroUsd } from '../chat/costs';
 import type { MessageRow } from '../db/schema';
 import { getProfile, isPlus } from '../db/users';
 import { addWebLookups, remainingWebLookups } from '../db/web-usage';
+import { clientAddress, networkKey } from '../limits/network';
 import { createRateLimiter } from '../limits/rate-limit';
+import type { DemoLimits } from '../config';
 import {
   ChatModelError,
   type ChatModel,
@@ -73,6 +76,8 @@ export interface ConversationRoutesOptions {
   sessionSecret: string;
   killSwitch: boolean;
   rateLimitPerMin: number;
+  /** Public demo abuse limits (D-042). */
+  limits: DemoLimits;
   /**
    * Extracts memories after each delivered reply and writes per-user starters. Unset: no
    * automatic memories, and starters are the companion's defaults.
@@ -225,6 +230,31 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
           );
         }
         const replyModel = plus ? model : (options.freeModel ?? model);
+        const network = networkKey(
+          clientAddress(c, options.limits.trustProxy),
+          options.sessionSecret,
+        );
+        const limit = await demoLimitReached(db, network, options.limits);
+        if (limit === 'global') {
+          return c.json(
+            apiError(
+              'unavailable',
+              'After Hours is resting for today. Check back tomorrow.',
+              false,
+            ),
+            503,
+          );
+        }
+        if (limit === 'network') {
+          return c.json(
+            apiError(
+              'demo_limit_reached',
+              'You have reached the limit for this demo. Thanks for trying After Hours.',
+              false,
+            ),
+            402,
+          );
+        }
 
         if (!limiter.take(userId)) {
           return c.json(
@@ -396,7 +426,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
             }
 
             await addWebLookups(db, userId, webRequests + picturesShared);
-            await addSpend(db, userId, replyCost);
+            await recordReplyCost(db, { userId, network, microUsd: replyCost });
             await setMessageStatus(db, conversationId, [userRow.id], 'read');
             await send({ type: 'done', userMessageId: userRow.id, messageIds: saved });
 

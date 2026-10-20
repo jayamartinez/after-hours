@@ -81,6 +81,33 @@ export const spendUsage = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 ).enableRLS();
 
+/**
+ * Estimated spend per network (a keyed hash of the client's IP or IPv6 /64), ever (D-042).
+ * Not linked to users, so deleting an account or starting a new session does not reset it.
+ */
+export const networkSpend = pgTable('network_spend', {
+  network: text('network').primaryKey(),
+  microUsd: integer('micro_usd').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+/** Estimated spend across everyone per UTC day (D-042): the global daily cap. */
+export const globalSpend = pgTable('global_spend', {
+  day: date('day', { mode: 'string' }).primaryKey(),
+  microUsd: integer('micro_usd').notNull().default(0),
+}).enableRLS();
+
+/** New anonymous accounts per network per UTC day (D-042). */
+export const networkSessions = pgTable(
+  'network_sessions',
+  {
+    network: text('network').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.network, t.day] })],
+).enableRLS();
+
 /** Web lookups (searches, link reads, shared pictures) per user per UTC day (D-038). */
 export const webUsage = pgTable(
   'web_usage',

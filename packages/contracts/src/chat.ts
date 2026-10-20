@@ -100,6 +100,8 @@ export const ChatErrorCodeSchema = z.enum([
   'messages_required',
   /** Longer than a free user's limit (D-040). */
   'message_too_long',
+  /** This network has used its share of the public demo (D-042). Not retryable. */
+  'demo_limit_reached',
 ]);
 
 /** Error body for non-streaming responses, and the payload of the SSE `error` event. */
