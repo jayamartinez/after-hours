@@ -58,7 +58,7 @@ Built in Milestone 3 (`apps/server/src/routes/conversations.ts`):
 1. `KILL_SWITCH` → 503. The body `{ text, clientId, timeZone? }` is validated with `SendMessageRequestSchema` (max 2,000 characters).
 2. Auth: verify the session token (`auth/session.ts`) and that the user row exists; resolve `userId`. Conversations are addressed by companion id and always looked up through `userId`, so ownership is structural. Unknown companion → 404.
 3. Per-user rate limit (in-memory fixed window, `RATE_LIMIT_PER_MIN`, default 20) → 429.
-4. Get or create the conversation (a new one starts with the companion's `copy.firstMessage`). Persist the user message, idempotent on `(conversation, clientId)`: resending an answered message replays the stored reply without calling the model; resending a failed one generates again. Emit `ack`, then `typing`.
+4. Get or create the conversation (a new one starts empty; the user always sends the first message, D-031). Persist the user message, idempotent on `(conversation, clientId)`: resending an answered message replays the stored reply without calling the model; resending a failed one generates again. Emit `ack`, then `typing`.
 5. Build the request with `buildChatRequest`: the last 30 stored messages (failed ones dropped, consecutive same-side messages merged), this user's memories for this companion only, and the device time zone.
 6. Stream from the `ChatModel`. Deltas feed an incremental bubble splitter (`createBubbleSplitter`, same result as `splitBubbles`); each finished bubble is stored as its own assistant message (`reply_to` = the user message) and emitted as `bubble`. A retryable failure before the first token is retried once. No fallback provider yet.
 7. `done` with the stored ids; the user message becomes `read`. On failure, `error { code, message, retryable }`: a refusal is non-retryable (message `read`); a provider error before any bubble is retryable (message `failed`); a failure after some bubbles keeps them and is non-retryable. A client disconnect does not stop generation, so the reply is still saved. Logs never include message content.
@@ -170,7 +170,7 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 
 ## Companion image slots
 
-Each companion has fixed image slots. Ratios are fixed for visual consistency; a deployer changes only the source and focal point. Slot definitions and default art are in `docs/companions.md`.
+Each companion has fixed image slots. Ratios are fixed for visual consistency; a deployer changes only the source and focal point. Slot definitions are in `docs/companions.md`.
 
 | Slot | Ratio | Used in |
 | --- | --- | --- |
@@ -180,7 +180,7 @@ Each companion has fixed image slots. Ratios are fixed for visual consistency; a
 
 Each slot has a focal point `[x, y]` (0 to 1). Rendering uses `object-fit: cover` with `object-position` from the focal point. Images are never stretched, and a different source is never used for the same slot. Galleries hold two images per companion.
 
-**Resolution order:** override manifest, then bundled default, then monogram fallback. A missing slot or file falls through to the next step.
+**Resolution order:** override manifest, else no image (`uri: null`), which the client renders as a loading pulse (D-030). A missing slot or file leaves that slot empty.
 
 - **Override manifest:** `COMPANION_ASSET_MANIFEST` (default `config/companion-assets.local.json`, git-ignored). Example:
 
@@ -188,7 +188,7 @@ Each slot has a focal point `[x, y]` (0 to 1). Rendering uses `object-fit: cover
 {"roy":{"hero":{"src":"roy/hero.jpg","focal":[0.5,0.3],"alt":"Roy at his desk"},"avatar":{"src":"roy/avatar.jpg"},"gallery":[{"src":"https://cdn.example.com/roy-1.jpg","focal":[0.55,0.45]}]}}
 ```
 
-- **`src`:** a relative path (no `..`, no leading slash, no backslashes) is served by the API at `/assets/private/<path>` from `PRIVATE_ASSETS_DIR` (default `private-assets/` at the repo root, git-ignored), but only if the file exists; otherwise the slot gets `uri: null` and the default art. An `https://` URL is used as-is; plain `http://` is accepted only for `localhost`. An omitted `focal` or `alt` uses the slot default.
+- **`src`:** a relative path (no `..`, no leading slash, no backslashes) is served by the API at `/assets/private/<path>` from `PRIVATE_ASSETS_DIR` (default `private-assets/` at the repo root, git-ignored), but only if the file exists; otherwise the slot gets `uri: null` (no image). An `https://` URL is used as-is; plain `http://` is accepted only for `localhost`. An omitted `focal` or `alt` uses the slot default.
 - **Validation:** the manifest is validated with a Zod schema in `packages/contracts`. Invalid JSON or schema logs a warning and the whole file is ignored; unknown companion ids are ignored with a warning. The server re-reads the file when its mtime or size changes. The resolver returns `{ uri, focal, alt }` per slot in `GET /companions`.
 - **Private asset route:** image extensions only (`.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`), decoded once and re-checked, symlinks resolved and kept inside the root; traversal attempts get 400, missing or non-image files 404.
 - **Client:** `CompanionImage` renders with expo-image (`contentFit="cover"`, `contentPosition` from the focal point), identical on iOS and web.
@@ -209,8 +209,8 @@ Reference: `docs/companions.md`.
 - **Client:** every screen reads companions through one hook, `useCompanions()` / `useCompanion(id)` (`apps/mobile/src/api/companions.ts`). No component hardcodes a companion's name, copy, or image.
 - **Loading on iOS and web:** both platforms run the same code path.
   - Online: the app fetches `${EXPO_PUBLIC_API_URL}/companions`. The web build reaches `localhost:8787` directly; CORS allows `CORS_ORIGINS`. The iOS Simulator can also use `localhost`. A physical device needs the computer's LAN IP in `EXPO_PUBLIC_API_URL` (and in `PUBLIC_SERVER_URL` so private-asset URLs work).
-  - Offline or invalid response: the app falls back to the bundled presets. Metro inlines the preset JSON imports at build time on iOS and web, and the app projects them to `PublicCharacter`. Images then come from bundled defaults via static `require()`. Local overrides are never bundled; they arrive only through the server.
-  - Images: bundled defaults are static `require()` (iOS and web). Overrides are http(s) URLs served by the server or hosted elsewhere (iOS and web). The client never reads arbitrary filesystem paths.
+  - Offline or invalid response: the app falls back to the bundled presets. Metro inlines the preset JSON imports at build time on iOS and web, and the app projects them to `PublicCharacter`. Every image slot is then empty (loading pulse). Local overrides are never bundled; they arrive only through the server.
+  - Images: there are no bundled images (D-030). Overrides are http(s) URLs served by the server or hosted elsewhere (iOS and web). The client never reads arbitrary filesystem paths.
   - The whole preset file is in the bundle (the repo is public anyway), so presets must never hold secrets.
 - **Prompt assembly:** `buildChatRequest(character, { history, memories, prefs, now })` (`chat/request.ts`) is the one path from config to a model request. `buildSystemPrompt(character, prefs?)` puts the app-level safety preamble (`chat/safety.ts`, not configurable) first, then renders identity and `persona` plus the app-level conversation and memory rules (including: never claim accomplishments, companies, famous acquaintances, or past events as facts); it is byte-stable and sent as the cached system block. `buildTurnContext` (`chat/context.ts`) adds the volatile part (current time, relationship stage and onboarding profile, this companion's memories only) as a second system block. `ChatModel` (`providers/types.ts`, Anthropic implementation in `providers/anthropic.ts`) streams the reply; `splitBubbles` / `createBubbleSplitter` turn blank-line-separated texts into bubbles. Onboarding preferences can lower flirtation or roast levels, never raise them. Unit tests prove that config changes alter the request and that config cannot remove the preamble. The chat route (see "Chat pipeline") uses this path; `pnpm --filter @after-hours/server eval` exercises it against the real model.
 - **Dev editor:** `GET`/`PUT /dev/companions/:id` exists only with `DEV_EDITOR=true` and only for loopback connections to a local host name with no proxy headers. It writes only the overrides file, atomically (temp file + rename). The mobile route `/dev/companions` redirects home unless `EXPO_PUBLIC_DEV_EDITOR=true` at bundle time.
@@ -224,7 +224,7 @@ Names only. "Degrades" describes behavior when unset.
 | `PORT` | No | Default 8787 |
 | `PUBLIC_SERVER_URL` | No | Private-asset URLs use the request's own origin |
 | `CORS_ORIGINS` | No | `http://localhost:8081` (Expo web dev server). Outside `NODE_ENV=production`, any `http://localhost:<port>` or `127.0.0.1` origin is also allowed. |
-| `COMPANION_ASSET_MANIFEST` | No | Defaults to `config/companion-assets.local.json` (git-ignored). Missing file uses bundled default art. |
+| `COMPANION_ASSET_MANIFEST` | No | Defaults to `config/companion-assets.local.json` (git-ignored). Missing file: no companion images (loading pulse). |
 | `COMPANIONS_CONFIG` | No | Defaults to `config/companions.local.json` (git-ignored). Missing file: presets only. |
 | `DEV_EDITOR` | No | `false`: `/dev/companions` routes return 404. Never enable on a deployed server. |
 | `EXPO_PUBLIC_DEV_EDITOR` | No | `false`: the app's `/dev/companions` route redirects home. |
