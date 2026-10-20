@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CreditSignal } from '@/api/credits';
 
-import { createApiConversationSource, type ApiResponse, type ApiTransport } from './api-source';
+import {
+  createApiConversationSource,
+  type ApiResponse,
+  type ApiSourceOptions,
+  type ApiTransport,
+} from './api-source';
 import { createDemoConversationSource } from './demo-source';
 
 const roy = toPublicCharacter(presets[0]!);
@@ -44,7 +49,10 @@ function sse(events: ChatStreamEvent[]): ApiResponse {
   };
 }
 
-function setup(transport: Partial<ApiTransport>, onCredits?: (signal: CreditSignal) => void) {
+function setup(
+  transport: Partial<ApiTransport>,
+  hooks: Pick<ApiSourceOptions, 'onCredits' | 'onStored'> = {},
+) {
   const source = createApiConversationSource({
     transport: {
       get: async () => json({ companionId: 'roy', messages: [] }),
@@ -57,7 +65,7 @@ function setup(transport: Partial<ApiTransport>, onCredits?: (signal: CreditSign
     timing: { readDelay: 0, bubbleGap: () => 0 },
     makeClientId: () => 'client-1',
     timeZone: () => 'UTC',
-    onCredits,
+    ...hooks,
   });
   /** Lets queued fetches, stream reads, and zero-delay pacing steps run. */
   const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
@@ -129,7 +137,7 @@ describe('createApiConversationSource', () => {
             { type: 'done', userMessageId: 'u1', messageIds: ['p1'] },
           ]),
       },
-      (signal) => signals.push(signal),
+      { onCredits: (signal) => signals.push(signal) },
     );
     source.load(roy);
     await settle();
@@ -154,7 +162,7 @@ describe('createApiConversationSource', () => {
         postStream: async () =>
           json({ code: 'messages_required', message: 'Out of messages.', retryable: true }, 402),
       },
-      (signal) => signals.push(signal),
+      { onCredits: (signal) => signals.push(signal) },
     );
     source.load(roy);
     await settle();
@@ -165,6 +173,28 @@ describe('createApiConversationSource', () => {
     // No toast: the "More messages" sheet explains it.
     expect(state.notice).toBeNull();
     expect(signals).toEqual([{ type: 'messages_required', companionId: 'roy' }]);
+  });
+
+  it('reports stored messages so the Chats tab can refresh', async () => {
+    const stored: string[] = [];
+    const { source, settle } = setup(
+      {
+        postStream: async () =>
+          sse([
+            { type: 'ack', message: dto({ id: 'u1', role: 'user', content: 'hey' }) },
+            { type: 'typing' },
+            { type: 'bubble', message: dto({ id: 'a1', content: 'hi' }) },
+            { type: 'done', userMessageId: 'u1', messageIds: ['a1'] },
+          ]),
+      },
+      { onStored: (companionId) => stored.push(companionId) },
+    );
+    source.load(roy);
+    await settle();
+    expect(stored).toEqual([]);
+    source.send(roy, 'hey');
+    await settle();
+    expect(stored).toEqual(['roy', 'roy']);
   });
 
   it('marks a send failed on a retryable error and retries with the same clientId', async () => {
