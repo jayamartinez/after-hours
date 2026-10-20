@@ -1,4 +1,4 @@
-import type { ChatUsage } from '../providers/types';
+import type { BilledRequest, ChatUsage } from '../providers/types';
 
 /**
  * Estimated provider cost of a reply (D-041), for the hidden per-user daily budget. Prices
@@ -40,6 +40,17 @@ export function replyCostMicroUsd(model: string, usage: ChatUsage, webLookups = 
       1_000_000 +
     webLookups * WEB_LOOKUP_USD;
   return Math.ceil(usd * 1_000_000);
+}
+
+/**
+ * Estimated cost of every request a reply was billed for. Each is priced at the model that
+ * served it (a server-side fallback can switch models between rounds), then summed.
+ */
+export function billedCostMicroUsd(billed: readonly BilledRequest[]): number {
+  return billed.reduce(
+    (sum, request) => sum + replyCostMicroUsd(request.model, request.usage, request.webRequests),
+    0,
+  );
 }
 
 /** Adds two usage records (continuations and tool rounds of one reply). */

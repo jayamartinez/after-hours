@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import type { ChatTool, ToolCall, ToolResult } from '../providers/types';
 
+import { withoutEmDashes } from './bubbles';
+
 /**
  * `send_photo` (D-026): the only tool chat offers. The companion decides to send a photo
  * when the user asks for one; each photo costs one credit and, until image generation
@@ -96,7 +98,7 @@ export async function runPhotoCalls(
     reply.photoAttempted = true;
     const input = {
       moment: parsed.data.moment.slice(0, MAX_MOMENT),
-      caption: parsed.data.caption.slice(0, MAX_CAPTION),
+      caption: withoutEmDashes(parsed.data.caption).trim().slice(0, MAX_CAPTION),
     };
     const outcome = await send(input, call);
     results.push(

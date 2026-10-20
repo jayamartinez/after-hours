@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { SEND_PHOTO_TOOL } from '../chat/photo-tool';
+import { streamReply } from '../chat/reply';
 
 import type Anthropic from '@anthropic-ai/sdk';
+
+import { ChatModelError } from './types';
 
 import {
   createAnthropicChatModel,
@@ -131,28 +134,23 @@ describe('web access', () => {
     expect(joinText(content)).toBe('lemme check\n\nok so he did');
   });
 
-  it('resumes a paused reply and counts its lookups', async () => {
-    const usage = (searches: number) => ({
-      input_tokens: 1,
-      output_tokens: 1,
-      server_tool_use: { web_search_requests: searches, web_fetch_requests: 0 },
-    });
-    const turns = [
-      {
-        stop_reason: 'pause_turn',
-        content: [
-          { type: 'text', text: 'lemme check' },
-          { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
-        ],
-        usage: usage(1),
-      },
-      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok so' }], usage: usage(1) },
-    ];
-    const requests: { messages: unknown[] }[] = [];
+  type FakeTurn = { stop_reason: string; content: Record<string, unknown>[]; usage: unknown };
+  const usage = (searches: number, fetches = 0) => ({
+    input_tokens: 1,
+    output_tokens: 1,
+    server_tool_use: { web_search_requests: searches, web_fetch_requests: fetches },
+  });
+  /** Plays `turns` as streamed messages and records every request. */
+  function fakeClient(turns: FakeTurn[]) {
+    const requests: {
+      messages: unknown[];
+      tools?: { name: string; max_uses?: number }[];
+      tool_choice?: unknown;
+    }[] = [];
     const client = {
       beta: {
         messages: {
-          stream(params: { messages: unknown[] }) {
+          stream(params: (typeof requests)[number]) {
             requests.push(params);
             const turn = turns.shift()!;
             const handlers: Record<string, ((arg: never) => void)[]> = {};
@@ -177,16 +175,132 @@ describe('web access', () => {
         },
       },
     } as unknown as Anthropic;
+    return { client, requests };
+  }
+  const web = { searches: 2, fetches: 2, blockedDomains: [] };
+
+  it('resumes a paused reply and counts its lookups', async () => {
+    const { client, requests } = fakeClient([
+      {
+        stop_reason: 'pause_turn',
+        content: [
+          { type: 'text', text: 'lemme check' },
+          { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
+        ],
+        usage: usage(1),
+      },
+      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok so' }], usage: usage(1) },
+    ]);
     const model = createAnthropicChatModel({ model: 'm', effort: 'low' }, client);
     let streamed = '';
-    const result = await model.stream({ ...base }, (delta) => (streamed += delta));
+    const result = await model.stream({ ...base, web }, (delta) => (streamed += delta));
 
     expect(result.text).toBe('lemme check\n\nok so');
     expect(streamed).toBe('lemme check\n\nok so');
     expect(result.webRequests).toBe(2);
+    expect(result.webUsed).toEqual({ searches: 2, fetches: 0 });
     // The paused turn goes back as an assistant message, with no extra user message.
     expect(requests[1]?.messages.at(-1)).toMatchObject({ role: 'assistant' });
     expect(requests[1]?.messages).toHaveLength(2);
+  });
+
+  it('resumes with byte-identical tools while lookups are left', async () => {
+    const { client, requests } = fakeClient([
+      {
+        stop_reason: 'pause_turn',
+        content: [
+          { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
+          { type: 'web_search_tool_result', tool_use_id: 's1', content: [] },
+          { type: 'server_tool_use', id: 'f1', name: 'web_fetch', input: {} },
+          { type: 'web_fetch_tool_result', tool_use_id: 'f1', content: {} },
+        ],
+        usage: usage(1, 1),
+      },
+      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'found it' }], usage: usage(0) },
+    ]);
+    const model = createAnthropicChatModel({ model: 'm', effort: 'low' }, client);
+    const result = await model.stream({ ...base, web });
+
+    expect(requests).toHaveLength(2);
+    expect(JSON.stringify(requests[1]?.tools)).toBe(JSON.stringify(requests[0]?.tools));
+    expect(result.webUsed).toEqual({ searches: 1, fetches: 1 });
+  });
+
+  it('does not resume once the reply has used up a lookup allowance', async () => {
+    const paused = (searches: number) => ({
+      stop_reason: 'pause_turn',
+      content: [
+        { type: 'text', text: 'one sec' },
+        { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
+      ],
+      usage: usage(searches),
+    });
+    const spent = fakeClient([paused(2)]);
+    const result = await createAnthropicChatModel(
+      { model: 'm', effort: 'low' },
+      spent.client,
+    ).stream({ ...base, web });
+    expect(spent.requests).toHaveLength(1);
+    expect(result.text).toBe('one sec');
+    expect(result.stopReason).toBe('pause_turn');
+
+    // Lookups from earlier requests of the same reply count too.
+    const earlier = fakeClient([paused(1)]);
+    await createAnthropicChatModel({ model: 'm', effort: 'low' }, earlier.client).stream({
+      ...base,
+      web,
+      webUsedBefore: { searches: 1, fetches: 0 },
+    });
+    expect(earlier.requests).toHaveLength(1);
+  });
+
+  it('sends byte-identical tools on every request of a multi-round reply', async () => {
+    const { client, requests } = fakeClient([
+      {
+        stop_reason: 'pause_turn',
+        content: [
+          { type: 'server_tool_use', id: 's1', name: 'web_search', input: {} },
+          { type: 'web_search_tool_result', tool_use_id: 's1', content: [] },
+        ],
+        usage: usage(1),
+      },
+      {
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', id: 't1', name: 'share_image', input: {} }],
+        usage: usage(1),
+      },
+      {
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', id: 't2', name: 'share_image', input: {} }],
+        usage: usage(0),
+      },
+      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'there' }], usage: usage(0) },
+    ]);
+    const model = createAnthropicChatModel({ model: 'm', effort: 'low' }, client);
+    const tool = {
+      name: 'share_image',
+      description: 'd',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    };
+    await streamReply(
+      model,
+      { ...base, tools: [tool], web: { ...web, blockedDomains: ['bad.example'] } },
+      {
+        onBubble: async () => {},
+        onToolCalls: async (calls) => calls.map((c) => ({ callId: c.id, content: 'ok' })),
+      },
+    );
+
+    expect(requests).toHaveLength(4);
+    const tools = requests.map((request) => JSON.stringify(request.tools));
+    expect(new Set(tools).size).toBe(1);
+    // Tool rounds stay open until the last (picture retries); only the last is closed.
+    expect(requests.map((request) => request.tool_choice)).toEqual([
+      { type: 'auto' },
+      { type: 'auto' },
+      { type: 'auto' },
+      { type: 'none' },
+    ]);
   });
 });
 
@@ -209,5 +323,109 @@ describe('withHistoryCache', () => {
     );
     expect(JSON.stringify(params.messages)).toContain('"cache_control"');
     expect(params.max_tokens).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe('billing', () => {
+  const base = {
+    system: { stable: 'You are Roy.' },
+    messages: [{ role: 'user' as const, content: 'hi' }],
+  };
+  const usage = (output: number, searches = 0) => ({
+    input_tokens: 10,
+    output_tokens: output,
+    server_tool_use: { web_search_requests: searches, web_fetch_requests: 0 },
+  });
+  type Scripted = {
+    model: string;
+    stop_reason: string;
+    content: { type: string; text?: string }[];
+    usage: ReturnType<typeof usage>;
+    /** Breaks the stream after the text, with this much usage already reported. */
+    failAfter?: ReturnType<typeof usage>;
+  };
+  /** Fake SDK client: each request plays one scripted message. */
+  const fakeClient = (turns: Scripted[]) =>
+    ({
+      beta: {
+        messages: {
+          stream() {
+            const turn = turns.shift()!;
+            const handlers: Record<string, ((arg: never) => void)[]> = {};
+            let current: unknown;
+            return {
+              on(event: string, fn: (arg: never) => void) {
+                (handlers[event] ??= []).push(fn);
+                return this;
+              },
+              get currentMessage() {
+                return current;
+              },
+              async finalMessage() {
+                current = { ...turn, usage: turn.failAfter ?? turn.usage };
+                for (const block of turn.content) {
+                  if (block.type === 'text')
+                    handlers.text?.forEach((fn) => fn(block.text as never));
+                }
+                if (turn.failAfter) throw new Error('stream broke');
+                return turn;
+              },
+            };
+          },
+        },
+      },
+    }) as unknown as Anthropic;
+  const text = (value: string) => [{ type: 'text', text: value }];
+
+  it('bills each request of a paused reply at the model that served it', async () => {
+    const client = fakeClient([
+      {
+        model: 'claude-opus-5-5',
+        stop_reason: 'pause_turn',
+        content: text('a'),
+        usage: usage(5, 1),
+      },
+      { model: 'claude-opus-4-8', stop_reason: 'end_turn', content: text('b'), usage: usage(7) },
+    ]);
+    const result = await createAnthropicChatModel({ model: 'm', effort: 'low' }, client).stream(
+      base,
+    );
+    expect(result.billed).toEqual([
+      expect.objectContaining({ model: 'claude-opus-5-5', webRequests: 1 }),
+      expect.objectContaining({ model: 'claude-opus-4-8', webRequests: 0 }),
+    ]);
+    expect(result.billed.map((b) => b.usage.outputTokens)).toEqual([5, 7]);
+  });
+
+  it('a refusal after output carries its bill', async () => {
+    const client = fakeClient([
+      { model: 'claude-opus-5-5', stop_reason: 'refusal', content: text('so'), usage: usage(3) },
+    ]);
+    const error = await createAnthropicChatModel({ model: 'm', effort: 'low' }, client)
+      .stream(base)
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ChatModelError);
+    expect((error as ChatModelError).kind).toBe('refusal');
+    expect((error as ChatModelError).billed).toEqual([
+      expect.objectContaining({ model: 'claude-opus-5-5' }),
+    ]);
+  });
+
+  it('a stream that breaks mid-reply bills what was used, earlier requests included', async () => {
+    const client = fakeClient([
+      { model: 'claude-opus-5-5', stop_reason: 'pause_turn', content: text('a'), usage: usage(5) },
+      {
+        model: 'claude-opus-5-5',
+        stop_reason: 'end_turn',
+        content: text('b'),
+        usage: usage(9),
+        failAfter: usage(4),
+      },
+    ]);
+    const error = (await createAnthropicChatModel({ model: 'm', effort: 'low' }, client)
+      .stream(base)
+      .catch((e: unknown) => e)) as ChatModelError;
+    expect(error).toBeInstanceOf(ChatModelError);
+    expect(error.billed.map((b) => b.usage.outputTokens)).toEqual([5, 4]);
   });
 });

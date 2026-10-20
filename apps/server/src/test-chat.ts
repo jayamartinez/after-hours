@@ -33,6 +33,10 @@ export type Turn = {
   toolCalls?: ToolCall[];
   /** Web searches and link reads this turn reports (D-038). */
   webRequests?: number;
+  /** The same, by tool. */
+  webUsed?: { searches: number; fetches: number };
+  /** The model that serves this turn (a server-side fallback). Default `test-model`. */
+  model?: string;
 };
 
 /** ChatModel double: plays scripted turns and records every request. */
@@ -49,13 +53,18 @@ export function scriptedModel() {
       for (const chunk of turn.chunks) onText?.(chunk);
       if (turn.error) throw turn.error;
       const toolCalls = turn.toolCalls ?? [];
+      const served = turn.model ?? 'test-model';
+      const webRequests =
+        turn.webRequests ?? (turn.webUsed ? turn.webUsed.searches + turn.webUsed.fetches : 0);
       return {
         text: turn.chunks.join(''),
         stopReason: toolCalls.length ? 'tool_use' : 'end_turn',
-        model: 'test-model',
+        model: served,
         usage: USAGE,
         toolCalls,
-        webRequests: turn.webRequests ?? 0,
+        webRequests,
+        ...(turn.webUsed ? { webUsed: turn.webUsed } : {}),
+        billed: [{ model: served, usage: USAGE, webRequests }],
         raw: { scripted: turn.chunks, toolCalls },
       };
     },

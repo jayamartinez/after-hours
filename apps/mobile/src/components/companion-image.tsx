@@ -1,7 +1,15 @@
 import type { ImageSlot, PublicCharacter } from '@after-hours/contracts';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Animated, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  Platform,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { colors } from '@/theme/tokens';
 
@@ -28,7 +36,7 @@ const toPercent = (value: number) => `${Math.round(value * 1000) / 10}%` as cons
  * Renders one companion image slot from the server's image URI (private override). There is no
  * bundled art: a slot without a URI, or whose image fails to load, shows the loading pulse.
  * Cover-cropped around the slot's focal point.
- * The pulse sits under the image, so it shows while the image decodes and stays if none exists.
+ * The pulse sits under the image while it decodes and unmounts once it has loaded.
  */
 export function CompanionImage({
   companion,
@@ -42,7 +50,9 @@ export function CompanionImage({
 
   // A failed load hides only that URI; a changed URI (e.g. the manifest was edited) retries.
   const [failedUri, setFailedUri] = useState<string | null>(null);
+  const [loadedUri, setLoadedUri] = useState<string | null>(null);
   const source = uri && uri !== failedUri ? { uri } : null;
+  const loaded = source !== null && source.uri === loadedUri;
 
   const [x, y] = imageSlot.focal;
   return (
@@ -52,7 +62,7 @@ export function CompanionImage({
       accessibilityRole="image"
       accessibilityLabel={imageSlot.alt}
     >
-      <LoadingPulse />
+      {loaded ? null : <LoadingPulse />}
       {source ? (
         <Image
           key={source.uri}
@@ -61,6 +71,7 @@ export function CompanionImage({
           contentFit={fit}
           contentPosition={fit === 'cover' ? { left: toPercent(x), top: toPercent(y) } : 'center'}
           transition={150}
+          onLoad={() => setLoadedUri(source.uri)}
           onError={() => setFailedUri(source.uri)}
         />
       ) : null}
@@ -68,10 +79,15 @@ export function CompanionImage({
   );
 }
 
-/** Soft breathing fill shown while an image loads, or when a slot has no image to show. */
+/**
+ * Soft breathing fill shown while an image loads, or when a slot has no image to show.
+ * With Reduce Motion on, it holds a static fill instead of pulsing.
+ */
 function LoadingPulse() {
   const [opacity] = useState(() => new Animated.Value(0.4));
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    if (reduceMotion !== false) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 0.9, duration: 900, useNativeDriver: nativeDriver }),
@@ -80,8 +96,25 @@ function LoadingPulse() {
     );
     loop.start();
     return () => loop.stop();
-  }, [opacity]);
+  }, [opacity, reduceMotion]);
   return <Animated.View style={[StyleSheet.absoluteFill, styles.pulse, { opacity }]} />;
+}
+
+/** The system Reduce Motion setting; `null` until the first read resolves. */
+function useReduceMotion(): boolean | null {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((value) => {
+      if (active) setEnabled(value);
+    });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setEnabled);
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
+  return enabled;
 }
 
 const nativeDriver = Platform.OS !== 'web';

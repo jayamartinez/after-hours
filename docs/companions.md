@@ -22,8 +22,8 @@ Roy and Roya are the only companions in scope. Both are fictional adult AI parod
 | `id` | Slug (`roy`, `roya`). Immutable; an override cannot change it. |
 | `name`, `age` (≥ 21), `pronouns { subject, object, possessive }` | Identity. |
 | `tint` (`window` / `lamplight`) | Accent family for dots and waveforms; maps to design tokens. |
-| `disclosure { badge, note }` | `badge` is the "AI PARODY" pill beside the name (Spotlight, profile, chat header). `note` is one short line, shown once in the profile footer. |
-| `images { hero, avatar, gallery[2] }` each `{ asset, focal [x,y], alt }` | `asset` is a bundled default key such as `roy/hero`. Ratios are fixed: hero 3:4, avatar 1:1, gallery 4:5. Sent resolved (see [image-overrides.md](image-overrides.md)). |
+| `disclosure { badge, note }` | Shown in onboarding only (D-029). `badge` is the "AI PARODY" pill beside the name on the reveal screen. `note` is one short non-affiliation line under the reveal subline. |
+| `images { hero, avatar, gallery[2] }` each `{ asset, focal [x,y], alt }` | `asset` is the slot key such as `roy/hero`; no art is bundled (D-030), so a slot shows a loading pulse until an override supplies an image. Ratios are fixed: hero 3:4, avatar 1:1, gallery 4:5. Sent resolved (see [image-overrides.md](image-overrides.md)). |
 
 **`publicProfile`** (the only character content the app may display or use)
 
@@ -35,7 +35,7 @@ Roy and Roya are the only companions in scope. Both are fictional adult AI parod
 | `matchTags[]` | Keywords onboarding matching scores against (with `chips`). |
 | `starters[]` | Quick replies in chat and onboarding. |
 | `about` | Two or three plain sentences on temperament, shown only in the profile's ⋯ → About sheet. No invented biography, slogans, or places. |
-| `copy { spotlightCta, revealHeadline, revealSubline, revealCta, matchReasons[], firstMessage[], sampleOpener, voiceLabel, profileSections { remembers, photos } }` | All companion-specific UI text. `revealCta` is the onboarding reveal button. `firstMessage` opens every new thread. `sampleOpener` is the "He might open with" line (Cast List row, preview sheet). `voiceLabel` is the Spotlight voice pill. |
+| `copy { spotlightCta, revealHeadline, revealSubline, revealCta, matchReasons[], sampleOpener, voiceLabel, profileSections { remembers, photos } }` | All companion-specific UI text. `revealCta` is the onboarding reveal button. There is no scripted opener: new threads start empty and the user sends the first message (D-031). `sampleOpener` is the "He might open with" line (Cast List row, preview sheet). `voiceLabel` is the Spotlight voice pill. |
 
 **`persona`** (server only; builds the LLM prompt)
 
@@ -56,12 +56,12 @@ Roy and Roya are the only companions in scope. Both are fictional adult AI parod
 | `proactive { enabledByDefault, quietHours, maxPerDay 0–5, openers[] }` | Only `enabledByDefault` is public, as `proactiveByDefault` (the default for the profile's "Proactive messages" toggle). |
 | `appearance { style, look }` | Art direction for image generation. |
 
-Objects are strict: unknown keys (typos) fail validation. `GET /companions` returns `PublicCharacter[]` (identity, `publicProfile`, `proactiveByDefault`, resolved images), built field by field in `packages/companions/src/public.ts`; tests assert that no `persona` key or text appears in it. The demo chat (used when the API is unreachable) builds its canned lines from `publicProfile.copy` only.
+Objects are strict: unknown keys (typos) fail validation. A local override that still sets the removed `copy.firstMessage` (D-031) is now rejected: the server logs the Zod issue and serves that companion's preset instead. `GET /companions` returns `PublicCharacter[]` (identity, `publicProfile`, `proactiveByDefault`, resolved images), built field by field in `packages/companions/src/public.ts`; tests assert that no `persona` key or text appears in it. The demo chat (used when the API is unreachable) builds its canned lines from `publicProfile.copy` only.
 
 ## Disclosure
 
 - Badge: `AI PARODY`. Note: `AI-generated parody. Not affiliated with or endorsed by Roy Lee.` The note names the referenced person only to disclaim affiliation.
-- No long disclaimers in profiles, chat bubbles, or first messages. The badge carries the disclosure in chat.
+- Both appear in onboarding only (D-029): the badge beside the name and the note under the subline on the reveal screen. No disclaimers in profiles or chat.
 - The prompt always starts with the app-level safety preamble (`apps/server/src/chat/safety.ts`). It is not configurable. It says the character is a fictional AI parody that never claims to be, speaks as, or quotes the real person, never claims to be human, and stays PG-13.
 
 ## Presets

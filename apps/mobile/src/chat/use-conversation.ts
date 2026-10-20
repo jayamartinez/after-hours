@@ -4,11 +4,14 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { useCompanion } from '@/api/companions';
 import { emitCreditSignal } from '@/api/credits';
+import { queryClient } from '@/api/query-client';
 import { apiTransport } from '@/api/transport';
 
 import { createApiConversationSource, fromDto } from './api-source';
 import { createDemoConversationSource } from './demo-source';
 import type { ChatMessage, Reaction } from './types';
+
+export const CONVERSATIONS_QUERY_KEY = ['conversations'] as const;
 
 /**
  * The app's one conversation source: the server (history + SSE replies), falling back to
@@ -18,9 +21,9 @@ const source = createApiConversationSource({
   transport: apiTransport,
   fallback: createDemoConversationSource(),
   onCredits: emitCreditSignal,
+  // Tab screens stay mounted: refresh the Chats list once a thread has new stored messages.
+  onStored: () => void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY }),
 });
-
-export const CONVERSATIONS_QUERY_KEY = ['conversations'] as const;
 
 /** Drops cached threads (one companion, or all) so screens reload them from the server. */
 export function forgetConversations(companionId?: string): void {

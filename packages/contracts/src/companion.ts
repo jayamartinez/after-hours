@@ -11,8 +11,8 @@ export const FocalPointSchema = z.tuple([unit, unit]);
 export const ImageSlotNameSchema = z.enum(['hero', 'avatar', 'gallery']);
 
 /**
- * One resolved image slot. `uri: null` means "use the bundled default", found in the
- * app's registry under `asset` (e.g. "roy/hero").
+ * One resolved image slot. `uri: null` means no image: the app ships no art (D-030) and shows a
+ * loading pulse. `asset` is the slot's key (e.g. "roy/hero").
  */
 export const ImageSlotSchema = z.object({
   uri: z.string().min(1).nullable(),

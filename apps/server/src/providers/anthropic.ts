@@ -6,12 +6,15 @@ import type { ChatConfig } from '../config';
 
 import {
   ChatModelError,
+  type BilledRequest,
   type ChatModel,
   type ChatRequest,
   type ChatResult,
   type ChatTurn,
   type ChatUsage,
+  addWebUsage,
   type StructuredModel,
+  webAllowanceUsedUp,
 } from './types';
 
 /**
@@ -81,6 +84,34 @@ export function withHistoryCache(
   return [...messages.slice(0, -1), { ...last, content: blocks }];
 }
 
+/** First line of the per-turn context block, so the model never reads it as the user's words. */
+export const TURN_CONTEXT_HEADER = '[Context for this reply, from the app, not the user]';
+
+/**
+ * Appends the volatile per-turn context (time, memories, relationship stage) as a last text
+ * block of the user turn being answered (the last user turn that is not tool results),
+ * after its history cache breakpoint. A new minute or memory never invalidates the cached
+ * conversation, and the context is never stored, so next turn that message is sent without
+ * it and the cached prefix still matches. Within a reply (tool rounds, pause continuations)
+ * the block stays in place, so requests only ever append.
+ */
+export function withTurnContext(
+  messages: Anthropic.Beta.BetaMessageParam[],
+  turns: readonly ChatTurn[],
+  context: string | undefined,
+): Anthropic.Beta.BetaMessageParam[] {
+  if (!context) return messages;
+  const at = turns.findLastIndex((turn) => turn.role === 'user' && !turn.toolResults?.length);
+  const answered = messages[at];
+  if (!answered) return messages;
+  const blocks: Anthropic.Beta.BetaContentBlockParam[] =
+    typeof answered.content === 'string'
+      ? [{ type: 'text', text: answered.content }]
+      : [...answered.content];
+  blocks.push({ type: 'text', text: `${TURN_CONTEXT_HEADER}\n${context}` });
+  return [...messages.slice(0, at), { ...answered, content: blocks }, ...messages.slice(at + 1)];
+}
+
 /** Builds the Messages API params for one chat turn (exported for tests). */
 export function toAnthropicParams(
   request: ChatRequest,
@@ -90,7 +121,6 @@ export function toAnthropicParams(
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     { type: 'text', text: request.system.stable, cache_control: { type: 'ephemeral' } },
   ];
-  if (request.system.context) system.push({ type: 'text', text: request.system.context });
   const declared: Anthropic.Beta.BetaToolUnion[] = (request.tools ?? []).map((tool) => ({
     // Strict: inputs always match the schema (they are tiny, so no eager streaming).
     name: tool.name,
@@ -123,7 +153,11 @@ export function toAnthropicParams(
     model,
     max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
     system,
-    messages: withHistoryCache(request.messages.map(toMessageParam)),
+    messages: withTurnContext(
+      withHistoryCache(request.messages.map(toMessageParam)),
+      request.messages,
+      request.system.context,
+    ),
     ...tools,
     output_config: { effort },
     betas: [FALLBACK_BETA],
@@ -161,6 +195,25 @@ function toChatError(error: unknown): ChatModelError {
     );
   }
   return new ChatModelError('api', 'Unexpected chat provider failure.', false, { cause: error });
+}
+
+/** The same failure, carrying the requests billed before it. */
+function withBilled(error: ChatModelError, billed: readonly BilledRequest[]): ChatModelError {
+  if (billed.length === 0) return error;
+  return new ChatModelError(error.kind, error.message, error.retryable, {
+    cause: error.cause,
+    billed: [...error.billed, ...billed],
+  });
+}
+
+/** One request's bill: priced at the model that served it, with its lookups. */
+function toBilled(message: Anthropic.Beta.BetaMessage): BilledRequest {
+  const server = message.usage.server_tool_use;
+  return {
+    model: message.model,
+    usage: toUsage(message.usage),
+    webRequests: (server?.web_search_requests ?? 0) + (server?.web_fetch_requests ?? 0),
+  };
 }
 
 function toUsage(usage: Anthropic.Beta.BetaUsage | Anthropic.Usage): ChatUsage {
@@ -233,12 +286,13 @@ export function createAnthropicChatModel(
     provider: 'anthropic',
     model: config.model,
     async stream(request, onText, signal): Promise<ChatResult> {
+      const billed: BilledRequest[] = [];
+      /** The request in flight; its partial usage is billed if it fails. */
+      let open: ReturnType<typeof client.beta.messages.stream> | undefined;
       try {
-        const params = toAnthropicParams(request, config.model, config.effort);
         const content: Anthropic.Beta.BetaContentBlock[] = [];
         let message: Anthropic.Beta.BetaMessage | undefined;
-        let webRequests = 0;
-        let usage: ChatUsage | undefined;
+        const webUsed = { searches: 0, fetches: 0 };
         // Text that resumes after a tool block (a lookup, a picture) starts a new bubble.
         let wroteText = false;
         let afterTool = false;
@@ -248,13 +302,25 @@ export function createAnthropicChatModel(
           wroteText = true;
           onText?.(delta);
         };
+        // The tools stay byte-identical for the whole reply (thinking blocks are bound to
+        // them), so params are built once.
+        const params = toAnthropicParams(request, config.model, config.effort);
         // A long server-side lookup can pause the reply; resume it by sending the paused
-        // turn back (no extra user message).
+        // turn back (no extra user message). `max_uses` counts per request and cannot change
+        // mid-reply, so once the reply's web allowance is used up a paused turn is not
+        // resumed: the reply ends with the text it has.
         for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
+          if (
+            attempt > 0 &&
+            webAllowanceUsedUp(request.web, addWebUsage(request.webUsedBefore, webUsed))
+          ) {
+            break;
+          }
           const messages: Anthropic.Beta.BetaMessageParam[] = content.length
             ? [...params.messages, { role: 'assistant', content: [...content] }]
             : params.messages;
           const stream = client.beta.messages.stream({ ...params, messages }, { signal });
+          open = stream;
           stream.on('text', emit);
           stream.on('streamEvent', (event) => {
             if (event.type === 'content_block_start' && event.content_block.type !== 'text') {
@@ -262,11 +328,12 @@ export function createAnthropicChatModel(
             }
           });
           message = await stream.finalMessage();
+          open = undefined;
+          billed.push(toBilled(message));
           content.push(...message.content);
-          const segment = toUsage(message.usage);
-          usage = usage ? addUsage(usage, segment) : segment;
           const server = message.usage.server_tool_use;
-          webRequests += (server?.web_search_requests ?? 0) + (server?.web_fetch_requests ?? 0);
+          webUsed.searches += server?.web_search_requests ?? 0;
+          webUsed.fetches += server?.web_fetch_requests ?? 0;
           if (message.stop_reason !== 'pause_turn') break;
         }
         if (!message) throw new ChatModelError('api', 'No reply from the model.', true);
@@ -281,13 +348,18 @@ export function createAnthropicChatModel(
           text,
           stopReason: message.stop_reason,
           model: message.model,
-          usage: usage ?? toUsage(message.usage),
+          usage: billed.map((b) => b.usage).reduce(addUsage),
           toolCalls,
-          webRequests,
+          webRequests: webUsed.searches + webUsed.fetches,
+          webUsed,
+          billed,
           raw: content,
         };
       } catch (error) {
-        throw toChatError(error);
+        // A request that broke mid-stream was still billed for what it read and wrote.
+        const partial = open?.currentMessage;
+        if (partial) billed.push(toBilled(partial));
+        throw withBilled(toChatError(error), billed);
       }
     },
   };

@@ -137,9 +137,12 @@ describe('send_photo', () => {
     const token = await photoSession();
     chat.script.push({ chunks: [], toolCalls: [photoCall('a', '')] }, { chunks: ['ok'] });
     await send(token, 'pic?');
-    chat.script.push({ chunks: [], toolCalls: [photoCall('b', 'again')] }, { chunks: ['ok'] });
+    chat.script.push(
+      { chunks: [], toolCalls: [photoCall('b', 'again \u2014 better')] },
+      { chunks: ['ok'] },
+    );
     const list = await send(token, 'another');
-    expect(shape(list)).toContain('photo:desk, cold coffee:again');
+    expect(shape(list)).toContain('photo:desk, cold coffee:again, better');
     const history = JSON.stringify(chat.requests[2]?.messages);
     expect(history).toContain('[photo]');
   });

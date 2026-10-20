@@ -1,4 +1,4 @@
-import type { UserProfile } from '@after-hours/contracts';
+import { UserProfileSchema, type UserProfile } from '@after-hours/contracts';
 import { eq } from 'drizzle-orm';
 
 import type { Db } from './client';
@@ -25,14 +25,16 @@ export async function isPlus(db: Db, userId: string): Promise<boolean> {
   return !!row?.plusPlan;
 }
 
-/** The user's onboarding answers, or null when the app has not sent them. */
+/** The user's onboarding answers, or null when the app has not sent them (or they no longer parse). */
 export async function getProfile(db: Db, userId: string): Promise<UserProfile | null> {
   const [row] = await db
     .select({ profile: users.profile })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  return row?.profile ?? null;
+  if (!row?.profile) return null;
+  const parsed = UserProfileSchema.safeParse(row.profile);
+  return parsed.success ? parsed.data : null;
 }
 
 /** Replaces the user's onboarding answers (a replayed onboarding sends new ones). */
