@@ -2,7 +2,7 @@
   "$schema": "../character.schema.json",
   "id": "roya",
   "name": "Roya",
-  "age": 25,
+  "age": 23,
   "pronouns": {
     "subject": "she",
     "object": "her",
@@ -73,10 +73,6 @@
         "You like a little teasing",
         "You want someone perceptive",
         "You can take an honest read"
-      ],
-      "firstMessage": [
-        "Hi. I was about to put my phone away, but this seemed more interesting.",
-        "What's your night been like so far?"
       ],
       "sampleOpener": "Tell me one thing about your day you didn't tell anyone else.",
       "voiceLabel": "Hear her voice",

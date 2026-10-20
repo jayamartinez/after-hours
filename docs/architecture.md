@@ -35,7 +35,7 @@ Status: **Milestone 4 built**: workspace, contracts, companions, server `/health
 | `apps/server/src/providers/*` | Provider implementations behind `providers/types.ts`. | Leak provider types outside this folder. |
 | `apps/imessage-bridge` | Optional macOS Node process relaying iMessage ↔ server. | Be imported by any other package; touch the database directly. |
 | `packages/contracts` | Zod schemas and inferred types for every API boundary (app, bridge, tool calls, SSE events). | Contain runtime logic beyond validation. |
-| `packages/companions` | Character presets (`presets/*.json`), generated JSON Schema, bundled default art, public projection. | Contain secrets or server-only logic. |
+| `packages/companions` | Character presets (`presets/*.json`), generated JSON Schema, public projection. | Contain secrets or server-only logic. |
 
 ## Mobile app
 
@@ -183,7 +183,7 @@ Each slot has a focal point `[x, y]` (0 to 1). Rendering uses `object-fit: cover
 - **Validation:** the manifest is validated with a Zod schema in `packages/contracts`. Invalid JSON or schema logs a warning and the whole file is ignored; unknown companion ids are ignored with a warning. The server re-reads the file when its mtime or size changes. The resolver returns `{ uri, focal, alt }` per slot in `GET /companions`.
 - **Private asset route:** image extensions only (`.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`), decoded once and re-checked, symlinks resolved and kept inside the root; traversal attempts get 400, missing or non-image files 404.
 - **Client:** `CompanionImage` renders with expo-image (`contentFit="cover"`, `contentPosition` from the focal point), identical on iOS and web.
-- **Bundled defaults:** original art in `packages/companions/assets/<id>/`, imported with static `require()` from `@after-hours/companions/default-images` and keyed by the slot's `asset` key (e.g. `roy/hero`) so Metro bundles them. Only the app imports that entry; the server never does.
+- **No bundled art (D-030):** the app ships no companion images. A slot without a server image URI shows a loading animation.
 - **How-to:** `docs/image-overrides.md`.
 
 > **Warning:** a publicly reachable server serves private assets to anyone with the URL. Run private-asset demos only on private deployments.

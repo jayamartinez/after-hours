@@ -100,7 +100,7 @@ export function useIsDemoConversations() {
 
 /**
  * Chats tab row: the live thread once it is loaded in this session, otherwise the last
- * stored message from `GET /conversations` (or the companion's opener for a new thread).
+ * stored message from `GET /conversations`. A new thread has no preview until the user writes.
  */
 export function useConversationPreview(companion: PublicCharacter) {
   const state = useSourceState(companion.id);
@@ -123,6 +123,5 @@ export function useConversationPreview(companion: PublicCharacter) {
     const stored = summaries.data?.find((s) => s.companionId === companion.id)?.lastMessage;
     if (stored) last = fromDto(stored);
   }
-  const opener = companion.publicProfile.copy.firstMessage.at(-1);
-  return { last, opener, isTyping: state.typing, isDemo };
+  return { last, isTyping: state.typing, isDemo };
 }

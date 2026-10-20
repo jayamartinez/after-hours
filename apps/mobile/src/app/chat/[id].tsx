@@ -10,6 +10,7 @@ import type { ChatMessage, ChatNotice } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { BackButton } from '@/components/back-button';
 import { CHAT_MAX_WIDTH, ChatView } from '@/components/chat/chat-view';
+import { closeChat } from '@/components/discovery/chat-link';
 import { CreditsSheet } from '@/components/credits/credits-sheet';
 import { colors, spacing, type } from '@/theme/tokens';
 
@@ -52,7 +53,7 @@ export default function ChatScreen() {
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         <View style={styles.column}>
           <View style={styles.fallbackHeader}>
-            <BackButton />
+            <BackButton onPress={closeChat} />
           </View>
           {isLoading ? (
             <ActivityIndicator color={colors.textMuted} style={styles.centered} />

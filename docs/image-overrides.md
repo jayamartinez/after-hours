@@ -1,6 +1,6 @@
 # Companion image overrides
 
-Roy and Roya ship with original default art in `packages/companions/assets/`. For a private demo you can swap any image slot without code changes. Overrides never go into Git: `private-assets/` and `config/*.local.json` are git-ignored. Slot ratios and resolution rules are in `docs/architecture.md` ("Companion image slots"). To change a companion's name, copy, personality, or default focal/alt text instead, use the character config ([companions.md](companions.md)); images stay in this manifest.
+The app ships no companion art. Until an image is configured, each slot shows a loading animation. For a private demo you can add real images to any slot without code changes. Overrides never go into Git: `private-assets/` and `config/*.local.json` are git-ignored. Slot ratios and resolution rules are in `docs/architecture.md` ("Companion image slots"). To change a companion's name, copy, personality, or default focal/alt text instead, use the character config ([companions.md](companions.md)); images stay in this manifest.
 
 > A server reachable from the internet serves these files to anyone with the URL. Use private assets only on private deployments.
 
@@ -29,4 +29,4 @@ Check the result: `curl http://localhost:8787/companions` shows each slot's `uri
 
 ## iOS Simulator and devices
 
-The app reads `EXPO_PUBLIC_API_URL` (from `apps/mobile/.env` or your shell) at bundle time. Set it to your dev machine's LAN IP, for example `EXPO_PUBLIC_API_URL=http://192.168.1.20:8787`, so image URLs and API calls reach the server from the Simulator or a device, and set `PUBLIC_SERVER_URL` to the same origin so private-asset URLs use it too. Restart Expo after changing it. If the server is unreachable, the app shows bundled profiles and default art.
+The app reads `EXPO_PUBLIC_API_URL` (from `apps/mobile/.env` or your shell) at bundle time. Set it to your dev machine's LAN IP, for example `EXPO_PUBLIC_API_URL=http://192.168.1.20:8787`, so image URLs and API calls reach the server from the Simulator or a device, and set `PUBLIC_SERVER_URL` to the same origin so private-asset URLs use it too. Restart Expo after changing it. If the server is unreachable, the app shows bundled profiles with the loading animation in place of images.

@@ -31,14 +31,13 @@ export function toMessageDto(row: MessageRow): ChatMessageDto {
 }
 
 /**
- * The user's thread with a companion, created on first access. A new thread starts with
- * the companion's opener (`publicProfile.copy.firstMessage`), like the onboarding preview.
+ * The user's thread with a companion, created on first access. A new thread starts empty:
+ * the user sends the first message.
  */
 export async function getOrCreateConversation(
   db: Db,
   userId: string,
   companionId: string,
-  opener: readonly string[],
 ): Promise<string> {
   const existing = await db
     .select({ id: conversations.id })
@@ -61,16 +60,6 @@ export async function getOrCreateConversation(
         .where(and(eq(conversations.userId, userId), eq(conversations.companionId, companionId)));
       if (!row) throw new Error('conversation vanished after conflict');
       return row.id;
-    }
-    const lines = opener.map((line) => line.trim()).filter(Boolean);
-    if (lines.length > 0) {
-      await tx.insert(messages).values(
-        lines.map((content) => ({
-          conversationId: created.id,
-          role: 'assistant' as const,
-          content,
-        })),
-      );
     }
     return created.id;
   });
@@ -236,7 +225,7 @@ export async function setMessageStatus(
 
 /**
  * Clears the user's thread with a companion: the conversation row and (by cascade) every
- * message. The next read starts a fresh thread with the opener. Memories are kept; they
+ * message. The next read starts a fresh, empty thread. Memories are kept; they
  * have their own controls. False when there was no thread.
  */
 export async function deleteConversation(

@@ -23,7 +23,7 @@ describe('demo thread', () => {
     const thread = buildDemoThread(roy, NOW);
     const config = [...demoLines(roy), ...roy.publicProfile.starters, ''];
     for (const message of thread) expect(config).toContain(message.content);
-    expect(thread[0]?.content).toBe(roy.publicProfile.copy.firstMessage[0]);
+    expect(thread[0]?.role).toBe('user');
   });
 
   it('shows every bubble type and keeps chronological order', () => {
@@ -36,7 +36,7 @@ describe('demo thread', () => {
 
   it('cycles canned replies through the public demo lines', () => {
     const lines = demoLines(roy);
-    expect(demoReply(roy, 0)).toBe(lines[2 % lines.length]);
+    expect(demoReply(roy, 0)).toBe(lines[0]);
     expect(demoReply(roy, lines.length)).toBe(demoReply(roy, 0));
   });
 });
@@ -64,19 +64,11 @@ describe('demo conversation source', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('start opens a fresh thread with only the opening lines, typed one by one', () => {
+  it('start opens an empty thread: the user sends the first message', () => {
     const { source, state } = setup();
     source.start(roy);
-    expect(state()).toMatchObject({ loaded: true, messages: [], typing: false });
-
-    vi.advanceTimersByTime(TIMING.typingStart);
-    expect(state().typing).toBe(true);
-
     vi.runAllTimers();
-    expect(state().typing).toBe(false);
-    expect(state().messages.map((m) => [m.role, m.content])).toEqual(
-      roy.publicProfile.copy.firstMessage.map((line) => ['assistant', line]),
-    );
+    expect(state()).toMatchObject({ loaded: true, messages: [], typing: false });
   });
 
   it('start keeps existing history, and a later load keeps the started thread', () => {
@@ -93,16 +85,13 @@ describe('demo conversation source', () => {
     expect(source.getSnapshot(roya.id)).toBe(started);
   });
 
-  it('a send during the opening lines does not cancel them', () => {
+  it('a send after start gets a reply', () => {
     const { source, state } = setup();
     source.start(roy);
     source.send(roy, 'hey');
     vi.runAllTimers();
     const assistant = state().messages.filter((m) => m.role === 'assistant');
-    expect(assistant.map((m) => m.content)).toEqual([
-      ...roy.publicProfile.copy.firstMessage,
-      demoReply(roy, 0),
-    ]);
+    expect(assistant.map((m) => m.content)).toEqual([demoReply(roy, 0)]);
   });
 
   it('keeps conversations independent per companion', () => {

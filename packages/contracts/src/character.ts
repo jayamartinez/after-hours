@@ -125,7 +125,6 @@ export const CharacterCopySchema = z.strictObject({
   revealSubline: text,
   revealCta: text.describe('Reveal screen primary button, e.g. "Say hi"'),
   matchReasons: z.array(text),
-  firstMessage: z.array(text).min(1).describe('Opening bubbles'),
   sampleOpener: text.describe('Example opening line shown on discovery ("He might open with")'),
   voiceLabel: text.describe('Spotlight voice pill, e.g. "Hear his voice"'),
   profileSections: ProfileSectionsSchema,

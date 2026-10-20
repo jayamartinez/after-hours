@@ -59,7 +59,6 @@ export function toPublicCharacter(
         revealSubline: copy.revealSubline,
         revealCta: copy.revealCta,
         matchReasons: [...copy.matchReasons],
-        firstMessage: [...copy.firstMessage],
         sampleOpener: copy.sampleOpener,
         voiceLabel: copy.voiceLabel,
         profileSections: {

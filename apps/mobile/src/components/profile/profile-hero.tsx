@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CompanionImage } from '@/components/companion-image';
 import { GlassButton } from '@/components/discovery/glass-button';
 import { ChevronLeftIcon, MoreIcon } from '@/components/discovery/icons';
-import { ParodyBadge } from '@/components/discovery/parody-badge';
 import { Scrim, SCRIMS } from '@/components/discovery/scrim';
 import { colors, fonts, tints } from '@/theme/tokens';
 
@@ -48,10 +47,7 @@ export function ProfileHero({ companion, onBack, onMore }: ProfileHeroProps) {
           >
             {companion.name}
           </Text>
-          <View style={styles.meta}>
-            <ParodyBadge label={companion.disclosure.badge} variant="art" />
-            <Text style={styles.age}>{companion.age}</Text>
-          </View>
+          <Text style={styles.age}>{companion.age}</Text>
         </View>
       </View>
     </View>
@@ -72,15 +68,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   identity: { position: 'absolute', left: 20, right: 20, bottom: 20, gap: 10 },
-  nameRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   name: {
     flexShrink: 1,
     fontFamily: fonts.display,
     fontSize: 64,
-    lineHeight: 60,
+    lineHeight: 76,
     letterSpacing: -1.28,
     color: colors.text,
   },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
   age: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.textMuted },
 });

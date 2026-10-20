@@ -78,7 +78,7 @@ Each companion is a data record in `packages/companions` (spec: `docs/companions
 
 | | Roy | Roya |
 | --- | --- | --- |
-| Identity | 25 (fictional), he/him; "AI parody" | 25 (fictional), she/her; "AI parody" |
+| Identity | 23 (fictional), he/him; "AI parody" | 23 (fictional), she/her; "AI parody" |
 | Persona (prompt only, never shown as profile text) | The friend people text for a real reaction: loud in a group chat, thoughtful one-on-one, competitive about small things, into tech and building when it comes up. No invented career, events, or history. | Notices things: dry, observational, affectionately sarcastic; an ordinary full life (food opinions, music on repeat, friends). No alternate-universe or startup backstory. |
 | Tone | Blunt, playful, competitive; loyal and sincere when it counts | Witty, teasing, perceptive; warm by paying attention |
 | Texting style | Quick bursts of short lowercase bubbles, few emoji | Sentence case, punchy lines, pointed questions |
@@ -142,7 +142,7 @@ Measurable (server-side, measured on the deployed demo):
 ## Safety and privacy requirements
 
 - **AI parody disclosure.** See *Parody & likeness guardrails*. If a user sincerely asks whether the companion is real, it answers honestly.
-- **Adults only.** Onboarding requires age confirmation (18+). Companions are fictional 25-year-olds; personas forbid age-play or minor-coded content.
+- **Adults only.** Onboarding requires age confirmation (18+). Companions are fictional 23-year-olds; personas forbid age-play or minor-coded content.
 - **Content limits.** Image generation is non-explicit and stylized, enforced by prompt constraints plus provider safety filters. Personas include explicit-content and real-person boundaries.
 - **Crisis handling.** Personas step out of the bit and point to appropriate resources when a user signals risk of self-harm.
 - **Memory control.** Users can view, edit, pin, and delete individual memories, clear a companion's history, and delete all their data. Deleted memories are excluded from retrieval immediately.

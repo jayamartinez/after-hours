@@ -1,10 +1,9 @@
-import { defaultImages, type BundledImage } from '@after-hours/companions/default-images';
 import type { ImageSlot, PublicCharacter } from '@after-hours/contracts';
 import { Image } from 'expo-image';
-import { useState } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, fonts } from '@/theme/tokens';
+import { colors } from '@/theme/tokens';
 
 export type CompanionImageSlot = 'hero' | 'avatar' | 'gallery';
 
@@ -23,16 +22,13 @@ function pickSlot(companion: PublicCharacter, slot: CompanionImageSlot, index: 0
   return slot === 'gallery' ? companion.images.gallery[index] : companion.images[slot];
 }
 
-/** Bundled default art for the slot's asset key, if this build ships it. */
-function pickBundled(asset: string): BundledImage | null {
-  return defaultImages[asset] ?? null;
-}
-
 const toPercent = (value: number) => `${Math.round(value * 1000) / 10}%` as const;
 
 /**
- * Renders one companion image slot: server override → bundled default → monogram.
- * Cover-cropped around the slot's focal point; a load error falls to the next source.
+ * Renders one companion image slot from the server's image URI (private override). There is no
+ * bundled art: a slot without a URI, or whose image fails to load, shows the loading pulse.
+ * Cover-cropped around the slot's focal point.
+ * The pulse sits under the image, so it shows while the image decodes and stays if none exists.
  */
 export function CompanionImage({
   companion,
@@ -42,16 +38,11 @@ export function CompanionImage({
   fit = 'cover',
 }: CompanionImageProps) {
   const imageSlot = pickSlot(companion, slot, index);
-  const sources = [
-    imageSlot.uri ? { uri: imageSlot.uri } : null,
-    pickBundled(imageSlot.asset),
-  ].filter((source) => source !== null);
+  const uri = imageSlot.uri;
 
-  const sourceKey = `${companion.id}:${slot}:${index}:${imageSlot.uri ?? 'default'}`;
-  const [failed, setFailed] = useState({ key: sourceKey, count: 0 });
-  // Reset the fallback chain when the slot's source changes (e.g. the manifest was edited).
-  const failedCount = failed.key === sourceKey ? failed.count : 0;
-  const source = sources[failedCount];
+  // A failed load hides only that URI; a changed URI (e.g. the manifest was edited) retries.
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const source = uri && uri !== failedUri ? { uri } : null;
 
   const [x, y] = imageSlot.focal;
   return (
@@ -61,42 +52,41 @@ export function CompanionImage({
       accessibilityRole="image"
       accessibilityLabel={imageSlot.alt}
     >
+      <LoadingPulse />
       {source ? (
         <Image
-          key={`${sourceKey}:${failedCount}`}
+          key={source.uri}
           source={source}
           style={StyleSheet.absoluteFill}
           contentFit={fit}
           contentPosition={fit === 'cover' ? { left: toPercent(x), top: toPercent(y) } : 'center'}
           transition={150}
-          onError={() => setFailed({ key: sourceKey, count: failedCount + 1 })}
+          onError={() => setFailedUri(source.uri)}
         />
-      ) : (
-        <Monogram name={companion.name} />
-      )}
+      ) : null}
     </View>
   );
 }
 
-function Monogram({ name }: { name: string }) {
-  return (
-    <View style={styles.monogram}>
-      <Text style={styles.initial} allowFontScaling={false}>
-        {name.charAt(0).toUpperCase()}
-      </Text>
-    </View>
-  );
+/** Soft breathing fill shown while an image loads, or when a slot has no image to show. */
+function LoadingPulse() {
+  const [opacity] = useState(() => new Animated.Value(0.4));
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.9, duration: 900, useNativeDriver: nativeDriver }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 900, useNativeDriver: nativeDriver }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return <Animated.View style={[StyleSheet.absoluteFill, styles.pulse, { opacity }]} />;
 }
+
+const nativeDriver = Platform.OS !== 'web';
 
 const styles = StyleSheet.create({
   box: { overflow: 'hidden', backgroundColor: colors.surface },
-  monogram: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.hairline,
-  },
-  initial: { fontFamily: fonts.display, fontSize: 48, color: colors.textMuted },
+  pulse: { backgroundColor: colors.surfaceRaised },
 });

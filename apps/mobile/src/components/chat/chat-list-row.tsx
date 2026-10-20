@@ -22,15 +22,15 @@ function preview(message: ChatMessage | undefined, name: string): string {
   return name;
 }
 
-/** One companion conversation: avatar, name + badge, last message, time. Opens the chat. */
+/** One companion conversation: avatar, name, last message, time. Opens the chat. */
 export function ChatListRow({ companion }: { companion: PublicCharacter }) {
-  const { last, opener, isTyping } = useConversationPreview(companion);
-  const subtitle = isTyping ? 'typing…' : last ? preview(last, companion.name) : (opener ?? '');
+  const { last, isTyping } = useConversationPreview(companion);
+  const subtitle = isTyping ? 'typing…' : last ? preview(last, companion.name) : '';
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${companion.name}, ${companion.disclosure.badge}. ${subtitle}`}
+      accessibilityLabel={`${companion.name}. ${subtitle}`}
       accessibilityHint="Opens the conversation"
       onPress={() => router.push({ pathname: '/chat/[id]', params: { id: companion.id } })}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
@@ -42,9 +42,6 @@ export function ChatListRow({ companion }: { companion: PublicCharacter }) {
             <Text style={styles.name} numberOfLines={1}>
               {companion.name}
             </Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{companion.disclosure.badge}</Text>
-            </View>
           </View>
           {last ? <Text style={styles.time}>{formatClock(new Date(last.createdAt))}</Text> : null}
         </View>
@@ -78,21 +75,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     letterSpacing: -0.24,
     color: colors.text,
-  },
-  badge: {
-    height: 18,
-    paddingHorizontal: 6,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.pill,
-  },
-  badgeText: {
-    fontFamily: fonts.semibold,
-    fontSize: 10,
-    lineHeight: 12,
-    letterSpacing: 1.2,
-    color: colors.textMuted,
   },
   time: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.textMuted },
   preview: {

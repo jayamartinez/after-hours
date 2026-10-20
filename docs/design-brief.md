@@ -4,7 +4,7 @@ Status as of 2026-10-16. **Approved baseline (revision v3, 2026-10-16, pending G
 
 ## Purpose
 
-After Hours is a premium AI companion app. Users text, call, and share images with a distinct, fictional AI character over time. The design must feel intimate and editorial, never like a generic AI tool. Every companion is disclosed as an AI parody and as a fictional adult (25, PG-13). Target: iPhone first, with a browser demo from the same app.
+After Hours is a premium AI companion app. Users text, call, and share images with a distinct, fictional AI character over time. The design must feel intimate and editorial, never like a generic AI tool. Every companion is disclosed as an AI parody and as a fictional adult (23, PG-13). Target: iPhone first, with a browser demo from the same app.
 
 ## Mood
 
@@ -84,14 +84,14 @@ Only two companion presets exist. Both are fictional AI parody characters: the p
 
 Neither companion has an invented biography, tagline, status line, or fictional place (D-024). Screens show temperament, not lore.
 
-**Roy, 25.** Parody informed by a founder's public persona.
+**Roy, 23.** Parody informed by a founder's public persona.
 - Personality: blunt, quick, competitive, opinionated. Underneath: genuinely in your corner. Into tech and building, but only talks about it when you do.
 - Texting: quick lowercase reactions, strong opinions.
 - Voice: "Fast, bright tenor — always mid-pitch".
 - Look: messy black hair, oversized charcoal hoodie, laptop glow.
 - Tint: `--color-window` (window blue to ink); brass only as a thin CTA accent.
 
-**Roya, 25.** Original character with her own temperament.
+**Roya, 23.** Original character with her own temperament.
 - Personality: dry humor, teasing, perceptive; flirts back (playful, never explicit).
 - Texting: polished sentences with a raised eyebrow.
 - Voice: "Smoky, amused mezzo — always half-laughing".

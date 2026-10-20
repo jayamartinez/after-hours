@@ -308,7 +308,7 @@ describe('isolation between users', () => {
 });
 
 describe('data deletion', () => {
-  it('clear history removes messages, restarts with the opener, and keeps memories', async () => {
+  it('clear history removes messages, restarts empty, and keeps memories', async () => {
     const token = await newSession(app);
     await remember(token, 'roy', 'Owns a red bike');
     await events(await postMessage(app, token, 'roy', 'forget this chat'));

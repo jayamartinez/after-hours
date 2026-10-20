@@ -57,6 +57,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
   },
   pill: {
+    // Full dock width so the tabs share it evenly; content-sized tabs drifted off-center.
+    alignSelf: 'stretch',
     flexDirection: 'row',
     gap: spacing.xs,
     padding: spacing.xs,
@@ -66,8 +68,8 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
   },
   tab: {
+    flex: 1,
     minHeight: layout.tapTarget,
-    paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

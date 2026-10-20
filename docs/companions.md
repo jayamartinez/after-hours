@@ -91,7 +91,7 @@ presets → local override (deep merge, validated) → `buildChatRequest` → `C
 
 `request.test.ts` asserts that the preset text arrives in the Anthropic request params. Behavior is measured with the personality eval: [eval/personality-eval.md](eval/personality-eval.md).
 
-Default art lives in `packages/companions/assets/<id>/`, exported from Paper (AH · 01 Foundations › Character art). Roy: hero/avatar `1TY-0`, gallery `1UY-0`, `1UF-0`. Roya: hero/avatar `1U7-0`, gallery `1UR-0`, `1UV-0`. Spares: Roy sunrise `1UJ-0`, Roya livestream `1UN-0`.
+No companion art ships with the app (D-030). Images come only from the private override manifest (see [image-overrides.md](image-overrides.md)); until one is configured a slot shows a loading animation.
 
 ## How to customize
 
