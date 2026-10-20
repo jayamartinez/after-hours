@@ -1,5 +1,5 @@
 import type { ChatModel, ChatRequest, ChatResult, ToolCall, ToolResult } from '../providers/types';
-import { ChatModelError } from '../providers/types';
+import { ChatModelError, remainingWeb } from '../providers/types';
 
 import { createBubbleSplitter, isToolMarkup, withoutEmDashes } from './bubbles';
 
@@ -33,6 +33,7 @@ export interface StreamReplyResult {
  *
  * If the reply ends in tool calls, they run and the model continues with their results,
  * for at most `MAX_TOOL_ROUNDS` rounds; the last continuation runs with tools disabled.
+ * `request.web` is the whole reply's web allowance: each continuation gets what is left.
  */
 export async function streamReply(
   model: ChatModel,
@@ -93,6 +94,10 @@ export async function streamReply(
       await chain;
       const toolResults = await handlers.onToolCalls(result.toolCalls);
       const earlierWeb = result.webRequests ?? 0;
+      const earlierUsed = {
+        searches: result.webUsed?.searches ?? 0,
+        fetches: result.webUsed?.fetches ?? 0,
+      };
       history = [
         ...history,
         { role: 'assistant', content: result.text, raw: result.raw },
@@ -103,8 +108,16 @@ export async function streamReply(
         ...request,
         toolChoice: round < MAX_TOOL_ROUNDS ? 'auto' : 'none',
         messages: history,
+        ...(request.web ? { web: remainingWeb(request.web, earlierUsed) } : {}),
       });
-      result = { ...continued, webRequests: earlierWeb + (continued.webRequests ?? 0) };
+      result = {
+        ...continued,
+        webRequests: earlierWeb + (continued.webRequests ?? 0),
+        webUsed: {
+          searches: earlierUsed.searches + (continued.webUsed?.searches ?? 0),
+          fetches: earlierUsed.fetches + (continued.webUsed?.fetches ?? 0),
+        },
+      };
     }
     await chain;
     return { bubbles, result };

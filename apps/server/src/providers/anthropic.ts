@@ -10,7 +10,9 @@ import {
   type ChatResult,
   type ChatTurn,
   type ChatUsage,
+  remainingWeb,
   type StructuredModel,
+  type WebAccess,
 } from './types';
 
 /** Short texting replies; generous enough that thinking at low effort never truncates them. */
@@ -57,6 +59,28 @@ export function joinText(content: readonly Anthropic.Beta.BetaContentBlock[]): s
     afterTool = false;
   }
   return text;
+}
+
+const SERVER_TOOL_ALLOWANCE = { web_search: 'searches', web_fetch: 'fetches' } as const;
+
+/**
+ * True when a paused turn ends in a web lookup that has not run yet and whose tool has no
+ * uses left: resuming would need the tool, which is no longer declared (exported for tests).
+ */
+export function waitsOnSpentTool(
+  content: readonly Anthropic.Beta.BetaContentBlock[],
+  web: WebAccess | undefined,
+): boolean {
+  const answered = new Set(
+    content.flatMap((block) =>
+      'tool_use_id' in block && typeof block.tool_use_id === 'string' ? [block.tool_use_id] : [],
+    ),
+  );
+  return content.some((block) => {
+    if (block.type !== 'server_tool_use' || answered.has(block.id)) return false;
+    const key = SERVER_TOOL_ALLOWANCE[block.name as keyof typeof SERVER_TOOL_ALLOWANCE];
+    return key !== undefined && (web?.[key] ?? 0) <= 0;
+  });
 }
 
 /** Builds the Messages API params for one chat turn (exported for tests). */
@@ -212,10 +236,9 @@ export function createAnthropicChatModel(
     model: config.model,
     async stream(request, onText, signal): Promise<ChatResult> {
       try {
-        const params = toAnthropicParams(request, config.model, config.effort);
         const content: Anthropic.Beta.BetaContentBlock[] = [];
         let message: Anthropic.Beta.BetaMessage | undefined;
-        let webRequests = 0;
+        const webUsed = { searches: 0, fetches: 0 };
         // Text that resumes after a tool block (a lookup, a picture) starts a new bubble.
         let wroteText = false;
         let afterTool = false;
@@ -226,8 +249,12 @@ export function createAnthropicChatModel(
           onText?.(delta);
         };
         // A long server-side lookup can pause the reply; resume it by sending the paused
-        // turn back (no extra user message).
+        // turn back (no extra user message). `max_uses` counts per request, so every resume
+        // declares only what is left of the reply's allowance.
         for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
+          const web = request.web && remainingWeb(request.web, webUsed);
+          if (attempt > 0 && waitsOnSpentTool(content, web)) break;
+          const params = toAnthropicParams({ ...request, web }, config.model, config.effort);
           const messages: Anthropic.Beta.BetaMessageParam[] = content.length
             ? [...params.messages, { role: 'assistant', content: [...content] }]
             : params.messages;
@@ -241,7 +268,8 @@ export function createAnthropicChatModel(
           message = await stream.finalMessage();
           content.push(...message.content);
           const server = message.usage.server_tool_use;
-          webRequests += (server?.web_search_requests ?? 0) + (server?.web_fetch_requests ?? 0);
+          webUsed.searches += server?.web_search_requests ?? 0;
+          webUsed.fetches += server?.web_fetch_requests ?? 0;
           if (message.stop_reason !== 'pause_turn') break;
         }
         if (!message) throw new ChatModelError('api', 'No reply from the model.', true);
@@ -258,7 +286,8 @@ export function createAnthropicChatModel(
           model: message.model,
           usage: toUsage(message.usage),
           toolCalls,
-          webRequests,
+          webRequests: webUsed.searches + webUsed.fetches,
+          webUsed,
           raw: content,
         };
       } catch (error) {

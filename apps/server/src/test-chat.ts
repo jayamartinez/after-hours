@@ -33,6 +33,8 @@ export type Turn = {
   toolCalls?: ToolCall[];
   /** Web searches and link reads this turn reports (D-038). */
   webRequests?: number;
+  /** The same, by tool. */
+  webUsed?: { searches: number; fetches: number };
 };
 
 /** ChatModel double: plays scripted turns and records every request. */
@@ -55,7 +57,9 @@ export function scriptedModel() {
         model: 'test-model',
         usage: USAGE,
         toolCalls,
-        webRequests: turn.webRequests ?? 0,
+        webRequests:
+          turn.webRequests ?? (turn.webUsed ? turn.webUsed.searches + turn.webUsed.fetches : 0),
+        ...(turn.webUsed ? { webUsed: turn.webUsed } : {}),
         raw: { scripted: turn.chunks, toolCalls },
       };
     },

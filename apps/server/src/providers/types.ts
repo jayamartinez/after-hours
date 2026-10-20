@@ -57,8 +57,9 @@ export interface ChatRequest {
   /** `none`: tools stay declared but may not be called (continuing after a call). */
   toolChoice?: 'auto' | 'none';
   /**
-   * Provider-run web access (D-038): most searches and link reads in this reply, and
-   * domains never read. Unset: no web access.
+   * Provider-run web access (D-038): searches and link reads still allowed in this reply
+   * (callers pass what is left after earlier requests of the same reply), and domains
+   * never read. Unset: no web access.
    */
   web?: WebAccess;
 }
@@ -67,6 +68,20 @@ export interface WebAccess {
   searches: number;
   fetches: number;
   blockedDomains: readonly string[];
+}
+
+export interface WebUsage {
+  searches: number;
+  fetches: number;
+}
+
+/** `web` with `used` taken off, never below 0 (a tool at 0 is not offered). */
+export function remainingWeb(web: WebAccess, used: WebUsage | undefined): WebAccess {
+  return {
+    ...web,
+    searches: Math.max(0, web.searches - (used?.searches ?? 0)),
+    fetches: Math.max(0, web.fetches - (used?.fetches ?? 0)),
+  };
 }
 
 export interface ChatUsage {
@@ -86,6 +101,8 @@ export interface ChatResult {
   toolCalls: ToolCall[];
   /** Web searches and link reads the provider ran for this reply. */
   webRequests?: number;
+  /** The same, by tool: what a continuation subtracts from `ChatRequest.web`. */
+  webUsed?: WebUsage;
   /** This turn as the provider recorded it; pass back as `ChatTurn.raw` to continue. */
   raw: unknown;
 }
