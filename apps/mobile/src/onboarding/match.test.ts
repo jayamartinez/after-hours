@@ -11,6 +11,27 @@ const prefs = (patch: Partial<OnboardingPreferences>): OnboardingPreferences => 
 });
 
 describe('matchCompanion (bundled presets)', () => {
+  it('settles a toss-up (default answers) by the device coin flip', () => {
+    const defaults = defaultPreferences();
+    expect(matchCompanion(defaults, companions, 0)).toBe('roy');
+    expect(matchCompanion(defaults, companions, 0.99)).toBe('roya');
+  });
+
+  it('gives near-default answers to either companion about evenly', () => {
+    const wins: Record<string, number> = {};
+    let total = 0;
+    for (const { id: value } of VALUES) {
+      for (const tiebreak of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+        const id = matchCompanion(prefs({ values: [value] }), companions, tiebreak) ?? 'none';
+        wins[id] = (wins[id] ?? 0) + 1;
+        total += 1;
+      }
+    }
+    for (const companion of companions) {
+      expect(wins[companion.id] ?? 0).toBeGreaterThan(total * 0.35);
+    }
+  });
+
   it('does not favor one companion across the range of answers', () => {
     // Every single "looking for" answer x first value x pad corner x pace.
     const wins: Record<string, number> = {};
@@ -46,7 +67,9 @@ describe('matchCompanion (bundled presets)', () => {
       dynamic: { x: 0.8, y: 0.6 },
       texting: { length: 2, expressiveness: 3, pace: 2 },
     });
-    expect(matchCompanion(answers, companions)).toBe('roya');
+    // A clear winner ignores the coin flip.
+    expect(matchCompanion(answers, companions, 0)).toBe('roya');
+    expect(matchCompanion(answers, companions, 0.99)).toBe('roya');
   });
 
   it('matches a blunt, push-me, instant-reply user to Roy', () => {
@@ -56,7 +79,8 @@ describe('matchCompanion (bundled presets)', () => {
       dynamic: { x: -0.4, y: -0.5 },
       texting: { length: 0, expressiveness: 1, pace: 4 },
     });
-    expect(matchCompanion(answers, companions)).toBe('roy');
+    expect(matchCompanion(answers, companions, 0)).toBe('roy');
+    expect(matchCompanion(answers, companions, 0.99)).toBe('roy');
   });
 
   it('gives a match for the default (skipped) answers', () => {
