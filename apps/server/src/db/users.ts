@@ -15,6 +15,16 @@ export async function userExists(db: Db, userId: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/** Whether the user has demo Plus (bigger limits, the Plus chat model). */
+export async function isPlus(db: Db, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ plusPlan: users.plusPlan })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return !!row?.plusPlan;
+}
+
 /** The user's onboarding answers, or null when the app has not sent them (or they no longer parse). */
 export async function getProfile(db: Db, userId: string): Promise<UserProfile | null> {
   const [row] = await db

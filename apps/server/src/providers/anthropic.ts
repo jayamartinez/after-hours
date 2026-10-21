@@ -10,12 +10,18 @@ import {
   type ChatResult,
   type ChatTurn,
   type ChatUsage,
+  addWebUsage,
   type StructuredModel,
+  webAllowanceUsedUp,
 } from './types';
 
 /** Short texting replies; generous enough that thinking at low effort never truncates them. */
 const DEFAULT_MAX_TOKENS = 4000;
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
+/** A reply that pauses mid server-side lookup is resumed at most this many times. */
+const MAX_CONTINUATIONS = 3;
+/** Longest page text a link read hands the model. */
+const MAX_FETCH_TOKENS = 6000;
 
 /**
  * One turn as a Messages API message. An assistant turn that ended in a tool call is
@@ -40,6 +46,21 @@ function toMessageParam(turn: ChatTurn): Anthropic.Beta.BetaMessageParam {
   return { role: 'user', content };
 }
 
+/** Reply text; text blocks separated by a tool block become separate bubbles. */
+export function joinText(content: readonly Anthropic.Beta.BetaContentBlock[]): string {
+  let text = '';
+  let afterTool = false;
+  for (const block of content) {
+    if (block.type !== 'text') {
+      afterTool = true;
+      continue;
+    }
+    text += (afterTool && text ? '\n\n' : '') + block.text;
+    afterTool = false;
+  }
+  return text;
+}
+
 /** Builds the Messages API params for one chat turn (exported for tests). */
 export function toAnthropicParams(
   request: ChatRequest,
@@ -50,17 +71,33 @@ export function toAnthropicParams(
     { type: 'text', text: request.system.stable, cache_control: { type: 'ephemeral' } },
   ];
   if (request.system.context) system.push({ type: 'text', text: request.system.context });
-  const tools = request.tools?.length
-    ? {
-        // Strict: inputs always match the schema (they are tiny, so no eager streaming).
-        tools: request.tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          input_schema: tool.inputSchema as Anthropic.Beta.BetaTool.InputSchema,
-          strict: true,
-        })),
-        tool_choice: { type: request.toolChoice ?? 'auto' } as const,
-      }
+  const declared: Anthropic.Beta.BetaToolUnion[] = (request.tools ?? []).map((tool) => ({
+    // Strict: inputs always match the schema (they are tiny, so no eager streaming).
+    name: tool.name,
+    description: tool.description,
+    input_schema: tool.inputSchema as Anthropic.Beta.BetaTool.InputSchema,
+    strict: true,
+  }));
+  const { web } = request;
+  if (web && web.searches > 0) {
+    declared.push({
+      type: 'web_search_20260209',
+      name: 'web_search',
+      max_uses: web.searches,
+      blocked_domains: [...web.blockedDomains],
+    });
+  }
+  if (web && web.fetches > 0) {
+    declared.push({
+      type: 'web_fetch_20260209',
+      name: 'web_fetch',
+      max_uses: web.fetches,
+      blocked_domains: [...web.blockedDomains],
+      max_content_tokens: MAX_FETCH_TOKENS,
+    });
+  }
+  const tools = declared.length
+    ? { tools: declared, tool_choice: { type: request.toolChoice ?? 'auto' } as const }
     : {};
   return {
     model,
@@ -177,19 +214,55 @@ export function createAnthropicChatModel(
     model: config.model,
     async stream(request, onText, signal): Promise<ChatResult> {
       try {
-        const stream = client.beta.messages.stream(
-          toAnthropicParams(request, config.model, config.effort),
-          { signal },
-        );
-        if (onText) stream.on('text', onText);
-        const message = await stream.finalMessage();
+        const content: Anthropic.Beta.BetaContentBlock[] = [];
+        let message: Anthropic.Beta.BetaMessage | undefined;
+        const webUsed = { searches: 0, fetches: 0 };
+        // Text that resumes after a tool block (a lookup, a picture) starts a new bubble.
+        let wroteText = false;
+        let afterTool = false;
+        const emit = (delta: string) => {
+          if (afterTool && wroteText) onText?.('\n\n');
+          afterTool = false;
+          wroteText = true;
+          onText?.(delta);
+        };
+        // The tools stay byte-identical for the whole reply (thinking blocks are bound to
+        // them), so params are built once.
+        const params = toAnthropicParams(request, config.model, config.effort);
+        // A long server-side lookup can pause the reply; resume it by sending the paused
+        // turn back (no extra user message). `max_uses` counts per request and cannot change
+        // mid-reply, so once the reply's web allowance is used up a paused turn is not
+        // resumed: the reply ends with the text it has.
+        for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
+          if (
+            attempt > 0 &&
+            webAllowanceUsedUp(request.web, addWebUsage(request.webUsedBefore, webUsed))
+          ) {
+            break;
+          }
+          const messages: Anthropic.Beta.BetaMessageParam[] = content.length
+            ? [...params.messages, { role: 'assistant', content: [...content] }]
+            : params.messages;
+          const stream = client.beta.messages.stream({ ...params, messages }, { signal });
+          stream.on('text', emit);
+          stream.on('streamEvent', (event) => {
+            if (event.type === 'content_block_start' && event.content_block.type !== 'text') {
+              afterTool = true;
+            }
+          });
+          message = await stream.finalMessage();
+          content.push(...message.content);
+          const server = message.usage.server_tool_use;
+          webUsed.searches += server?.web_search_requests ?? 0;
+          webUsed.fetches += server?.web_fetch_requests ?? 0;
+          if (message.stop_reason !== 'pause_turn') break;
+        }
+        if (!message) throw new ChatModelError('api', 'No reply from the model.', true);
         if (message.stop_reason === 'refusal') {
           throw new ChatModelError('refusal', 'The model declined to answer that.', false);
         }
-        const text = message.content
-          .flatMap((block) => (block.type === 'text' ? [block.text] : []))
-          .join('');
-        const toolCalls = message.content.flatMap((block) =>
+        const text = joinText(content);
+        const toolCalls = content.flatMap((block) =>
           block.type === 'tool_use' ? [{ id: block.id, name: block.name, input: block.input }] : [],
         );
         return {
@@ -198,7 +271,9 @@ export function createAnthropicChatModel(
           model: message.model,
           usage: toUsage(message.usage),
           toolCalls,
-          raw: message.content,
+          webRequests: webUsed.searches + webUsed.fetches,
+          webUsed,
+          raw: content,
         };
       } catch (error) {
         throw toChatError(error);

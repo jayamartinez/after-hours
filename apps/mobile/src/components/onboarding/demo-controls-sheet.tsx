@@ -26,9 +26,15 @@ export function DemoControlsSheet({ visible, onClose }: DemoControlsSheetProps) 
   const { companion } = useMatch();
   const purchased = useOnboarding((s) => s.demoPurchase !== null);
 
+  /** A true fresh start: demo Plus ends too, so the first chat leads to the paywall (D-039). */
   const replay = () => {
     onClose();
-    onboardingStore.getState().replay();
+    const state = onboardingStore.getState();
+    state.replay();
+    state.resetDemoPurchase();
+    setDemoPlus(null).catch((error: unknown) =>
+      console.warn('[plus] Could not end demo Plus on the server.', error),
+    );
     router.replace(stepHref('index'));
   };
   const skip = () => {

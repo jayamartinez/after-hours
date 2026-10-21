@@ -155,6 +155,27 @@ describe('createApiConversationSource', () => {
     ]);
   });
 
+  it('too long for the plan: undelivered, with the limit in the notice', async () => {
+    const { source, settle } = setup({
+      postStream: async () =>
+        json(
+          {
+            code: 'message_too_long',
+            message: 'Free messages can be up to 850 characters.',
+            retryable: false,
+          },
+          400,
+        ),
+    });
+    source.load(roy);
+    await settle();
+    source.send(roy, 'x'.repeat(900));
+    await settle();
+    const state = source.getSnapshot('roy');
+    expect(state.messages.at(-1)).toMatchObject({ role: 'user', status: 'failed' });
+    expect(state.notice?.text).toContain('850 characters');
+  });
+
   it('out of messages: keeps the message as undelivered and asks for more', async () => {
     const signals: CreditSignal[] = [];
     const { source, settle } = setup(

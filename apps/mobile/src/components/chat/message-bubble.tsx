@@ -16,6 +16,7 @@ import { colors, fonts, radius } from '@/theme/tokens';
 
 import { chatColors, chatLayout } from './chat-tokens';
 import { HeartIcon, PlayIcon, ThumbsUpIcon, Waveform } from './icons';
+import { WebPicture } from './web-picture';
 
 export interface BubbleRect {
   x: number;
@@ -45,6 +46,23 @@ export function MessageContent({ message, tail, lifted, onPlayVoice }: MessageCo
   if (message.kind === 'image' && message.image) {
     const box = [styles.image, lifted && styles.lifted];
     const caption = message.content.trim();
+    if (message.image.source === 'web') {
+      return (
+        <View style={styles.photo}>
+          <WebPicture
+            uri={message.image.uri}
+            pageUrl={message.image.pageUrl}
+            title={message.image.title}
+            style={lifted && styles.lifted}
+          />
+          {caption ? (
+            <View style={[styles.text, mine ? styles.mine : styles.theirs]}>
+              <Text style={[styles.body, mine && styles.bodyMine]}>{caption}</Text>
+            </View>
+          ) : null}
+        </View>
+      );
+    }
     return message.image.source === 'placeholder' ? (
       <View style={styles.photo}>
         <PlaceholderPhoto description={message.image.description} style={box} />

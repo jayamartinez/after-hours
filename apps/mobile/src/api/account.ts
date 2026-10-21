@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { CONVERSATIONS_QUERY_KEY, forgetConversations } from '@/chat/use-conversation';
+import { onboardingStore } from '@/onboarding/use-onboarding';
 
 import { CREDITS_QUERY_KEY, GALLERY_QUERY_KEY } from './credits';
 import { MEMORIES_QUERY_KEY } from './memories';
@@ -31,6 +32,8 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: () => apiRequest('DELETE', '/account'),
     onSuccess: async () => {
+      // Demo Plus lives on the phone too; a deleted account starts on the free plan.
+      onboardingStore.getState().resetDemoPurchase();
       await resetSession();
       forgetConversations();
       // Reset, not remove: a screen still showing one of these (the You tab's balance)

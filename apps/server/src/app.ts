@@ -10,7 +10,7 @@ import type { ChatModel, StructuredModel } from './providers/types';
 import { accountRoutes } from './routes/account';
 import { companionRoutes, createPublicProjector } from './routes/companions';
 import { creditRoutes } from './routes/credits';
-import { conversationRoutes } from './routes/conversations';
+import { conversationRoutes, type ConversationRoutesOptions } from './routes/conversations';
 import { devCompanionRoutes, type DevCompanionRoutesOptions } from './routes/dev-companions';
 import { healthRoutes } from './routes/health';
 import { memoryRoutes } from './routes/memories';
@@ -21,12 +21,17 @@ import { sessionRoutes } from './routes/session';
 /** Persistence and the chat model. Without them only the read-only routes exist. */
 export interface ChatServices {
   db: Db;
+  /** Plus subscribers' chat model. */
   model: ChatModel;
+  /** Free users' chat model (D-040). Default: `model`. */
+  freeModel?: ChatModel;
   sessionSecret: string;
   /** Memory extraction after each reply; unset disables automatic memories. */
   memoryModel?: StructuredModel;
   /** Background work that outlives a response (see `conversationRoutes`). */
   waitUntil?: (task: Promise<void>) => void;
+  /** Tests replace the page-image fetcher behind `share_image`. */
+  findPageImage?: ConversationRoutesOptions['findPageImage'];
 }
 
 export interface AppOverrides {
@@ -93,6 +98,9 @@ export function createApp(
           sessionSecret,
           killSwitch: config.killSwitch,
           rateLimitPerMin: config.rateLimitPerMin,
+          webAccess: config.webAccess,
+          freeModel: overrides.chat.freeModel,
+          findPageImage: overrides.chat.findPageImage,
           memoryModel,
           waitUntil,
           log: overrides.log,

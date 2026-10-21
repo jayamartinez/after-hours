@@ -18,6 +18,8 @@ export type ImageRef =
    * real or configured image.
    */
   | { source: 'placeholder'; description: string }
+  /** A picture a companion found on the web, with the page it came from (D-038). */
+  | { source: 'web'; uri: string; pageUrl: string; title: string }
   /** A stored media asset (M4: signed URL from the server). */
   | { source: 'uri'; uri: string };
 

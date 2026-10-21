@@ -5,6 +5,8 @@ import path from 'node:path';
 import {
   AD_REWARD_MESSAGES,
   ApiErrorSchema,
+  FREE_MAX_MESSAGE_CHARS,
+  MAX_MESSAGE_CHARS,
   CreditsResponseSchema,
   FREE_DAILY_MESSAGES,
   MAX_ADS_PER_DAY,
@@ -180,5 +182,46 @@ describe('message allowance', () => {
     expect((await getAllowance(database.db, userId, day))?.resetsAt).toBe(
       '2026-10-21T00:00:00.000Z',
     );
+  });
+});
+
+describe('free and Plus tiers (D-040)', () => {
+  let free: ReturnType<typeof scriptedModel>;
+  let tiered: ReturnType<typeof createApp>;
+
+  beforeEach(() => {
+    free = scriptedModel();
+    tiered = createApp(testConfig(workDir, { rateLimitPerMin: 1_000 }), () => {}, {
+      chat: {
+        db: database.db,
+        model: chat.model,
+        freeModel: free.model,
+        sessionSecret: 'test-session-secret-0123456789abcdef',
+      },
+    });
+  });
+
+  const send = (token: string, text: string) =>
+    call(tiered, token, 'POST', '/conversations/roy/messages', { text, clientId: nextClientId() });
+
+  it('free users get the free model and the shorter message limit', async () => {
+    const token = await newSession(tiered);
+    await events(await send(token, 'x'.repeat(FREE_MAX_MESSAGE_CHARS)));
+    expect(free.requests).toHaveLength(1);
+    expect(chat.requests).toHaveLength(0);
+
+    const res = await send(token, 'x'.repeat(FREE_MAX_MESSAGE_CHARS + 1));
+    expect(res.status).toBe(400);
+    expect(ApiErrorSchema.parse(await res.json()).code).toBe('message_too_long');
+    // Refused before anything is stored or spent.
+    expect((await credits(token)).messages.freeLeftToday).toBe(FREE_DAILY_MESSAGES - 1);
+  });
+
+  it('Plus users get the Plus model and the full limit', async () => {
+    const token = await newSession(tiered);
+    await call(tiered, token, 'POST', '/plus', { plan: 'monthly' });
+    await events(await send(token, 'y'.repeat(MAX_MESSAGE_CHARS)));
+    expect(chat.requests).toHaveLength(1);
+    expect(free.requests).toHaveLength(0);
   });
 });

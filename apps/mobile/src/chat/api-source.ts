@@ -14,7 +14,12 @@ import type { CreditSignal } from '@/api/credits';
 import { conversationReducer, type ConversationAction } from './reducer';
 import type { ConversationSource } from './source';
 import { createSseParser, toChatEvent } from './sse';
-import { EMPTY_CONVERSATION, type ChatMessage, type ConversationState } from './types';
+import {
+  EMPTY_CONVERSATION,
+  type ChatMessage,
+  type ConversationState,
+  type ImageRef,
+} from './types';
 
 /** The parts of a fetch Response the source uses (global fetch and expo/fetch both fit). */
 export interface ApiResponse {
@@ -35,13 +40,18 @@ export interface ApiTransport {
 export interface ApiTiming {
   /** "Read" receipt and typing indicator this long after the server takes the message. */
   readDelay: number;
-  /** Pause (with the typing indicator) before each bubble after the first. */
+  /**
+   * How long typing a bubble takes, with the typing indicator showing (D-039). Bubbles
+   * after the first wait this long; the first waits whatever is left of it since the
+   * indicator appeared, so a long opening paragraph is not instant either.
+   */
   bubbleGap: (text: string) => number;
 }
 
+/** A quick texter: about 22 characters a second, never under 0.9 s or over 7 s a bubble. */
 export const DEFAULT_API_TIMING: ApiTiming = {
   readDelay: 600,
-  bubbleGap: (text) => Math.min(2200, Math.max(700, 400 + text.length * 28)),
+  bubbleGap: (text) => Math.min(7000, Math.max(900, 500 + text.length * 45)),
 };
 
 const NETWORK_ERROR: ApiError = {
@@ -88,6 +98,12 @@ interface Conversation {
 const wait = (ms: number) =>
   ms > 0 ? new Promise<void>((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 
+function toImageRef(image: NonNullable<ChatMessageDto['image']>): ImageRef {
+  return image.kind === 'web'
+    ? { source: 'web', uri: image.url, pageUrl: image.pageUrl, title: image.title }
+    : { source: 'placeholder', description: image.description };
+}
+
 export const fromDto = (dto: ChatMessageDto): ChatMessage => ({
   id: dto.id,
   role: dto.role,
@@ -97,9 +113,7 @@ export const fromDto = (dto: ChatMessageDto): ChatMessage => ({
   createdAt: dto.createdAt,
   reactions: dto.reactions,
   clientId: dto.clientId,
-  ...(dto.image
-    ? { image: { source: 'placeholder', description: dto.image.description } as const }
-    : {}),
+  ...(dto.image ? { image: toImageRef(dto.image) } : {}),
 });
 
 function defaultClientId(): string {
@@ -252,6 +266,8 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
     let messageId = localId;
     let finished = false;
     let bubbles = 0;
+    /** When the typing indicator first showed for this reply. */
+    let typingSince = 0;
 
     const fail = (error: ApiError, notice: boolean) =>
       enqueue(id, () => {
@@ -276,6 +292,7 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
             await wait(timing.readDelay);
             dispatch(id, { type: 'readAll' });
             dispatch(id, { type: 'typing', typing: true });
+            typingSince = Date.now();
           });
           return;
         case 'delta':
@@ -285,7 +302,10 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
           const first = bubbles === 0;
           bubbles += 1;
           enqueue(id, async () => {
-            if (!first) {
+            if (first) {
+              const typed = typingSince ? Date.now() - typingSince : 0;
+              await wait(timing.bubbleGap(message.content) - typed);
+            } else {
               dispatch(id, { type: 'typing', typing: true });
               await wait(timing.bubbleGap(message.content));
             }
@@ -332,6 +352,11 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
           // Kept as undelivered (retry once there are messages); the chat offers more.
           fail(error, false);
           onCredits?.({ type: 'messages_required', companionId: id });
+          return;
+        }
+        if (error.code === 'message_too_long') {
+          // Shown as not delivered (never as read), with the limit in the notice.
+          fail({ ...error, retryable: true }, true);
           return;
         }
         fail(error, true);

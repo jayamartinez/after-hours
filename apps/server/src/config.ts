@@ -25,7 +25,10 @@ const EnvSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:8081'),
   /** Chat provider. Only `anthropic` is implemented; the key itself is read by the SDK. */
   CHAT_PRIMARY_PROVIDER: z.enum(['anthropic']).default('anthropic'),
+  /** Chat model for demo Plus subscribers. */
   CHAT_PRIMARY_MODEL: z.string().default('claude-opus-5-5'),
+  /** Chat model for free users (D-040). */
+  CHAT_FREE_MODEL: z.string().default('claude-sonnet-5-5'),
   /** Reasoning effort for chat replies. Casual texting does not need deep thinking. */
   CHAT_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
   /** Cheap secondary model (memory extraction, eval judge). */
@@ -43,6 +46,11 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /** `false`: companions get no web search, link reading, or found pictures (D-038). */
+  WEB_ACCESS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   /** Chat messages per user per minute. */
   RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(20),
   NODE_ENV: z.string().default('development'),
@@ -50,7 +58,10 @@ const EnvSchema = z.object({
 
 export interface ChatConfig {
   provider: 'anthropic';
+  /** Plus subscribers. */
   model: string;
+  /** Free users. */
+  freeModel: string;
   effort: 'low' | 'medium' | 'high';
   memoryModel: string;
 }
@@ -68,6 +79,7 @@ export interface ServerConfig {
   /** Unset: `index.ts` resolves a local secret (PGlite only). */
   sessionSecret: string | undefined;
   killSwitch: boolean;
+  webAccess: boolean;
   rateLimitPerMin: number;
   /** Development: CORS also allows any http://localhost or 127.0.0.1 port. */
   allowLocalhostOrigins: boolean;
@@ -94,6 +106,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     chat: {
       provider: vars.CHAT_PRIMARY_PROVIDER,
       model: vars.CHAT_PRIMARY_MODEL,
+      freeModel: vars.CHAT_FREE_MODEL,
       effort: vars.CHAT_EFFORT,
       memoryModel: vars.MEMORY_MODEL,
     },
@@ -102,6 +115,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
       : { kind: 'pglite', dataDir: path.resolve(REPO_ROOT, vars.PGLITE_DIR) },
     sessionSecret: vars.SESSION_SECRET,
     killSwitch: vars.KILL_SWITCH,
+    webAccess: vars.WEB_ACCESS,
     rateLimitPerMin: vars.RATE_LIMIT_PER_MIN,
     allowLocalhostOrigins: vars.NODE_ENV !== 'production',
   };

@@ -56,6 +56,43 @@ export interface ChatRequest {
   tools?: readonly ChatTool[];
   /** `none`: tools stay declared but may not be called (continuing after a call). */
   toolChoice?: 'auto' | 'none';
+  /**
+   * Provider-run web access (D-038): most searches and link reads in this reply, and
+   * domains never read. Unset: no web access. Every request of one reply must pass the
+   * same value: the declared tools are part of the conversation that thinking blocks are
+   * bound to, so they cannot change mid-reply.
+   */
+  web?: WebAccess;
+  /** Web lookups earlier requests of this reply already ran (counts against `web`). */
+  webUsedBefore?: WebUsage;
+}
+
+export interface WebAccess {
+  searches: number;
+  fetches: number;
+  blockedDomains: readonly string[];
+}
+
+export interface WebUsage {
+  searches: number;
+  fetches: number;
+}
+
+/** True once `used` reaches the cap of any web tool `web` offers: no new lookups may start. */
+export function webAllowanceUsedUp(web: WebAccess | undefined, used: WebUsage): boolean {
+  if (!web) return false;
+  return (
+    (web.searches > 0 && used.searches >= web.searches) ||
+    (web.fetches > 0 && used.fetches >= web.fetches)
+  );
+}
+
+/** `a` plus `b`, tool by tool. */
+export function addWebUsage(a: WebUsage | undefined, b: WebUsage | undefined): WebUsage {
+  return {
+    searches: (a?.searches ?? 0) + (b?.searches ?? 0),
+    fetches: (a?.fetches ?? 0) + (b?.fetches ?? 0),
+  };
 }
 
 export interface ChatUsage {
@@ -73,6 +110,10 @@ export interface ChatResult {
   model: string;
   /** Tool calls the reply ended with (`stopReason` is then `tool_use`). */
   toolCalls: ToolCall[];
+  /** Web searches and link reads the provider ran for this reply. */
+  webRequests?: number;
+  /** The same, by tool: what a continuation subtracts from `ChatRequest.web`. */
+  webUsed?: WebUsage;
   /** This turn as the provider recorded it; pass back as `ChatTurn.raw` to continue. */
   raw: unknown;
 }

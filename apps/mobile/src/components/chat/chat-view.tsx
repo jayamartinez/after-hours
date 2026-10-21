@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChatMessage, ChatNotice, Reaction } from '@/chat/types';
 import { colors, spacing } from '@/theme/tokens';
 
+import { useMessageCharLimit } from '@/api/credits';
+
 import { ChatHeader } from './chat-header';
 import { Composer } from './composer';
 import { DemoPill } from './demo-pill';
@@ -74,6 +76,7 @@ export function ChatView({
 }: ChatViewProps) {
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
+  const maxChars = useMessageCharLimit();
   const now = useMinuteClock();
   const { toast, show } = useToast();
   const [menu, setMenu] = useState<{ message: ChatMessage; rect: BubbleRect } | null>(null);
@@ -150,6 +153,7 @@ export function ChatView({
             onAttach={() => show('Photos · coming soon')}
             onMic={() => show('Voice messages · coming soon')}
             bottomInset={keyboardOpen ? spacing.sm : Math.max(insets.bottom, spacing.sm)}
+            maxChars={maxChars}
           />
         </KeyboardAvoidingView>
       </View>

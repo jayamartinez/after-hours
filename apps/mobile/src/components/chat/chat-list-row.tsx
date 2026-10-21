@@ -13,7 +13,7 @@ function preview(message: ChatMessage | undefined, name: string): string {
   const prefix = message.role === 'user' ? 'You: ' : '';
   switch (message.kind) {
     case 'image':
-      return `${prefix}Photo`;
+      return `${prefix}${message.image?.source === 'web' ? 'Picture' : 'Photo'}`;
     case 'voice':
       return `${prefix}Voice note`;
     case 'text':
