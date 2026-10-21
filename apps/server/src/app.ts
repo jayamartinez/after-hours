@@ -88,7 +88,7 @@ export function createApp(
   if (overrides.chat) {
     const { db, model, sessionSecret, memoryModel, waitUntil } = overrides.chat;
     app
-      .route('/', sessionRoutes(db, sessionSecret))
+      .route('/', sessionRoutes(db, sessionSecret, config.limits))
       .route(
         '/',
         conversationRoutes({
@@ -99,6 +99,7 @@ export function createApp(
           killSwitch: config.killSwitch,
           rateLimitPerMin: config.rateLimitPerMin,
           webAccess: config.webAccess,
+          limits: config.limits,
           freeModel: overrides.chat.freeModel,
           findPageImage: overrides.chat.findPageImage,
           memoryModel,

@@ -23,6 +23,12 @@ export function testConfig(workDir: string, overrides: Partial<ServerConfig> = {
     sessionSecret: 'test-session-secret-0123456789abcdef',
     killSwitch: false,
     webAccess: false,
+    limits: {
+      trustProxy: true,
+      globalDailyUsd: 25,
+      networkLifetimeUsd: 3,
+      sessionsPerNetworkPerDay: 1000,
+    },
     rateLimitPerMin: 20,
     allowLocalhostOrigins: true,
     ...overrides,

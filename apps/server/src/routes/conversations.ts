@@ -51,12 +51,15 @@ import {
   toMessageDto,
 } from '../db/conversations';
 import { listMemories } from '../db/memories';
-import { addSpend, spendMessage } from '../db/message-allowance';
+import { demoLimitReached, recordReplyCost } from '../db/demo-limits';
+import { spendMessage } from '../db/message-allowance';
 import { billedCostMicroUsd } from '../chat/costs';
 import type { MessageRow } from '../db/schema';
 import { getProfile, isPlus } from '../db/users';
 import { addWebLookups, remainingWebLookups } from '../db/web-usage';
+import { clientAddress, networkKey } from '../limits/network';
 import { createRateLimiter } from '../limits/rate-limit';
+import type { DemoLimits } from '../config';
 import {
   ChatModelError,
   type BilledRequest,
@@ -75,6 +78,8 @@ export interface ConversationRoutesOptions {
   sessionSecret: string;
   killSwitch: boolean;
   rateLimitPerMin: number;
+  /** Public demo abuse limits (D-042). */
+  limits: DemoLimits;
   /**
    * Extracts memories after each delivered reply and writes per-user starters. Unset: no
    * automatic memories, and starters are the companion's defaults.
@@ -227,6 +232,31 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
           );
         }
         const replyModel = plus ? model : (options.freeModel ?? model);
+        const network = networkKey(
+          clientAddress(c, options.limits.trustProxy),
+          options.sessionSecret,
+        );
+        const limit = await demoLimitReached(db, network, options.limits);
+        if (limit === 'global') {
+          return c.json(
+            apiError(
+              'unavailable',
+              'After Hours is resting for today. Check back tomorrow.',
+              false,
+            ),
+            503,
+          );
+        }
+        if (limit === 'network') {
+          return c.json(
+            apiError(
+              'demo_limit_reached',
+              'You have reached the limit for this demo. Thanks for trying After Hours.',
+              false,
+            ),
+            402,
+          );
+        }
 
         if (!limiter.take(userId)) {
           return c.json(
@@ -334,12 +364,17 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               await send({ type: 'credits', balance });
               return { kind: 'sent' };
             };
-            /** Counts the reply's lookups and estimated cost against today's limits. */
+            /** Counts the reply's lookups and estimated cost against every limit. */
             const recordUsage = async (requests: readonly BilledRequest[], pictures: number) => {
               try {
                 const lookups = requests.reduce((sum, r) => sum + r.webRequests, 0);
                 await addWebLookups(db, userId, lookups + pictures);
-                await addSpend(db, userId, billedCostMicroUsd(requests));
+                // Per user (daily budget), per network (lifetime cap), and globally (D-042).
+                await recordReplyCost(db, {
+                  userId,
+                  network,
+                  microUsd: billedCostMicroUsd(requests),
+                });
               } catch (error) {
                 log(
                   `[chat] usage not recorded: ${error instanceof Error ? error.message : String(error)}`,
