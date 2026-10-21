@@ -30,8 +30,6 @@ export interface OnboardingData {
   profilePending: boolean;
   /** Messages sent in the onboarding chat this run; the paywall follows the last free one. */
   firstChatSent: number;
-  /** Device coin flip (0 to 1) that settles close matches; a replay flips it again. */
-  matchTiebreak: number;
 }
 
 export interface OnboardingActions {
@@ -68,7 +66,6 @@ export const initialOnboardingData = (): OnboardingData => ({
   demoPurchase: null,
   profilePending: false,
   firstChatSent: 0,
-  matchTiebreak: Math.random(),
 });
 
 const toggle = <T>(list: readonly T[], item: T): T[] =>
@@ -126,7 +123,6 @@ export function createOnboardingStore(storage: StateStorage) {
           demoPurchase: s.demoPurchase,
           profilePending: s.profilePending,
           firstChatSent: s.firstChatSent,
-          matchTiebreak: s.matchTiebreak,
         }),
         // Fill in fields added after a user's data was saved.
         merge: (persisted, current) => {

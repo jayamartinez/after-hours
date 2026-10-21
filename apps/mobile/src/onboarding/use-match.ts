@@ -18,10 +18,9 @@ export function useMatch(): MatchResult {
   const { data, isLoading } = useCompanions();
   const prefs = useOnboarding((s) => s.preferences);
   const storedId = useOnboarding((s) => s.matchedCompanionId);
-  const tiebreak = useOnboarding((s) => s.matchTiebreak);
   const companions = data?.companions ?? [];
   const stored = companions.find((c) => c.id === storedId);
-  const matchedId = stored?.id ?? matchCompanion(prefs, companions, tiebreak);
+  const matchedId = stored?.id ?? matchCompanion(prefs, companions);
   const companion = companions.find((c) => c.id === matchedId);
   return { companions, companion, other: otherCompanion(companions, matchedId), isLoading };
 }
