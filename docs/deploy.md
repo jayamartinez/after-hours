@@ -13,15 +13,21 @@ The demo runs as **one Vercel project** (D-047): the web app and the API share o
 
 The repository ships no photos (D-030). Use only original images you have the rights to publish, never real people.
 
-1. In the Vercel dashboard: Storage, Create, **Blob**, and connect it to the project.
-2. Open the store and upload the images (for example `roy/hero.jpg`, `roy/avatar.jpg`, `roya/hero.jpg`, `roya/avatar.jpg`). Copy each file's URL.
-3. Write the manifest with those URLs (same shape as `config/companion-assets.example.json`; every `src` must be an `https://` URL) and paste it, minified onto one line, as the `COMPANION_ASSETS_JSON` environment variable:
+The project's Blob store ("after-hours-photos") is connected, so photos are just uploads named by slot:
 
-   ```json
-   {"roy":{"hero":{"src":"https://….public.blob.vercel-storage.com/roy/hero.jpg","focal":[0.5,0.3]},"avatar":{"src":"https://…/roy/avatar.jpg"}},"roya":{"hero":{"src":"https://…/roya/hero.jpg"},"avatar":{"src":"https://…/roya/avatar.jpg"}}}
-   ```
+1. Vercel dashboard, the project, **Storage**, after-hours-photos, **Upload**.
+2. Name each file `<companion>/<slot>.<jpg|png|webp|avif>`:
 
-   Anyone with the demo link can see these photos.
+   | File | Where it shows |
+   | --- | --- |
+   | `roy/avatar.jpg`, `roya/avatar.jpg` | chat headers, the Chats list, banners |
+   | `roy/hero.jpg`, `roya/hero.jpg` | the Companions card, profile, onboarding reveal |
+   | `roy/gallery-1.jpg`, `roy/gallery-2.jpg` (and `roya/…`) | the profile gallery |
+
+   If the upload dialog has no folder field, type the full name, slash included (`roy/avatar.jpg`).
+3. They show within about a minute, no redeploy. To replace a photo, upload a new file with the same slot; the newest wins. To remove one, delete the file.
+
+Anyone with the demo link can see these photos. (`COMPANION_ASSETS_JSON`, a manifest as JSON, overrides the store when set; it also allows focal points and alt text.)
 
 ## 3. Create the project
 
@@ -36,7 +42,6 @@ The repository ships no photos (D-030). Use only original images you have the ri
    | `SESSION_SECRET` | a new random string of 32+ characters (`openssl rand -hex 32`) |
    | `ANTHROPIC_API_KEY` | your key |
    | `TRUST_PROXY` | `true` (without it every visitor shares one $3 cap) |
-   | `COMPANION_ASSETS_JSON` | the photo manifest from step 2 |
    | `GLOBAL_DAILY_SPEND_CAP_USD`, `NETWORK_LIFETIME_CAP_USD` | `25`, `3` (or your own) |
    | `WEB_ACCESS` | `true` (or `false` to turn off web lookups) |
    | `KILL_SWITCH` | `false` (set `true` to stop all chat) |

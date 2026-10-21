@@ -1,4 +1,5 @@
 import { presets } from '@after-hours/companions';
+import type { CompanionAssetManifest } from '@after-hours/contracts';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
@@ -40,6 +41,8 @@ export interface AppOverrides {
   chat?: ChatServices;
   /** Chat failure logging (default console.warn). */
   log?: (message: string) => void;
+  /** Photo manifest source when not a file or COMPANION_ASSETS_JSON (Vercel Blob, D-047). */
+  loadManifest?: () => CompanionAssetManifest | null;
 }
 
 const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
@@ -60,17 +63,19 @@ export function createApp(
 ) {
   const store = createCharacterStore(presets, config.companionsConfigPath, warn);
   const toPublic = createPublicProjector({
-    loadManifest: config.manifestJson
-      ? createInlineManifestLoader(
-          config.manifestJson,
-          store.presets.map((p) => p.id),
-          warn,
-        )
-      : createManifestLoader(
-          config.manifestPath,
-          store.presets.map((p) => p.id),
-          warn,
-        ),
+    loadManifest: overrides.loadManifest
+      ? overrides.loadManifest
+      : config.manifestJson
+        ? createInlineManifestLoader(
+            config.manifestJson,
+            store.presets.map((p) => p.id),
+            warn,
+          )
+        : createManifestLoader(
+            config.manifestPath,
+            store.presets.map((p) => p.id),
+            warn,
+          ),
     publicServerUrl: config.publicServerUrl,
     privateAssetsDir: config.privateAssetsDir,
     warn,
