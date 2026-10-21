@@ -32,6 +32,8 @@ interface OnboardingButtonProps {
   disabled?: boolean;
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
+  /** False skips the post-entrance wait (buttons in sheets, outside onboarding screens). */
+  settle?: boolean;
 }
 
 export function OnboardingButton({
@@ -41,9 +43,10 @@ export function OnboardingButton({
   disabled = false,
   accessibilityHint,
   style,
+  settle = true,
 }: OnboardingButtonProps) {
   const primary = variant === 'primary';
-  const ready = useEntranceSettled();
+  const ready = useEntranceSettled() || !settle;
   const lastPress = useRef(0);
   const inactive = disabled || !ready;
   const press = () => {

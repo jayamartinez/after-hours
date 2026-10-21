@@ -3,6 +3,7 @@ import {
   GalleryResponseSchema,
   type CreditPackId,
   type CreditsResponse,
+  type MessagePackId,
   type PlusPlan,
 } from '@after-hours/contracts';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -11,15 +12,22 @@ import { useEffect, useRef } from 'react';
 import { queryClient } from './query-client';
 import { apiRequest } from './transport';
 
-/** Photo credits, demo Plus, and the gallery of photos sent in chat (D-026). */
+/**
+ * Photo credits, demo Plus, the message allowance with demo packs and ads (D-036), and the
+ * gallery of photos sent in chat (D-026).
+ */
 
 export const CREDITS_QUERY_KEY = ['credits'] as const;
 export const GALLERY_QUERY_KEY = ['gallery'] as const;
 
-/** What a reply stream reported about credits (see the chat SSE events). */
+/** What a send reported about credits and messages (see the chat SSE events). */
 export type CreditSignal =
   | { type: 'credits'; balance: number; companionId: string }
-  | { type: 'credits_required'; companionId: string };
+  | { type: 'credits_required'; companionId: string }
+  /** Out of messages: the send was refused (D-036). */
+  | { type: 'messages_required'; companionId: string }
+  /** A message went through: the allowance changed. */
+  | { type: 'message_sent'; companionId: string };
 
 const listeners = new Set<(signal: CreditSignal) => void>();
 
@@ -75,6 +83,28 @@ export function useBuyCredits() {
         await apiRequest('POST', '/credits/purchase', { packId, purchaseId: purchaseId() }),
       ),
     onSuccess: (credits) => queryClient.setQueryData(CREDITS_QUERY_KEY, credits),
+  });
+}
+
+const store = (credits: CreditsResponse) => queryClient.setQueryData(CREDITS_QUERY_KEY, credits);
+
+/** Demo purchase of a message pack (nothing is charged). */
+export function useBuyMessages() {
+  return useMutation({
+    mutationFn: async (packId: MessagePackId) =>
+      parseCredits(
+        await apiRequest('POST', '/messages/purchase', { packId, purchaseId: purchaseId() }),
+      ),
+    onSuccess: store,
+  });
+}
+
+/** Claims a watched demo ad's bonus messages (no ad is actually shown). */
+export function useClaimAd() {
+  return useMutation({
+    mutationFn: async () =>
+      parseCredits(await apiRequest('POST', '/messages/ad', { adId: purchaseId() })),
+    onSuccess: store,
   });
 }
 

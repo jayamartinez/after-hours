@@ -147,6 +147,19 @@ export async function insertUserMessage(
   return { row: existing, created: false };
 }
 
+/** The stored user message with this idempotency key, if any. */
+export async function findUserMessage(
+  db: Db,
+  conversationId: string,
+  clientId: string,
+): Promise<MessageRow | undefined> {
+  const [row] = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.conversationId, conversationId), eq(messages.clientId, clientId)));
+  return row;
+}
+
 /** Assistant bubbles already stored for a user message (an idempotent replay). */
 export function listReplies(db: Db, userMessageId: string): Promise<MessageRow[]> {
   return db

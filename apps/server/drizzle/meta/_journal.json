@@ -29,6 +29,13 @@
       "when": 1792507545355,
       "tag": "0003_ambitious_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792510251146,
+      "tag": "0004_fresh_kabuki",
+      "breakpoints": true
     }
   ]
 }

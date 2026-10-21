@@ -4,10 +4,12 @@ import {
   bigserial,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -35,11 +37,51 @@ export const users = pgTable(
     plusPlan: text('plus_plan', { enum: ['annual', 'monthly'] }),
     /** Start of the current demo Plus subscription; credit periods count from here. */
     plusSince: timestamp('plus_since', { withTimezone: true }),
+    /** Messages bought or earned from ads, spent after the daily free ones (D-036). */
+    bonusMessages: integer('bonus_messages').notNull().default(0),
     /** Onboarding answers (`PUT /profile`); null until the app sends them. */
     profile: jsonb('profile').$type<UserProfile>(),
     createdAt: createdAt(),
   },
-  (t) => [check('users_image_credits_check', sql`${t.imageCredits} >= 0`)],
+  (t) => [
+    check('users_image_credits_check', sql`${t.imageCredits} >= 0`),
+    check('users_bonus_messages_check', sql`${t.bonusMessages} >= 0`),
+  ],
+).enableRLS();
+
+/**
+ * Free messages sent per user per UTC day (D-036). Its own table so clearing a
+ * conversation (which deletes messages) never gives the allowance back.
+ */
+export const messageUsage = pgTable(
+  'message_usage',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+).enableRLS();
+
+/**
+ * Bonus messages granted by a demo pack or a demo ad. `ref` is unique per user, so a
+ * retried purchase or ad claim counts once; ads per day are counted from here.
+ */
+export const messageGrants = pgTable(
+  'message_grants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['purchase', 'ad'] }).notNull(),
+    amount: integer('amount').notNull(),
+    ref: text('ref').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('message_grants_user_ref_key').on(t.userId, t.ref)],
 ).enableRLS();
 
 /**

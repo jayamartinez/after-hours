@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDeleteAccount } from '@/api/account';
 import { DEV_EDITOR_ENABLED } from '@/api/config';
 import { confirmDestructive } from '@/components/confirm';
+import { MessagesCard } from '@/components/credits/messages-card';
 import { PhotosCard } from '@/components/credits/photos-card';
 import { TrashIcon } from '@/components/discovery/icons';
 import { DemoControlsRow } from '@/components/onboarding/demo-controls-row';
@@ -15,7 +16,7 @@ const MAX_WIDTH = 430;
 
 /** You tab: photo credits, data controls, demo controls, and (in development) the editor. */
 export default function YouScreen() {
-  const toast = useToast();
+  const toast = useToast({ aboveTabBar: true });
   const deleteAccount = useDeleteAccount();
 
   const deleteEverything = async () => {
@@ -38,6 +39,11 @@ export default function YouScreen() {
         <Text style={type.displayM} accessibilityRole="header">
           You
         </Text>
+
+        <View style={styles.section}>
+          <Text style={type.label}>Messages</Text>
+          <MessagesCard onMessage={toast.show} />
+        </View>
 
         <View style={styles.section}>
           <Text style={type.label}>Photos</Text>

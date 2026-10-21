@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { useCreditSignals } from '@/api/credits';
 import { useStarters } from '@/api/starters';
 import type { ChatMessage } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
@@ -44,6 +45,11 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
     if (onboardingStore.getState().demoPurchase) showWelcome();
     else goToNext('first-message');
   }, []);
+
+  // Out of messages (a replayed onboarding): the paywall is the way forward (D-036).
+  useCreditSignals((signal) => {
+    if (signal.type === 'messages_required' && signal.companionId === companion.id) continueOn();
+  });
 
   useEffect(() => {
     if (!answered) return;

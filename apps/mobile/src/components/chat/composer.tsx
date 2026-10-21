@@ -73,7 +73,9 @@ export function Composer({ companionName, onSend, onAttach, onMic, bottomInset }
             placeholderTextColor={colors.textMuted}
             accessibilityLabel={`Message ${companionName}`}
             multiline
-            rows={1}
+            // Web only: a one-row textarea that grows by measurement. On iOS `rows` pins the
+            // field to one line instead of letting it grow (D-037).
+            rows={Platform.OS === 'web' ? 1 : undefined}
             maxLength={MAX_MESSAGE_CHARS}
             onContentSizeChange={(event) => {
               if (Platform.OS === 'web') setWebHeight(event.nativeEvent.contentSize.height);

@@ -298,6 +298,7 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
           finished = true;
           enqueue(id, () => {
             dispatch(id, { type: 'typing', typing: false });
+            onCredits?.({ type: 'message_sent', companionId: id });
             onStored?.(id);
           });
           return;
@@ -326,7 +327,14 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
         timeZone: timeZone(),
       });
       if (!res.ok) {
-        fail(await readError(res), true);
+        const error = await readError(res);
+        if (error.code === 'messages_required') {
+          // Kept as undelivered (retry once there are messages); the chat offers more.
+          fail(error, false);
+          onCredits?.({ type: 'messages_required', companionId: id });
+          return;
+        }
+        fail(error, true);
         return;
       }
       if (!res.body) throw new Error('response has no body');

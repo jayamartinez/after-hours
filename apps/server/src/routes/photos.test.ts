@@ -73,6 +73,18 @@ const shape = (list: ChatStreamEvent[]) =>
           : e.type,
     );
 
+/** Free users start with no photo credits (D-036): photo tests buy a 10-pack first. */
+const STARTING = 10;
+async function photoSession() {
+  const token = await newSession(app);
+  const res = await call(app, token, 'POST', '/credits/purchase', {
+    packId: 'photos-10',
+    purchaseId: `setup-${nextClientId()}`,
+  });
+  expect(res.status).toBe(200);
+  return token;
+}
+
 async function credits(token: string) {
   const res = await call(app, token, 'GET', '/credits');
   expect(res.status).toBe(200);
@@ -81,18 +93,18 @@ async function credits(token: string) {
 
 describe('send_photo', () => {
   it('sends a placeholder photo for one credit, then the companion finishes the reply', async () => {
-    const token = await newSession(app);
+    const token = await photoSession();
     chat.script.push({ chunks: ['one sec'], toolCalls: [photoCall()] }, { chunks: ['there'] });
     const list = await send(token, 'send me a pic');
 
     expect(shape(list)).toEqual([
       'text:one sec',
       'photo:desk, cold coffee:late shift',
-      `credits:${FREE_STARTING_CREDITS - 1}`,
+      `credits:${STARTING - 1}`,
       'text:there',
       'done',
     ]);
-    expect((await credits(token)).balance).toBe(FREE_STARTING_CREDITS - 1);
+    expect((await credits(token)).balance).toBe(STARTING - 1);
 
     const [first, second] = chat.requests;
     expect(first?.tools?.map((t) => t.name)).toEqual([SEND_PHOTO]);
@@ -108,7 +120,7 @@ describe('send_photo', () => {
   });
 
   it('keeps the photo in history as [photo] with its caption', async () => {
-    const token = await newSession(app);
+    const token = await photoSession();
     chat.script.push({ chunks: [], toolCalls: [photoCall('a', '')] }, { chunks: ['ok'] });
     await send(token, 'pic?');
     chat.script.push({ chunks: [], toolCalls: [photoCall('b', 'again')] }, { chunks: ['ok'] });
@@ -136,7 +148,7 @@ describe('send_photo', () => {
   });
 
   it('sends at most one photo per reply and rejects invalid input without spending', async () => {
-    const token = await newSession(app);
+    const token = await photoSession();
     chat.script.push(
       {
         chunks: [],
@@ -150,7 +162,7 @@ describe('send_photo', () => {
     );
     const list = await send(token, 'pics pls');
     expect(shape(list).filter((s) => s.startsWith('photo:'))).toHaveLength(1);
-    expect((await credits(token)).balance).toBe(FREE_STARTING_CREDITS - 1);
+    expect((await credits(token)).balance).toBe(STARTING - 1);
     const results = chat.requests[1]?.messages.at(-1);
     expect(results?.role === 'user' && results.toolResults).toEqual([
       { callId: 'bad', content: PHOTO_RESULTS.invalid, isError: true },
@@ -160,14 +172,14 @@ describe('send_photo', () => {
   });
 
   it('a resent message replays its photo without spending again', async () => {
-    const token = await newSession(app);
+    const token = await photoSession();
     const clientId = nextClientId();
     chat.script.push({ chunks: [], toolCalls: [photoCall()] }, { chunks: ['ok'] });
     await send(token, 'pic?', clientId);
     const replay = await send(token, 'pic?', clientId);
     expect(shape(replay)).toEqual(['photo:desk, cold coffee:late shift', 'text:ok', 'done']);
     expect(chat.requests).toHaveLength(2);
-    expect((await credits(token)).balance).toBe(FREE_STARTING_CREDITS - 1);
+    expect((await credits(token)).balance).toBe(STARTING - 1);
   });
 });
 
@@ -226,7 +238,7 @@ describe('credits', () => {
 
 describe('isolation between users', () => {
   it("B never sees A's photos, balance, or purchases", async () => {
-    const a = await newSession(app);
+    const a = await photoSession();
     const b = await newSession(app);
     chat.script.push({ chunks: [], toolCalls: [photoCall()] }, { chunks: ['ok'] });
     await send(a, 'pic?');
@@ -244,7 +256,7 @@ describe('isolation between users', () => {
       GalleryResponseSchema.parse(await (await call(app, token, 'GET', '/gallery')).json()).photos;
     expect(await gallery(a)).toHaveLength(1);
     expect(await gallery(b)).toEqual([]);
-    expect((await credits(a)).balance).toBe(FREE_STARTING_CREDITS - 1 + 30);
+    expect((await credits(a)).balance).toBe(STARTING - 1 + 30);
     expect((await credits(b)).balance).toBe(FREE_STARTING_CREDITS + 10);
   });
 
