@@ -60,7 +60,7 @@ export default function MatchingScreen() {
   useEffect(() => {
     if (!companions) return;
     const state = onboardingStore.getState();
-    state.setMatchedCompanion(matchCompanion(state.preferences, companions, state.matchTiebreak));
+    state.setMatchedCompanion(matchCompanion(state.preferences, companions));
     const timer = setTimeout(() => router.replace(stepHref('reveal')), HOLD_MS);
     return () => clearTimeout(timer);
   }, [companions]);

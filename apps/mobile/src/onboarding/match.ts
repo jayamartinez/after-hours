@@ -75,34 +75,20 @@ export function scoreCompanion(
 }
 
 /**
- * Scores within this of the best are a toss-up: answers close to the defaults (a quick
- * tap-through) land here, and they used to go to Roya nearly every time.
- */
-export const CLOSE_MATCH = 1;
-
-/**
- * Picks the companion whose config best fits the answers. A clear winner always wins; a
- * toss-up goes to one of the close companions by `tiebreak` (0 to 1, stored per device), so
- * the same answers on the same device always give the same id. Returns null only when
- * there are no companions.
+ * Picks the companion whose config best fits the answers. Deterministic: the same answers
+ * and companions always give the same id; ties go to the earlier companion in the list.
+ * Returns null only when there are no companions.
  */
 export function matchCompanion(
   prefs: OnboardingPreferences,
   companions: readonly MatchableCompanion[],
-  tiebreak = 0,
 ): string | null {
-  const scored = companions.map((companion) => ({
-    id: companion.id,
-    score: scoreCompanion(prefs, companion),
-  }));
-  if (scored.length === 0) return null;
-  const top = Math.max(...scored.map((c) => c.score));
-  const close = scored.filter((c) => top - c.score < CLOSE_MATCH);
-  const pick = Math.min(
-    close.length - 1,
-    Math.floor(Math.max(0, Math.min(1, tiebreak)) * close.length),
-  );
-  return close[pick]?.id ?? null;
+  let best: { id: string; score: number } | null = null;
+  for (const companion of companions) {
+    const score = scoreCompanion(prefs, companion);
+    if (!best || score > best.score + 1e-9) best = { id: companion.id, score };
+  }
+  return best?.id ?? null;
 }
 
 /** The first companion that is not `id`, the reveal's "Not feeling it? See …" target. */
