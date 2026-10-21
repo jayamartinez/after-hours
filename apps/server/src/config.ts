@@ -14,6 +14,11 @@ const EnvSchema = z.object({
   PUBLIC_SERVER_URL: z.url({ protocol: /^https?$/ }).optional(),
   PRIVATE_ASSETS_DIR: z.string().default('private-assets'),
   COMPANION_ASSET_MANIFEST: z.string().default('config/companion-assets.local.json'),
+  /**
+   * The manifest itself as JSON, for hosts without a config file (Vercel). Wins over
+   * COMPANION_ASSET_MANIFEST; every `src` must then be an https:// URL (e.g. Vercel Blob).
+   */
+  COMPANION_ASSETS_JSON: z.string().optional(),
   /** Character overrides (deep partial per companion id), merged onto the presets. */
   COMPANIONS_CONFIG: z.string().default('config/companions.local.json'),
   /** Local character editor endpoints (`/dev/companions`); localhost requests only. */
@@ -89,6 +94,8 @@ export interface ServerConfig {
   publicServerUrl: string | undefined;
   privateAssetsDir: string;
   manifestPath: string;
+  /** Inline manifest JSON (COMPANION_ASSETS_JSON); used instead of `manifestPath`. */
+  manifestJson: string | undefined;
   companionsConfigPath: string;
   devEditor: boolean;
   corsOrigins: string[];
@@ -118,6 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServerConfig {
     publicServerUrl: vars.PUBLIC_SERVER_URL?.replace(/\/+$/, ''),
     privateAssetsDir: path.resolve(REPO_ROOT, vars.PRIVATE_ASSETS_DIR),
     manifestPath: path.resolve(REPO_ROOT, vars.COMPANION_ASSET_MANIFEST),
+    manifestJson: vars.COMPANION_ASSETS_JSON,
     companionsConfigPath: path.resolve(REPO_ROOT, vars.COMPANIONS_CONFIG),
     devEditor: vars.DEV_EDITOR,
     corsOrigins: vars.CORS_ORIGINS.split(',')

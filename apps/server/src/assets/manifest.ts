@@ -35,6 +35,16 @@ export function parseManifest(
   return result.data;
 }
 
+/** Manifest from inline JSON (COMPANION_ASSETS_JSON), parsed once. */
+export function createInlineManifestLoader(
+  json: string,
+  knownIds: readonly string[],
+  warn: Warn,
+): () => CompanionAssetManifest | null {
+  const manifest = parseManifest(json, 'COMPANION_ASSETS_JSON', knownIds, warn);
+  return () => manifest;
+}
+
 /** Manifest loader, re-read when the file's mtime or size changes. */
 export function createManifestLoader(
   filePath: string,

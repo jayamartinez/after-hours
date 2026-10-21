@@ -262,6 +262,7 @@ Names only. "Degrades" describes behavior when unset.
 | `PUBLIC_SERVER_URL` | No | Private-asset URLs use the request's own origin |
 | `CORS_ORIGINS` | No | `http://localhost:8081` (Expo web dev server). Outside `NODE_ENV=production`, any `http://localhost:<port>` or `127.0.0.1` origin is also allowed. |
 | `COMPANION_ASSET_MANIFEST` | No | Defaults to `config/companion-assets.local.json` (git-ignored). Missing file: no companion images (loading pulse). |
+| `COMPANION_ASSETS_JSON` | No | The manifest as JSON (hosts without files, e.g. Vercel). Wins over `COMPANION_ASSET_MANIFEST`; `src` values must be https URLs. |
 | `COMPANIONS_CONFIG` | No | Defaults to `config/companions.local.json` (git-ignored). Missing file: presets only. |
 | `DEV_EDITOR` | No | `false`: `/dev/companions` routes return 404. Never enable on a deployed server. |
 | `EXPO_PUBLIC_DEV_EDITOR` | No | `false`: the app's `/dev/companions` route redirects home. |
@@ -303,6 +304,8 @@ Bridge-side: `BRIDGE_SERVER_URL`, `BRIDGE_TOKEN`, `BRIDGE_POLL_MS`.
 - Hosted database (D-019, D-023): put the Supabase **session pooler** URI in `DATABASE_URL` and a 32+ character `SESSION_SECRET` in `.env`, run `pnpm db:migrate` once (and after each new migration), then `pnpm dev`. Docker is never required.
 - Minimum to chat: `ANTHROPIC_API_KEY`. Everything else is optional and hides its feature when absent.
 - Self-hosting: deploy the server as one Node service, the web export to any static host, and point both at a Supabase project (hosted or self-hosted). The bridge runs separately on a Mac.
+- Vercel (the public demo, D-047): one project at the repository root. `scripts/build-vercel.mjs` writes Build Output API v3: the Expo web export as static files (built with `EXPO_PUBLIC_API_URL=/api`), and the server bundled by esbuild from `apps/server/src/vercel.ts` into one streaming Node function at `/api` (300 s max, PGlite stubbed out, memory extraction kept alive with `waitUntil`). Routes: real files, then `/api/*`, then `index.html`. Same origin, so no CORS. Photos come from `COMPANION_ASSETS_JSON` (Vercel Blob URLs). Per-minute rate limits and the starter cache are per function instance; every spend cap lives in Postgres. See `docs/deploy.md`.
+- Desktop browsers (window 700 px or wider) see the app inside a phone frame: the page renders only the frame, and an iframe of the same URL runs the app at phone width, so sheets, modals, and banners stay inside it (`components/desktop-frame.tsx`).
 
 ## Testing strategy
 

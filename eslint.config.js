@@ -5,7 +5,14 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  globalIgnores(['**/node_modules/', '**/dist/', '**/.expo/', '**/web-build/', '**/expo-env.d.ts']),
+  globalIgnores([
+    '**/node_modules/',
+    '**/dist/',
+    '**/.expo/',
+    '**/web-build/',
+    '**/expo-env.d.ts',
+    '.vercel/',
+  ]),
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
@@ -19,7 +26,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['apps/server/**', 'apps/*/scripts/**', 'packages/**', '*.{js,ts}'],
+    files: ['apps/server/**', 'apps/*/scripts/**', 'scripts/**', 'packages/**', '*.{js,ts}'],
     languageOptions: { globals: globals.node },
   },
   {

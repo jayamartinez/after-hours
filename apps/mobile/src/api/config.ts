@@ -7,9 +7,10 @@ const DEFAULT_API_URL = 'http://localhost:8787';
 function readApiUrl(): string {
   const raw = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (!raw) return DEFAULT_API_URL;
-  if (!/^https?:\/\/[^/]+/i.test(raw)) {
+  // A path ("/api") means the API is served from the same origin as the web app (Vercel).
+  if (!/^https?:\/\/[^/]+/i.test(raw) && !/^\/[^/]/.test(raw)) {
     console.warn(
-      `[config] EXPO_PUBLIC_API_URL "${raw}" is not an http(s) URL; using ${DEFAULT_API_URL}.`,
+      `[config] EXPO_PUBLIC_API_URL "${raw}" is not an http(s) URL or a path; using ${DEFAULT_API_URL}.`,
     );
     return DEFAULT_API_URL;
   }

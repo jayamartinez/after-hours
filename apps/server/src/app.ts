@@ -2,7 +2,7 @@ import { presets } from '@after-hours/companions';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import { createManifestLoader, type Warn } from './assets/manifest';
+import { createInlineManifestLoader, createManifestLoader, type Warn } from './assets/manifest';
 import { createCharacterStore } from './characters/store';
 import type { ServerConfig } from './config';
 import type { Db } from './db/client';
@@ -60,11 +60,17 @@ export function createApp(
 ) {
   const store = createCharacterStore(presets, config.companionsConfigPath, warn);
   const toPublic = createPublicProjector({
-    loadManifest: createManifestLoader(
-      config.manifestPath,
-      store.presets.map((p) => p.id),
-      warn,
-    ),
+    loadManifest: config.manifestJson
+      ? createInlineManifestLoader(
+          config.manifestJson,
+          store.presets.map((p) => p.id),
+          warn,
+        )
+      : createManifestLoader(
+          config.manifestPath,
+          store.presets.map((p) => p.id),
+          warn,
+        ),
     publicServerUrl: config.publicServerUrl,
     privateAssetsDir: config.privateAssetsDir,
     warn,

@@ -9,6 +9,7 @@ export function testConfig(workDir: string, overrides: Partial<ServerConfig> = {
     publicServerUrl: undefined,
     privateAssetsDir: path.join(workDir, 'private-assets'),
     manifestPath: path.join(workDir, 'manifest.json'),
+    manifestJson: undefined,
     companionsConfigPath: path.join(workDir, 'companions.local.json'),
     devEditor: false,
     corsOrigins: ['http://localhost:8081'],

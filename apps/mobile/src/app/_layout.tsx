@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { queryClient } from '@/api/query-client';
+import { DesktopFrame, SHOW_DESKTOP_FRAME } from '@/components/desktop-frame';
 import { ReplyBannerHost } from '@/components/notifications/reply-banner';
 import { OnboardingGate } from '@/components/onboarding/onboarding-gate';
 import { useProfileSync } from '@/onboarding/use-profile-sync';
@@ -38,7 +39,19 @@ function ProfileSync() {
   return null;
 }
 
+/** Desktop browsers get the app inside a phone frame (D-047); the frame's iframe runs the app. */
 export default function RootLayout() {
+  return SHOW_DESKTOP_FRAME ? <DesktopFrameRoot /> : <AppRoot />;
+}
+
+function DesktopFrameRoot() {
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+  return <DesktopFrame />;
+}
+
+function AppRoot() {
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     InstrumentSerif_400Regular_Italic,
