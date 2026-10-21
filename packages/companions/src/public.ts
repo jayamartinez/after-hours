@@ -6,12 +6,12 @@ import type {
   PublicCharacter,
 } from '@after-hours/contracts';
 
-/** A slot that renders the bundled default art (`uri: null`). */
+/** A slot with no image (`uri: null`); the app shows a loading pulse (D-030). */
 export function defaultSlot(slot: ImageSlotDefault): ImageSlot {
   return { uri: null, asset: slot.asset, focal: slot.focal, alt: slot.alt };
 }
 
-/** All slots on bundled defaults, i.e. what `GET /companions` returns with no image overrides. */
+/** All slots empty, i.e. what `GET /companions` returns with no image overrides. */
 export function defaultCharacterImages(character: CharacterConfig): CompanionImages {
   const { hero, avatar, gallery } = character.images;
   return {
@@ -59,7 +59,6 @@ export function toPublicCharacter(
         revealSubline: copy.revealSubline,
         revealCta: copy.revealCta,
         matchReasons: [...copy.matchReasons],
-        firstMessage: [...copy.firstMessage],
         sampleOpener: copy.sampleOpener,
         voiceLabel: copy.voiceLabel,
         profileSections: {

@@ -2,7 +2,7 @@
   "$schema": "../character.schema.json",
   "id": "roy",
   "name": "Roy",
-  "age": 25,
+  "age": 23,
   "pronouns": {
     "subject": "he",
     "object": "him",
@@ -70,10 +70,6 @@
       "revealSubline": "He has a take on everything. He wants yours too.",
       "revealCta": "Say hi",
       "matchReasons": ["You like it blunt", "You want a real reaction", "You can argue back"],
-      "firstMessage": [
-        "ok hi. i was just losing an argument in a group chat so your timing is great",
-        "what's going on with you"
-      ],
       "sampleOpener": "ok tell me one good thing and one annoying thing about today",
       "voiceLabel": "Hear his voice",
       "profileSections": {

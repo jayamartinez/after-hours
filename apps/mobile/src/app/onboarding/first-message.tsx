@@ -29,12 +29,7 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
   const { messages, isTyping, isLoading, isDemo, notice, send, retry, toggleReaction } =
     useConversation(companion.id, { fresh: true });
   const priorSent = usePriorSent(messages, isLoading);
-  const { phase, left } = firstChatPhase(
-    messages,
-    isTyping,
-    companion.publicProfile.copy.firstMessage.length,
-    priorSent,
-  );
+  const { phase, left } = firstChatPhase(messages, isTyping, priorSent);
   const answered = phase === 'answered';
 
   // Already "subscribed" (demo): skip the paywall and go straight to the chat.

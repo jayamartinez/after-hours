@@ -110,7 +110,6 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
           db,
           c.var.userId,
           character.id,
-          character.publicProfile.copy.firstMessage,
         );
         const rows = await listMessages(db, conversationId, { limit: 200 });
         const body: MessagesResponse = {
@@ -156,7 +155,6 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
           db,
           userId,
           character.id,
-          character.publicProfile.copy.firstMessage,
         );
         const key = `${conversationId}:${clientId}`;
         if (inFlight.has(key)) {

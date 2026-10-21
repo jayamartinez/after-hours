@@ -343,15 +343,6 @@
                 "minLength": 1
               }
             },
-            "firstMessage": {
-              "minItems": 1,
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              },
-              "description": "Opening bubbles"
-            },
             "sampleOpener": {
               "type": "string",
               "minLength": 1,
@@ -387,7 +378,6 @@
             "revealSubline",
             "revealCta",
             "matchReasons",
-            "firstMessage",
             "sampleOpener",
             "voiceLabel",
             "profileSections"

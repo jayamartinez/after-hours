@@ -4,7 +4,7 @@ Status as of 2026-10-16. **Approved baseline (revision v3, 2026-10-16, pending G
 
 ## Purpose
 
-After Hours is a premium AI companion app. Users text, call, and share images with a distinct, fictional AI character over time. The design must feel intimate and editorial, never like a generic AI tool. Every companion is disclosed as an AI parody and as a fictional adult (25, PG-13). Target: iPhone first, with a browser demo from the same app.
+After Hours is a premium AI companion app. Users text, call, and share images with a distinct, fictional AI character over time. The design must feel intimate and editorial, never like a generic AI tool. Every companion is disclosed as an AI parody and as a fictional adult (23, PG-13). Target: iPhone first, with a browser demo from the same app.
 
 ## Mood
 
@@ -84,27 +84,27 @@ Only two companion presets exist. Both are fictional AI parody characters: the p
 
 Neither companion has an invented biography, tagline, status line, or fictional place (D-024). Screens show temperament, not lore.
 
-**Roy, 25.** Parody informed by a founder's public persona.
+**Roy, 23.** Parody informed by a founder's public persona.
 - Personality: blunt, quick, competitive, opinionated. Underneath: genuinely in your corner. Into tech and building, but only talks about it when you do.
 - Texting: quick lowercase reactions, strong opinions.
 - Voice: "Fast, bright tenor — always mid-pitch".
 - Look: messy black hair, oversized charcoal hoodie, laptop glow.
 - Tint: `--color-window` (window blue to ink); brass only as a thin CTA accent.
 
-**Roya, 25.** Original character with her own temperament.
+**Roya, 23.** Original character with her own temperament.
 - Personality: dry humor, teasing, perceptive; flirts back (playful, never explicit).
 - Texting: polished sentences with a raised eyebrow.
 - Voice: "Smoky, amused mezzo — always half-laughing".
 - Look: sharp black bob, oversized cream blazer, gold hoop earrings, warm lamp light.
 - Tint: brass to oxblood (lamplight).
 
-**Profile screen (D-024).** Hero: portrait with the existing scrims, back and options glass buttons, name, AI PARODY badge, and age (no status line or tagline). Then the action row (Message, Call, Voice note, Photos). Then only functional sections: "What he remembers", Photos (two images and "See gallery"), the settings card, and the disclosure footer. No About, talk-style, or voice sections on the page; the options (⋯) button opens an About sheet with `publicProfile.about` (two or three plain sentences on temperament) and the disclosure note. The Spotlight card, Cast List, preview sheet, and chat header likewise drop status lines, taglines, blurbs, and places; the chat header shows avatar, name, and badge.
+**Profile screen (D-024).** Hero: portrait with the existing scrims, back and options glass buttons, name, AI PARODY badge, and age (no status line or tagline). Then the action row (Message, Call, Voice note, Photos). Then only functional sections: "What he remembers", Photos (two images and "See gallery"), and the settings card. No About, talk-style, or voice sections on the page; the options (⋯) button opens an About sheet with `publicProfile.about` (two or three plain sentences on temperament). Per D-029 the profile, About sheet, and chat header no longer show the AI PARODY badge or the disclosure note. The Spotlight card, Cast List, preview sheet, and chat header likewise drop status lines, taglines, blurbs, and places; the chat header shows avatar, name, and badge.
 
-**Disclosure copy (exact):**
-- Badge: "AI PARODY" beside the name in chat headers and profiles.
-- Profile footer (one short note, both companions): "AI-generated parody. Not affiliated with or endorsed by Roy Lee."
+**Disclosure copy (exact; onboarding only, D-029):**
+- Badge: "AI PARODY" beside the name on the onboarding reveal.
+- Non-affiliation note (one short line under the reveal subline, both companions): "AI-generated parody. Not affiliated with or endorsed by Roy Lee."
 - Onboarding welcome caption: "AI-generated parody characters. 18+."
-- No disclaimer in the chat first message.
+- No disclaimer in chat. The user sends the first message (D-031).
 
 Companion text and images on every screen come from character config. Designs show the Roy and Roya presets.
 

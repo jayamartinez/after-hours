@@ -2,7 +2,6 @@ import type { PublicCharacter } from '@after-hours/contracts';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ParodyBadge } from '@/components/discovery/parody-badge';
 import { colors, fonts, radius, spacing, tones } from '@/theme/tokens';
 
 const MAX_WIDTH = 430;
@@ -13,7 +12,7 @@ interface AboutSheetProps {
   onClose: () => void;
 }
 
-/** Profile ⋯ → About: `publicProfile.about` and the disclosure, kept off the main profile. */
+/** Profile ⋯ → About: `publicProfile.about`, kept off the main profile. */
 export function AboutSheet({ companion, visible, onClose }: AboutSheetProps) {
   const insets = useSafeAreaInsets();
   return (
@@ -24,15 +23,11 @@ export function AboutSheet({ companion, visible, onClose }: AboutSheetProps) {
           <View style={styles.grabber} />
           <View style={styles.heading}>
             <Text style={styles.kicker}>About</Text>
-            <View style={styles.nameRow}>
-              <Text accessibilityRole="header" style={styles.name}>
-                {companion.name}
-              </Text>
-              <ParodyBadge label={companion.disclosure.badge} variant="muted" />
-            </View>
+            <Text accessibilityRole="header" style={styles.name}>
+              {companion.name}
+            </Text>
           </View>
           <Text style={styles.about}>{companion.publicProfile.about}</Text>
-          <Text style={styles.note}>{companion.disclosure.note}</Text>
           <Pressable
             accessibilityRole="button"
             onPress={onClose}
@@ -77,7 +72,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.accent,
   },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   name: {
     fontFamily: fonts.display,
     fontSize: 32,
@@ -86,7 +80,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   about: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 26, color: tones.textBody },
-  note: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.textMuted },
   done: {
     minHeight: 48,
     alignItems: 'center',

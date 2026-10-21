@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CompanionImage } from '@/components/companion-image';
 import { colors, fonts, radius, tints, tones } from '@/theme/tokens';
 
-import { ParodyBadge } from './parody-badge';
 import { Scrim, SCRIMS } from './scrim';
 import { VoicePill } from './voice';
 
@@ -32,7 +31,11 @@ export function SpotlightCard({ companion, width, height, onOpen }: SpotlightCar
       accessibilityHint="Opens the profile"
       style={[styles.card, { width, height: cardHeight, backgroundColor: tint.ground }]}
     >
-      <CompanionImage companion={companion} slot="hero" style={StyleSheet.absoluteFill} />
+      <CompanionImage
+        companion={companion}
+        slot="hero"
+        style={[StyleSheet.absoluteFill, styles.art]}
+      />
       <Scrim
         stops={SCRIMS.card}
         style={[styles.scrim, { height: Math.min(380, cardHeight * 0.65) }]}
@@ -43,10 +46,7 @@ export function SpotlightCard({ companion, width, height, onOpen }: SpotlightCar
           <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
             {companion.name}
           </Text>
-          <View style={styles.nameMeta}>
-            <Text style={styles.age}>{companion.age}</Text>
-            <ParodyBadge label={companion.disclosure.badge} variant="art" />
-          </View>
+          <Text style={styles.age}>{companion.age}</Text>
         </View>
         <View style={styles.chips}>
           {companion.publicProfile.chips.map((chip) => (
@@ -56,16 +56,20 @@ export function SpotlightCard({ companion, width, height, onOpen }: SpotlightCar
           ))}
         </View>
       </View>
+      {/* The outline sits on top of the art, so the image clips to the same radius underneath. */}
+      <View pointerEvents="none" style={styles.edge} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  card: { borderRadius: radius.lg, overflow: 'hidden' },
+  art: { borderRadius: radius.lg },
+  edge: {
+    ...StyleSheet.absoluteFill,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: tones.artEdge,
-    overflow: 'hidden',
   },
   scrim: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   info: {
@@ -77,16 +81,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingBottom: 24,
   },
-  nameRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  // Baseline keeps the age on the name's text line instead of floating against its box.
+  nameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   name: {
     flexShrink: 1,
     fontFamily: fonts.display,
     fontSize: 64,
-    lineHeight: 60,
+    lineHeight: 76,
     letterSpacing: -1.28,
     color: colors.text,
   },
-  nameMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
   age: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.text },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 4 },
   chip: {

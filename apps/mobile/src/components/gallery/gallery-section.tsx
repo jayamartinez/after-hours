@@ -1,7 +1,6 @@
 import type { PublicCharacter } from '@after-hours/contracts';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ParodyBadge } from '@/components/discovery/parody-badge';
 import { PhotoPair } from '@/components/profile/photo-pair';
 import { colors, fonts, spacing } from '@/theme/tokens';
 
@@ -11,7 +10,7 @@ interface GallerySectionProps {
   onOpenProfile: () => void;
 }
 
-/** One companion's photos in the Gallery tab: name, badge, and the two gallery slots. */
+/** One companion's photos in the Gallery tab: name, profile link, and the two gallery slots. */
 export function GallerySection({ companion, onOpenPhoto, onOpenProfile }: GallerySectionProps) {
   return (
     <View style={styles.section}>
@@ -19,7 +18,6 @@ export function GallerySection({ companion, onOpenPhoto, onOpenProfile }: Galler
         <Text style={styles.name} accessibilityRole="header">
           {companion.name}
         </Text>
-        <ParodyBadge label={companion.disclosure.badge} />
         <View style={styles.spacer} />
         <Pressable
           onPress={onOpenProfile}

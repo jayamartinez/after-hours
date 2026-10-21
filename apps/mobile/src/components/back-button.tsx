@@ -3,14 +3,19 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, layout } from '@/theme/tokens';
 
+interface BackButtonProps {
+  /** Overrides the default back-or-Companions behavior. */
+  onPress?: () => void;
+}
+
 /** Back chevron (1.5px stroke). Falls back to the Companions tab when there is no history. */
-export function BackButton() {
+export function BackButton({ onPress }: BackButtonProps) {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Back"
-      onPress={goBack}
+      onPress={onPress ?? goBack}
       hitSlop={8}
       style={styles.button}
     >

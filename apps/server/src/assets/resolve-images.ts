@@ -28,7 +28,10 @@ function resolveSrc(src: string, ctx: ResolveContext): string | null {
   return `${ctx.baseUrl}${PRIVATE_ASSETS_ROUTE}/${encoded}`;
 }
 
-/** Override → bundled default (`uri: null`). The override's focal/alt apply only to its own image. */
+/**
+ * Override, else `uri: null` (no bundled art, D-030: the client shows a loading pulse). The
+ * override's focal/alt apply only to its own image.
+ */
 function resolveSlot(
   fallback: ImageSlotDefault,
   override: ManifestImageEntry | null | undefined,
@@ -41,7 +44,7 @@ function resolveSlot(
   const uri = resolveSrc(override.src, ctx);
   if (uri === null) {
     ctx.warn(
-      `[assets] ${label}: "${override.src}" is not a file in PRIVATE_ASSETS_DIR; using default art.`,
+      `[assets] ${label}: "${override.src}" is not a file in PRIVATE_ASSETS_DIR; leaving the slot empty.`,
     );
     return fallbackSlot;
   }

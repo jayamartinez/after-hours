@@ -11,7 +11,6 @@ export default defineConfig([
     '**/.expo/',
     '**/web-build/',
     '**/expo-env.d.ts',
-    'packages/companions/assets/',
   ]),
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
@@ -47,10 +46,5 @@ export default defineConfig([
         },
       ],
     },
-  },
-  {
-    // Metro bundles static image requires; this is the one sanctioned use of `require`.
-    files: ['packages/companions/src/default-images.ts'],
-    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
 ]);

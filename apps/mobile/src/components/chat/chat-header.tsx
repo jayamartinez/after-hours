@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { closeChat } from '@/components/discovery/chat-link';
 import { CompanionImage } from '@/components/companion-image';
 import { colors, fonts, layout, spacing } from '@/theme/tokens';
 
@@ -14,9 +15,9 @@ interface ChatHeaderProps {
   onCall: () => void;
 }
 
-/** Chat A header: back, avatar, serif name + disclosure badge, call + info. */
+/** Chat A header: back, avatar, serif name, call + info. */
 export function ChatHeader({ companion, onCall }: ChatHeaderProps) {
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/chats'));
+  const goBack = closeChat;
   const openProfile = () =>
     router.push({ pathname: '/companion/[id]', params: { id: companion.id } });
 
@@ -37,9 +38,6 @@ export function ChatHeader({ companion, onCall }: ChatHeaderProps) {
             <Text style={styles.name} numberOfLines={1} accessibilityRole="header">
               {companion.name}
             </Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{companion.disclosure.badge}</Text>
-            </View>
           </View>
         </View>
       </Pressable>
@@ -101,20 +99,5 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: -0.24,
     color: colors.text,
-  },
-  badge: {
-    height: 18,
-    paddingHorizontal: 6,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: 999,
-  },
-  badgeText: {
-    fontFamily: fonts.semibold,
-    fontSize: 10,
-    lineHeight: 12,
-    letterSpacing: 1.2,
-    color: colors.textMuted,
   },
 });

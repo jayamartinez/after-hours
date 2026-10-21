@@ -62,18 +62,15 @@ describe('buildChatRequest', () => {
     ).not.toContain('interview');
   });
 
-  it('starts with a user turn even when the companion opened the thread', () => {
+  it('starts with a user turn even when the thread begins with a companion line', () => {
     const request = buildChatRequest(roy, {
       history: [
-        { role: 'assistant', content: roy.publicProfile.copy.firstMessage[0]! },
+        { role: 'assistant', content: 'a line from before' },
         { role: 'user', content: 'hi' },
       ],
     });
     expect(request.messages[0]?.role).toBe('user');
-    expect(request.messages[1]).toEqual({
-      role: 'assistant',
-      content: roy.publicProfile.copy.firstMessage[0],
-    });
+    expect(request.messages[1]).toEqual({ role: 'assistant', content: 'a line from before' });
   });
 
   it('caps history to the recent window', () => {

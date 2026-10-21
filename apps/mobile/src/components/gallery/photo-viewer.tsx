@@ -1,6 +1,6 @@
 import type { PublicCharacter } from '@after-hours/contracts';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CompanionImage } from '@/components/companion-image';
 import { GlassButton } from '@/components/discovery/glass-button';
@@ -23,6 +23,8 @@ interface PhotoViewerProps {
 /** Full-screen photo viewer with previous/next controls. Whole image shown (contain). */
 export function PhotoViewer({ photos, openAt, onChange }: PhotoViewerProps) {
   const photo = openAt === null ? undefined : photos[openAt];
+  // The Modal is its own native window, so SafeAreaView reports no inset here; pad explicitly.
+  const insets = useSafeAreaInsets();
   const close = () => onChange(null);
   const step = (delta: number) => {
     if (openAt === null) return;
@@ -33,7 +35,7 @@ export function PhotoViewer({ photos, openAt, onChange }: PhotoViewerProps) {
     <Modal visible={photo !== undefined} animationType="fade" onRequestClose={close} transparent>
       {photo ? (
         <View style={styles.backdrop}>
-          <SafeAreaView style={styles.safe}>
+          <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <View style={styles.top}>
               <Text style={[type.label, styles.counter]}>
                 {(openAt ?? 0) + 1} / {photos.length}
@@ -71,7 +73,7 @@ export function PhotoViewer({ photos, openAt, onChange }: PhotoViewerProps) {
                 </GlassButton>
               ) : null}
             </View>
-          </SafeAreaView>
+          </View>
         </View>
       ) : null}
     </Modal>

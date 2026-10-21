@@ -14,7 +14,6 @@ import { goBackOr } from '@/components/discovery/dismiss';
 import { PhotoViewer } from '@/components/gallery/photo-viewer';
 import { AboutSheet } from '@/components/profile/about-sheet';
 import { ActionRow } from '@/components/profile/action-row';
-import { DisclosureFooter } from '@/components/profile/disclosure-footer';
 import { MemoryList } from '@/components/profile/memory-list';
 import { PhotoPair } from '@/components/profile/photo-pair';
 import { ProfileHero } from '@/components/profile/profile-hero';
@@ -114,7 +113,6 @@ function Profile({ companion }: { companion: PublicCharacter }) {
               clearing={clear.isPending}
             />
 
-            <DisclosureFooter companion={companion} />
           </View>
         </View>
       </ScrollView>

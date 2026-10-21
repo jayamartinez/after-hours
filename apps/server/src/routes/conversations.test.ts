@@ -140,14 +140,10 @@ describe('sessions', () => {
 });
 
 describe('chat', () => {
-  it("starts a thread with the companion's opener", async () => {
+  it('starts a thread empty: the user sends the first message', async () => {
     const token = await newSession();
-    const messages = await history(token, 'roy');
-    expect(messages.map((m) => [m.role, m.content])).toEqual(
-      roy.publicProfile.copy.firstMessage.map((line) => ['assistant', line]),
-    );
-    // Loading again does not seed twice.
-    expect(await history(token, 'roy')).toHaveLength(roy.publicProfile.copy.firstMessage.length);
+    expect(await history(token, 'roy')).toEqual([]);
+    expect(await history(token, 'roy')).toEqual([]);
   });
 
   it('streams ack → typing → bubbles → done and persists every message', async () => {
@@ -165,8 +161,10 @@ describe('chat', () => {
       role: 'user',
       content: 'i got ghosted after three dates',
     });
-    // The opener is history; the API needs a user turn first.
-    expect(request?.messages[0]).toEqual({ role: 'user', content: '[opened the chat]' });
+    expect(request?.messages[0]).toEqual({
+      role: 'user',
+      content: 'i got ghosted after three dates',
+    });
     expect(request?.system.stable).toContain('Roy');
 
     const stored = await history(token, 'roy');

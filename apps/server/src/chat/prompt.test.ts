@@ -23,7 +23,7 @@ describe('buildSystemPrompt', () => {
     (c) => {
       const prompt = buildSystemPrompt(c);
       expect(prompt).toContain(
-        `You are ${c.name} (${c.pronouns.subject}/${c.pronouns.object}), 25`,
+        `You are ${c.name} (${c.pronouns.subject}/${c.pronouns.object}), ${c.age}`,
       );
       const { persona } = c;
       expect(prompt).toContain(persona.backstory);
@@ -174,12 +174,9 @@ describe('presets', () => {
     }
   });
 
-  it('first messages and signature lines carry no founder catchphrases', () => {
+  it('signature lines carry no founder catchphrases', () => {
     for (const preset of presets) {
-      const lines = [
-        ...preset.publicProfile.copy.firstMessage,
-        ...preset.persona.examples.signatureLines,
-      ].join(' ');
+      const lines = preset.persona.examples.signatureLines.join(' ');
       expect(lines).not.toMatch(/\b(ship|shipping|launch|founder|excuse rating)\b/i);
     }
   });

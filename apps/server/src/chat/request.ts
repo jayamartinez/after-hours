@@ -26,8 +26,8 @@ export interface ChatRequestInput extends TurnContext {
  */
 export function buildChatRequest(character: CharacterConfig, input: ChatRequestInput): ChatRequest {
   const history = input.history.slice(-HISTORY_WINDOW);
-  // The API requires the first message to come from the user; a thread the companion
-  // opened (publicProfile.copy.firstMessage) gets a neutral marker in front instead of losing the opener.
+  // The API requires the first message to come from the user. A thread that starts with a
+  // companion line (e.g. one stored before openers were removed) gets a neutral marker in front.
   const messages: ChatTurn[] =
     history[0]?.role === 'assistant' ? [OPENED_MARKER, ...history] : [...history];
   return {

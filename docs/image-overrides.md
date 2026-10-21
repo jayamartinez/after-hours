@@ -1,6 +1,6 @@
 # Companion image overrides
 
-Roy and Roya ship with original default art in `packages/companions/assets/`. For a private demo you can swap any image slot without code changes. Overrides never go into Git: `private-assets/` and `config/*.local.json` are git-ignored. Slot ratios and resolution rules are in `docs/architecture.md` ("Companion image slots"). To change a companion's name, copy, personality, or default focal/alt text instead, use the character config ([companions.md](companions.md)); images stay in this manifest.
+The app ships no companion art. Until an image is configured, each slot shows a loading animation. For a private demo you can add real images to any slot without code changes. Overrides never go into Git: `private-assets/` and `config/*.local.json` are git-ignored. Slot ratios and resolution rules are in `docs/architecture.md` ("Companion image slots"). To change a companion's name, copy, personality, or default focal/alt text instead, use the character config ([companions.md](companions.md)); images stay in this manifest.
 
 > A server reachable from the internet serves these files to anyone with the URL. Use private assets only on private deployments.
 
@@ -19,9 +19,9 @@ Roy and Roya ship with original default art in `packages/companions/assets/`. Fo
 3. Optional environment variables (in `.env`): `PRIVATE_ASSETS_DIR` (default `private-assets`), `COMPANION_ASSET_MANIFEST` (default `config/companion-assets.local.json`), `PUBLIC_SERVER_URL` (origin used in image URLs; default is the request's origin).
 4. Start or restart the server (`pnpm dev` or `pnpm dev:server`). Manifest edits are picked up on the next `GET /companions`; a restart is only needed after changing env vars. Reload the app.
 
-If the manifest is invalid JSON or fails validation, the server logs a warning and uses the default art for everything. A relative `src` whose file does not exist falls back to that slot's default. Unknown companion ids are ignored.
+If the manifest is invalid JSON or fails validation, the server logs a warning and ignores the whole file, so no companion images show. A relative `src` whose file does not exist leaves that slot empty. There is no bundled art (D-030); an empty slot shows a loading pulse. Unknown companion ids are ignored.
 
-Check the result: `curl http://localhost:8787/companions` shows each slot's `uri` (`null` means default art).
+Check the result: `curl http://localhost:8787/companions` shows each slot's `uri` (`null` means no image).
 
 ## Web
 
@@ -29,4 +29,4 @@ Check the result: `curl http://localhost:8787/companions` shows each slot's `uri
 
 ## iOS Simulator and devices
 
-The app reads `EXPO_PUBLIC_API_URL` (from `apps/mobile/.env` or your shell) at bundle time. Set it to your dev machine's LAN IP, for example `EXPO_PUBLIC_API_URL=http://192.168.1.20:8787`, so image URLs and API calls reach the server from the Simulator or a device, and set `PUBLIC_SERVER_URL` to the same origin so private-asset URLs use it too. Restart Expo after changing it. If the server is unreachable, the app shows bundled profiles and default art.
+The app reads `EXPO_PUBLIC_API_URL` (from `apps/mobile/.env` or your shell) at bundle time. Set it to your dev machine's LAN IP, for example `EXPO_PUBLIC_API_URL=http://192.168.1.20:8787`, so image URLs and API calls reach the server from the Simulator or a device, and set `PUBLIC_SERVER_URL` to the same origin so private-asset URLs use it too. Restart Expo after changing it. If the server is unreachable, the app shows bundled profiles with the loading animation in place of images.
