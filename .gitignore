@@ -49,3 +49,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Vercel CLI link and Build Output (scripts/build-vercel.mjs)
+.vercel/
