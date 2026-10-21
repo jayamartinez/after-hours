@@ -73,6 +73,11 @@ export interface ApiSourceOptions {
   onCredits?: (signal: CreditSignal) => void;
   /** A message was stored on the server (the user's on ack, the reply on done). */
   onStored?: (companionId: string) => void;
+  /**
+   * A companion message from a live reply is now on screen (D-046: unread counts, banner,
+   * chime). `first`: the reply's first message.
+   */
+  onReply?: (companionId: string, message: ChatMessage, first: boolean) => void;
 }
 
 export interface ApiConversationSource extends ConversationSource {
@@ -311,6 +316,7 @@ export function createApiConversationSource(options: ApiSourceOptions): ApiConve
             }
             dispatch(id, { type: 'readAll' });
             dispatch(id, { type: 'receive', message });
+            options.onReply?.(id, message, first);
           });
           return;
         }

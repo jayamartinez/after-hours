@@ -2,7 +2,7 @@ import { presets, toPublicCharacter } from '@after-hours/companions';
 import { describe, expect, it } from 'vitest';
 
 import { matchCompanion, otherCompanion, type MatchableCompanion } from './match';
-import { defaultPreferences, type OnboardingPreferences } from './preferences';
+import { defaultPreferences, LOOKING_FOR, VALUES, type OnboardingPreferences } from './preferences';
 
 const companions = presets.map((preset) => toPublicCharacter(preset));
 const prefs = (patch: Partial<OnboardingPreferences>): OnboardingPreferences => ({
@@ -11,6 +11,34 @@ const prefs = (patch: Partial<OnboardingPreferences>): OnboardingPreferences => 
 });
 
 describe('matchCompanion (bundled presets)', () => {
+  it('does not favor one companion across the range of answers', () => {
+    // Every single "looking for" answer x first value x pad corner x pace.
+    const wins: Record<string, number> = {};
+    let total = 0;
+    for (const { id: lookingFor } of LOOKING_FOR) {
+      for (const { id: value } of VALUES) {
+        for (const x of [-0.7, 0.7]) {
+          for (const y of [-0.7, 0.7]) {
+            for (const pace of [0, 2, 4] as const) {
+              const answers = prefs({
+                lookingFor: [lookingFor],
+                values: [value],
+                dynamic: { x, y },
+                texting: { length: 2, expressiveness: 2, pace },
+              });
+              const id = matchCompanion(answers, companions) ?? 'none';
+              wins[id] = (wins[id] ?? 0) + 1;
+              total += 1;
+            }
+          }
+        }
+      }
+    }
+    for (const companion of companions) {
+      expect(wins[companion.id] ?? 0).toBeGreaterThan(total * 0.35);
+    }
+  });
+
   it('matches a teasing, flirty, deep-talk user to Roya', () => {
     const answers = prefs({
       lookingFor: ['banter'],

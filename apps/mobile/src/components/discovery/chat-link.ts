@@ -7,12 +7,17 @@ import { router, type Href } from 'expo-router';
  * is missing from the generated route types.
  */
 export function openChat(companionId: string) {
-  router.dismissAll();
+  dismissAll();
   router.push(`/chat/${encodeURIComponent(companionId)}` as Href);
 }
 
 /** Leaves a chat for the Chats tab, never back into Companions. */
 export function closeChat() {
-  router.dismissAll();
+  dismissAll();
   router.replace('/chats');
+}
+
+/** `dismissAll` with nothing stacked throws (POP_TO_TOP not handled), e.g. from a tab root. */
+function dismissAll() {
+  if (router.canDismiss()) router.dismissAll();
 }

@@ -2,6 +2,7 @@ import {
   ChatStreamEventSchema,
   SessionResponseSchema,
   type ChatStreamEvent,
+  TIME_ZONE_HEADER,
 } from '@after-hours/contracts';
 import { expect } from 'vitest';
 
@@ -96,8 +97,11 @@ interface TestApp {
 
 export const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
-export async function newSession(app: TestApp): Promise<string> {
-  const res = await app.request('/session', { method: 'POST' });
+export async function newSession(app: TestApp, timeZone?: string): Promise<string> {
+  const res = await app.request('/session', {
+    method: 'POST',
+    headers: timeZone ? { [TIME_ZONE_HEADER]: timeZone } : {},
+  });
   expect(res.status).toBe(201);
   return SessionResponseSchema.parse(await res.json()).token;
 }

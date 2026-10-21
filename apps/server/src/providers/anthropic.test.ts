@@ -101,13 +101,13 @@ describe('web access', () => {
     );
     expect(params.tools).toEqual([
       {
-        type: 'web_search_20260209',
+        type: 'web_search_20250305',
         name: 'web_search',
         max_uses: 2,
         blocked_domains: ['bad.example'],
       },
       expect.objectContaining({
-        type: 'web_fetch_20260209',
+        type: 'web_fetch_20250910',
         name: 'web_fetch',
         max_uses: 1,
         blocked_domains: ['bad.example'],

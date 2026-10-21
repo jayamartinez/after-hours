@@ -6,6 +6,8 @@ import { useCompanion } from '@/api/companions';
 import { emitCreditSignal } from '@/api/credits';
 import { queryClient } from '@/api/query-client';
 import { onSessionReplaced } from '@/api/session';
+import { notifyReply } from '@/notifications/use-notifications';
+import { playSound } from '@/notifications/sounds';
 import { apiTransport } from '@/api/transport';
 
 import { createApiConversationSource, fromDto } from './api-source';
@@ -24,6 +26,7 @@ const source = createApiConversationSource({
   onCredits: emitCreditSignal,
   // Tab screens stay mounted: refresh the Chats list once a thread has new stored messages.
   onStored: () => void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY }),
+  onReply: notifyReply,
 });
 
 /**
@@ -75,7 +78,9 @@ export function useConversation(
 
   const send = useCallback(
     (text: string) => {
-      if (companion) source.send(companion, text);
+      if (!companion) return;
+      playSound('send');
+      source.send(companion, text);
     },
     [companion],
   );

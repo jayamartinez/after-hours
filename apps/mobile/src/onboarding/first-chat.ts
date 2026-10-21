@@ -14,20 +14,15 @@ export const FREE_MESSAGES = 3;
  */
 export type FirstChatPhase = 'open' | 'waiting' | 'answered';
 
-export const userMessageCount = (messages: readonly ChatMessage[]) =>
-  messages.filter((m) => m.role === 'user').length;
-
 /**
- * `priorSent`: user messages already in the thread when onboarding opened it (history is
- * kept on the server, so a replayed onboarding resumes an existing conversation). Those do
- * not use up free messages.
+ * `sent`: messages the user sent in this onboarding chat, counted as they send (not from the
+ * thread, which can hold older history when onboarding is replayed).
  */
 export function firstChatPhase(
   messages: readonly ChatMessage[],
   isTyping: boolean,
-  priorSent = 0,
+  sent: number,
 ): { phase: FirstChatPhase; left: number } {
-  const sent = userMessageCount(messages) - priorSent;
   const left = Math.max(0, FREE_MESSAGES - sent);
   if (left === 0) {
     const replied = !isTyping && messages.at(-1)?.role === 'assistant';

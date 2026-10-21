@@ -24,6 +24,12 @@ export default function ChatsScreen() {
   const isDemo = useIsDemoConversations();
   const started = summaries.data?.filter((s) => s.lastMessage !== null).length ?? 0;
   const empty = !isDemo && summaries.isSuccess && started === 0;
+  // Most recent conversation first, so a new reply moves its row to the top (D-046).
+  const lastAt = (id: string) =>
+    summaries.data?.find((s) => s.companionId === id)?.lastMessage?.createdAt ?? '';
+  const ordered = data
+    ? [...data.companions].sort((a, b) => lastAt(b.id).localeCompare(lastAt(a.id)))
+    : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -60,7 +66,7 @@ export default function ChatsScreen() {
           </View>
         ) : (
           <View style={styles.list}>
-            {data.companions.map((companion) => (
+            {ordered.map((companion) => (
               <ChatListRow key={companion.id} companion={companion} />
             ))}
           </View>

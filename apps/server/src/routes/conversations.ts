@@ -55,7 +55,7 @@ import { demoLimitReached, recordReplyCost } from '../db/demo-limits';
 import { spendMessage } from '../db/message-allowance';
 import { billedCostMicroUsd } from '../chat/costs';
 import type { MessageRow } from '../db/schema';
-import { getProfile, isPlus } from '../db/users';
+import { getProfile, isPlus, rememberTimeZone } from '../db/users';
 import { addWebLookups, remainingWebLookups } from '../db/web-usage';
 import { clientAddress, networkKey } from '../limits/network';
 import { createRateLimiter } from '../limits/rate-limit';
@@ -278,6 +278,8 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
           // A new message spends one from the allowance (D-036); a resend of a stored one
           // (retry, idempotent replay) was paid for already.
           if (!(await findUserMessage(db, conversationId, clientId))) {
+            // Accounts from before D-045 learn their zone here (set once, never changed).
+            await rememberTimeZone(db, userId, validTimeZone(parsed.data.timeZone));
             if (!(await spendMessage(db, userId))) {
               inFlight.delete(key);
               return c.json(

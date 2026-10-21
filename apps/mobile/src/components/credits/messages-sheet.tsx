@@ -15,6 +15,7 @@ import { colors } from '@/theme/tokens';
 
 import { messagesLeftLabel, resetsInLabel } from './credits-copy';
 import { SheetFrame, sheetStyles as s } from './sheet-frame';
+import { SheetSuccess, type SheetSuccessContent } from './sheet-success';
 
 /** How long the stand-in for an ad runs before its messages are granted. */
 const DEMO_AD_SECONDS = 3;
@@ -22,7 +23,7 @@ const DEMO_AD_SECONDS = 3;
 interface MessagesSheetProps {
   visible: boolean;
   onClose: () => void;
-  /** Toast text after a purchase, an ad, or a failure. */
+  /** Toast text after a failure (success shows in the sheet). */
   onMessage: (text: string) => void;
   /** Called once more messages are available (e.g. to resend the refused message). */
   onRefill?: () => void;
@@ -38,14 +39,24 @@ export function MessagesSheet({ visible, onClose, onMessage, onRefill }: Message
   const buy = useBuyMessages();
   const claimAd = useClaimAd();
   const [adLeft, setAdLeft] = useState<number | null>(null);
+  const [success, setSuccess] = useState<SheetSuccessContent | null>(null);
+  // Cleared when the sheet opens again, not while it slides away.
+  const [shownOpen, setShownOpen] = useState(visible);
+  if (visible !== shownOpen) {
+    setShownOpen(visible);
+    if (visible) setSuccess(null);
+  }
   const busy = buy.isPending || claimAd.isPending || adLeft !== null;
   const allowance = credits?.messages;
   const out = allowance ? allowance.includedLeftToday + allowance.bonus === 0 : false;
 
-  const done = (result: CreditsResponse, what: string) => {
+  const done = (result: CreditsResponse, added: number) =>
+    setSuccess({ title: `+${added} messages`, detail: messagesLeftLabel(result.messages) });
+
+  // Closing after a purchase or ad (Done or the backdrop) lets a refused message go out.
+  const close = () => {
     onClose();
-    onMessage(`${what} · ${messagesLeftLabel(result.messages)}`);
-    onRefill?.();
+    if (success) onRefill?.();
   };
 
   // The demo "ad": a countdown in place of a real ad, then the reward.
@@ -58,7 +69,7 @@ export function MessagesSheet({ visible, onClose, onMessage, onRefill }: Message
       }
       setAdLeft(null);
       claimAd.mutate(undefined, {
-        onSuccess: (result) => done(result, `Demo ad · +${AD_REWARD_MESSAGES} messages`),
+        onSuccess: (result) => done(result, AD_REWARD_MESSAGES),
         onError: (error) => onMessage(error.message),
       });
     }, 1000);
@@ -69,14 +80,23 @@ export function MessagesSheet({ visible, onClose, onMessage, onRefill }: Message
 
   const purchase = (packId: MessagePackId) =>
     buy.mutate(packId, {
-      onSuccess: (result) => done(result, 'Demo purchase'),
+      onSuccess: (result) =>
+        done(result, MESSAGE_PACKS.find((pack) => pack.id === packId)?.messages ?? 0),
       onError: (error) => onMessage(error.message),
     });
 
   const adsLeft = allowance?.adsLeftToday ?? 0;
 
+  if (success) {
+    return (
+      <SheetFrame visible={visible} onClose={close}>
+        <SheetSuccess {...success} onDone={close} />
+      </SheetFrame>
+    );
+  }
+
   return (
-    <SheetFrame visible={visible} onClose={onClose}>
+    <SheetFrame visible={visible} onClose={close}>
       <View style={s.heading}>
         <View style={s.kickerRow}>
           <Text style={s.kicker}>More messages</Text>

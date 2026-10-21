@@ -131,7 +131,7 @@ export function toAnthropicParams(
   const { web } = request;
   if (web && web.searches > 0) {
     declared.push({
-      type: 'web_search_20260209',
+      type: 'web_search_20250305',
       name: 'web_search',
       max_uses: web.searches,
       blocked_domains: [...web.blockedDomains],
@@ -139,7 +139,7 @@ export function toAnthropicParams(
   }
   if (web && web.fetches > 0) {
     declared.push({
-      type: 'web_fetch_20260209',
+      type: 'web_fetch_20250910',
       name: 'web_fetch',
       max_uses: web.fetches,
       blocked_domains: [...web.blockedDomains],

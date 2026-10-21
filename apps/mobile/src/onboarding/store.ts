@@ -28,6 +28,8 @@ export interface OnboardingData {
   demoPurchase: { plan: DemoPlan; purchasedAt: string } | null;
   /** The answers changed and the server has not saved them yet (`PUT /profile`, D-032). */
   profilePending: boolean;
+  /** Messages sent in the onboarding chat this run; the paywall follows the last free one. */
+  firstChatSent: number;
 }
 
 export interface OnboardingActions {
@@ -50,6 +52,7 @@ export interface OnboardingActions {
   resetDemoPurchase: () => void;
   /** The server saved `preferences`; ignored if the answers changed since they were sent. */
   markProfileSaved: (preferences: OnboardingPreferences) => void;
+  countFirstChatSend: () => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -62,6 +65,7 @@ export const initialOnboardingData = (): OnboardingData => ({
   matchedCompanionId: null,
   demoPurchase: null,
   profilePending: false,
+  firstChatSent: 0,
 });
 
 const toggle = <T>(list: readonly T[], item: T): T[] =>
@@ -105,6 +109,7 @@ export function createOnboardingStore(storage: StateStorage) {
           resetDemoPurchase: () => set({ demoPurchase: null }),
           markProfileSaved: (preferences) =>
             set((s) => (s.preferences === preferences ? { profilePending: false } : {})),
+          countFirstChatSend: () => set((s) => ({ firstChatSent: s.firstChatSent + 1 })),
         };
       },
       {
@@ -117,6 +122,7 @@ export function createOnboardingStore(storage: StateStorage) {
           matchedCompanionId: s.matchedCompanionId,
           demoPurchase: s.demoPurchase,
           profilePending: s.profilePending,
+          firstChatSent: s.firstChatSent,
         }),
         // Fill in fields added after a user's data was saved.
         merge: (persisted, current) => {

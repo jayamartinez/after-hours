@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { queryClient } from '@/api/query-client';
+import { ReplyBannerHost } from '@/components/notifications/reply-banner';
 import { OnboardingGate } from '@/components/onboarding/onboarding-gate';
 import { useProfileSync } from '@/onboarding/use-profile-sync';
 import { colors } from '@/theme/tokens';
@@ -69,6 +70,7 @@ export default function RootLayout() {
           <Stack.Screen name="cast-list" />
         </Stack>
         <OnboardingGate />
+        <ReplyBannerHost />
         <ProfileSync />
       </ThemeProvider>
     </QueryClientProvider>

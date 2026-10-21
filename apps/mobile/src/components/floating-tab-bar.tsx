@@ -40,9 +40,10 @@ export function TabBarButton({
   children,
   isFocused,
   icon: Icon,
+  badge = 0,
   ref: _ref,
   ...props
-}: TabTriggerSlotProps & { icon: TabIcon }) {
+}: TabTriggerSlotProps & { icon: TabIcon; badge?: number }) {
   const color = isFocused ? colors.text : colors.textMuted;
   return (
     <Pressable
@@ -51,7 +52,14 @@ export function TabBarButton({
       aria-selected={isFocused}
       style={[styles.tab, isFocused && styles.tabFocused]}
     >
-      <Icon size={20} color={color} />
+      <View>
+        <Icon size={20} color={color} />
+        {badge > 0 ? (
+          <View style={styles.badge} accessibilityLabel={`${badge} unread`}>
+            <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+          </View>
+        ) : null}
+      </View>
       <Text style={[styles.label, { color }]}>{children}</Text>
     </Pressable>
   );
@@ -90,4 +98,25 @@ const styles = StyleSheet.create({
   },
   tabFocused: { backgroundColor: colors.surface },
   label: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 13 },
+  /** Unread count on the Chats tab (D-046), on the icon's top-right corner. */
+  badge: {
+    position: 'absolute',
+    left: 12,
+    top: -7,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.surfaceRaised,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontFamily: fonts.semibold,
+    fontSize: 10,
+    lineHeight: 12,
+    color: colors.onAccent,
+  },
 });

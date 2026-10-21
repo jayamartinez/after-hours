@@ -55,6 +55,12 @@ export const ChatMessageDtoSchema = z.object({
   image: MessageImageSchema.nullable().default(null),
 });
 
+/**
+ * Request header carrying the device's IANA time zone. The server stores the first one it
+ * sees so the daily message allowance resets at the user's midnight (D-045).
+ */
+export const TIME_ZONE_HEADER = 'x-time-zone';
+
 export const SessionResponseSchema = z.object({
   token: z.string().min(1),
   userId: z.string().min(1),

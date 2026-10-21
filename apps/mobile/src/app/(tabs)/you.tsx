@@ -7,14 +7,16 @@ import { DEV_EDITOR_ENABLED } from '@/api/config';
 import { confirmDestructive } from '@/components/confirm';
 import { MessagesCard } from '@/components/credits/messages-card';
 import { PhotosCard } from '@/components/credits/photos-card';
+import { PlusCard } from '@/components/credits/plus-card';
 import { TrashIcon } from '@/components/discovery/icons';
 import { DemoControlsRow } from '@/components/onboarding/demo-controls-row';
+import { SoundsCard } from '@/components/profile/sounds-card';
 import { useToast } from '@/components/profile/toast';
 import { colors, fonts, layout, radius, spacing, type } from '@/theme/tokens';
 
 const MAX_WIDTH = 430;
 
-/** You tab: photo credits, data controls, demo controls, and (in development) the editor. */
+/** You tab: plan, sounds, messages, photo credits, data controls, demo controls, and (in development) the editor. */
 export default function YouScreen() {
   const toast = useToast({ aboveTabBar: true });
   const deleteAccount = useDeleteAccount();
@@ -39,6 +41,16 @@ export default function YouScreen() {
         <Text style={type.displayM} accessibilityRole="header">
           You
         </Text>
+
+        <View style={styles.section}>
+          <Text style={type.label}>Plan</Text>
+          <PlusCard onMessage={toast.show} />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={type.label}>Sounds</Text>
+          <SoundsCard />
+        </View>
 
         <View style={styles.section}>
           <Text style={type.label}>Messages</Text>

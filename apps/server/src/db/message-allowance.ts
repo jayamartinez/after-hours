@@ -14,21 +14,22 @@ import { and, count, eq, gt, gte, lt, sql } from 'drizzle-orm';
 import { DAILY_COST_BUDGET_USD } from '../chat/costs';
 
 import type { Db } from './client';
+import { localDay, localDayStart, nextLocalMidnight } from './local-day';
 import { messageGrants, messageUsage, spendUsage, users } from './schema';
 
 /**
- * Message allowance (D-036, D-041): each plan includes messages per UTC day (free 10,
- * Plus 300), then bonus messages from demo packs and ads are spent. A hidden daily cost
- * budget (`DAILY_COST_BUDGET_USD`, from real token usage) backs this up: once a user's
- * estimated spend for the day reaches it, only bonus messages go through.
+ * Message allowance (D-036, D-041): each plan includes messages per day (free 10, Plus 300),
+ * then bonus messages from demo packs and ads are spent. The day is the user's own (their
+ * stored time zone, D-045), so it resets at their midnight. A hidden daily cost budget
+ * (`DAILY_COST_BUDGET_USD`, from real token usage, counted per UTC day) backs this up: once
+ * a user's estimated spend for the day reaches it, only bonus messages go through.
  */
 
-const DAY_MS = 86_400_000;
-
-/** The UTC day `now` falls in, as stored in the per-day tables. */
+/** The UTC day `now` falls in, as stored in the spend and lookup tables. */
 export const utcDay = (now: Date) => now.toISOString().slice(0, 10);
-const dayStart = (now: Date) => new Date(`${utcDay(now)}T00:00:00.000Z`);
-const nextReset = (now: Date) => new Date(dayStart(now).getTime() + DAY_MS);
+
+/** The user's zone, or UTC when the app has not reported one. */
+const zoneOf = (timeZone: string | null) => timeZone ?? 'UTC';
 
 export type MessageSpend = 'included' | 'bonus';
 
@@ -68,15 +69,16 @@ export async function getAllowance(
   now = new Date(),
 ): Promise<MessageAllowance | null> {
   const [user] = await db
-    .select({ plusPlan: users.plusPlan, bonus: users.bonusMessages })
+    .select({ plusPlan: users.plusPlan, bonus: users.bonusMessages, timeZone: users.timeZone })
     .from(users)
     .where(eq(users.id, userId));
   if (!user) return null;
   const plan = planOf(user.plusPlan);
+  const zone = zoneOf(user.timeZone);
   const [usage] = await db
     .select({ count: messageUsage.count })
     .from(messageUsage)
-    .where(and(eq(messageUsage.userId, userId), eq(messageUsage.day, utcDay(now))));
+    .where(and(eq(messageUsage.userId, userId), eq(messageUsage.day, localDay(now, zone))));
   const [ads] = await db
     .select({ n: count() })
     .from(messageGrants)
@@ -84,8 +86,8 @@ export async function getAllowance(
       and(
         eq(messageGrants.userId, userId),
         eq(messageGrants.kind, 'ad'),
-        gte(messageGrants.createdAt, dayStart(now)),
-        lt(messageGrants.createdAt, nextReset(now)),
+        gte(messageGrants.createdAt, localDayStart(now, zone)),
+        lt(messageGrants.createdAt, nextLocalMidnight(now, zone)),
       ),
     );
   const overBudget = (await spentToday(db, userId, now)) >= budgetMicroUsd(plan);
@@ -97,7 +99,7 @@ export async function getAllowance(
     includedLeftToday: overBudget ? 0 : Math.max(0, dailyIncluded(plan) - (usage?.count ?? 0)),
     bonus: user.bonus,
     adsLeftToday: Math.max(0, MAX_ADS_PER_DAY - (ads?.n ?? 0)),
-    resetsAt: nextReset(now).toISOString(),
+    resetsAt: nextLocalMidnight(now, zone).toISOString(),
   };
 }
 
@@ -113,7 +115,7 @@ export async function spendMessage(
 ): Promise<MessageSpend | null> {
   return db.transaction(async (tx) => {
     const [user] = await tx
-      .select({ plusPlan: users.plusPlan })
+      .select({ plusPlan: users.plusPlan, timeZone: users.timeZone })
       .from(users)
       .where(eq(users.id, userId));
     if (!user) return null;
@@ -123,7 +125,7 @@ export async function spendMessage(
       // Counts one included message unless today's are used up (atomic under concurrent sends).
       const [included] = await tx
         .insert(messageUsage)
-        .values({ userId, day: utcDay(now), count: 1 })
+        .values({ userId, day: localDay(now, zoneOf(user.timeZone)), count: 1 })
         .onConflictDoUpdate({
           target: [messageUsage.userId, messageUsage.day],
           set: { count: sql`${messageUsage.count} + 1` },
@@ -183,7 +185,7 @@ export async function purchaseMessages(
 
 /**
  * A watched (demo) ad: `AD_REWARD_MESSAGES` bonus messages, at most `MAX_ADS_PER_DAY`
- * times per UTC day. False when today's ads are used up. Idempotent on `adId`.
+ * times per local day (D-045). False when today's ads are used up. Idempotent on `adId`.
  */
 export async function claimAd(
   db: Db,

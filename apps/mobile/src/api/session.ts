@@ -2,6 +2,7 @@ import { SessionResponseSchema } from '@after-hours/contracts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from './config';
+import { timeZoneHeader } from './time-zone';
 
 /**
  * Anonymous device session (D-023): the server issues a signed token on first use; the
@@ -26,7 +27,7 @@ export function onSessionReplaced(listener: () => void): () => void {
 }
 
 async function createSession(): Promise<string> {
-  const res = await fetch(`${API_URL}/session`, { method: 'POST' });
+  const res = await fetch(`${API_URL}/session`, { method: 'POST', headers: timeZoneHeader() });
   if (!res.ok) throw new Error(`POST /session failed with ${res.status}`);
   const { token } = SessionResponseSchema.parse(await res.json());
   try {

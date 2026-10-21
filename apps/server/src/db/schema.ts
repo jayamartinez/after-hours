@@ -42,6 +42,11 @@ export const users = pgTable(
     bonusMessages: integer('bonus_messages').notNull().default(0),
     /** Onboarding answers (`PUT /profile`); null until the app sends them. */
     profile: jsonb('profile').$type<UserProfile>(),
+    /**
+     * IANA zone from the app, set once (D-045): the daily message allowance resets at this
+     * zone's midnight. Null until the app reports one (UTC until then).
+     */
+    timeZone: text('time_zone'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -51,7 +56,7 @@ export const users = pgTable(
 ).enableRLS();
 
 /**
- * Free messages sent per user per UTC day (D-036). Its own table so clearing a
+ * Free messages sent per user per day, in the user's time zone (D-036, D-045). Its own table so clearing a
  * conversation (which deletes messages) never gives the allowance back.
  */
 export const messageUsage = pgTable(
