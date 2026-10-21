@@ -11,6 +11,7 @@ import {
   FREE_DAILY_MESSAGES,
   MAX_ADS_PER_DAY,
   PLUS_DAILY_MESSAGES,
+  TIME_ZONE_HEADER,
 } from '@after-hours/contracts';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -20,9 +21,9 @@ import { openDatabase, type Database } from '../db/client';
 import { DAILY_COST_BUDGET_USD, replyCostMicroUsd } from '../chat/costs';
 import { SEND_PHOTO } from '../chat/photo-tool';
 import { addSpend, getAllowance, spendMessage } from '../db/message-allowance';
-import { spendUsage, webUsage } from '../db/schema';
+import { spendUsage, users, webUsage } from '../db/schema';
 import { ChatModelError } from '../providers/types';
-import { call, events, newSession, nextClientId, scriptedModel, USAGE } from '../test-chat';
+import { auth, call, events, newSession, nextClientId, scriptedModel, USAGE } from '../test-chat';
 import { testConfig } from '../test-config';
 
 let workDir: string;
@@ -310,6 +311,50 @@ describe('message allowance', () => {
     );
     expect(await spendMessage(database.db, userId, next)).toBe('included');
     expect((await getAllowance(database.db, userId, day))?.resetsAt).toBe(
+      '2026-10-21T00:00:00.000Z',
+    );
+  });
+});
+
+describe('local-midnight reset (D-045)', () => {
+  // 7 PM and 9 PM in New York on 2026-10-20: both after UTC midnight's 8 PM.
+  const before = new Date('2026-10-20T23:00:00Z');
+  const after = new Date('2026-10-21T01:00:00Z');
+
+  it('a session from a device in New York resets at New York midnight', async () => {
+    const userId = userIdOf(await newSession(app, 'America/New_York'));
+    for (let i = 0; i < FREE_DAILY_MESSAGES - 1; i++) {
+      expect(await spendMessage(database.db, userId, before)).toBe('included');
+    }
+    // Past UTC midnight, still the same New York day: one left, then none.
+    expect(await spendMessage(database.db, userId, after)).toBe('included');
+    expect(await spendMessage(database.db, userId, after)).toBeNull();
+    const allowance = await getAllowance(database.db, userId, after);
+    expect(allowance?.resetsAt).toBe('2026-10-21T04:00:00.000Z');
+    const nextMorning = new Date('2026-10-21T04:00:01Z');
+    expect((await getAllowance(database.db, userId, nextMorning))?.includedLeftToday).toBe(
+      FREE_DAILY_MESSAGES,
+    );
+  });
+
+  it('keeps the first zone it learns, so changing the device zone cannot reset it', async () => {
+    const token = await newSession(app);
+    const userId = userIdOf(token);
+    const zone = { [TIME_ZONE_HEADER]: 'America/New_York' };
+    await app.request('/credits', { headers: { ...auth(token), ...zone } });
+    await app.request('/credits', {
+      headers: { ...auth(token), [TIME_ZONE_HEADER]: 'Pacific/Kiritimati' },
+    });
+    const [row] = await database.db
+      .select({ timeZone: users.timeZone })
+      .from(users)
+      .where(eq(users.id, userId));
+    expect(row?.timeZone).toBe('America/New_York');
+  });
+
+  it('ignores an invalid zone', async () => {
+    const userId = userIdOf(await newSession(app, 'Not/AZone'));
+    expect((await getAllowance(database.db, userId, before))?.resetsAt).toBe(
       '2026-10-21T00:00:00.000Z',
     );
   });

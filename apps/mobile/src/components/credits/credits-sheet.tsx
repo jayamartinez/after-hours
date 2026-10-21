@@ -1,4 +1,5 @@
 import { CREDIT_PACKS, PLUS_MONTHLY_CREDITS, type CreditPackId } from '@after-hours/contracts';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useBuyCredits, useCredits } from '@/api/credits';
@@ -8,11 +9,12 @@ import { colors } from '@/theme/tokens';
 
 import { creditsLabel } from './credits-copy';
 import { SheetFrame, sheetStyles as s } from './sheet-frame';
+import { SheetSuccess, type SheetSuccessContent } from './sheet-success';
 
 interface CreditsSheetProps {
   visible: boolean;
   onClose: () => void;
-  /** Toast text after a purchase or a failure. */
+  /** Toast text after a failure (success shows in the sheet). */
   onMessage: (text: string) => void;
   /** Why the sheet opened, e.g. "Roy wanted to send you a photo." */
   reason?: string;
@@ -25,15 +27,31 @@ interface CreditsSheetProps {
 export function CreditsSheet({ visible, onClose, onMessage, reason }: CreditsSheetProps) {
   const { data: credits } = useCredits();
   const buy = useBuyCredits();
+  const [success, setSuccess] = useState<SheetSuccessContent | null>(null);
+  // Cleared when the sheet opens again, not while it slides away.
+  const [shownOpen, setShownOpen] = useState(visible);
+  if (visible !== shownOpen) {
+    setShownOpen(visible);
+    if (visible) setSuccess(null);
+  }
 
   const purchase = (packId: CreditPackId) =>
     buy.mutate(packId, {
-      onSuccess: (result) => {
-        onClose();
-        onMessage(`Demo purchase · ${creditsLabel(result.balance)} now`);
-      },
+      onSuccess: (result) =>
+        setSuccess({
+          title: `+${CREDIT_PACKS.find((pack) => pack.id === packId)?.credits ?? 0} photos`,
+          detail: `You have ${creditsLabel(result.balance)}.`,
+        }),
       onError: (error) => onMessage(error.message),
     });
+
+  if (success) {
+    return (
+      <SheetFrame visible={visible} onClose={onClose}>
+        <SheetSuccess {...success} onDone={onClose} />
+      </SheetFrame>
+    );
+  }
 
   return (
     <SheetFrame visible={visible} onClose={onClose}>

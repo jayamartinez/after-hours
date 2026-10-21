@@ -1,4 +1,5 @@
 import {
+  TIME_ZONE_HEADER,
   ClaimAdRequestSchema,
   PurchaseCreditsRequestSchema,
   PurchaseMessagesRequestSchema,
@@ -10,10 +11,12 @@ import {
 import { Hono } from 'hono';
 
 import { requireUser, type AuthEnv } from '../auth/session';
+import { validTimeZone } from '../chat/time-zone';
 import type { Db } from '../db/client';
 import { listPhotos } from '../db/conversations';
 import { endPlus, getCredits, purchaseCredits, startPlus, type PhotoCredits } from '../db/credits';
 import { claimAd, getAllowance, purchaseMessages } from '../db/message-allowance';
+import { rememberTimeZone } from '../db/users';
 import { createRateLimiter } from '../limits/rate-limit';
 
 const BAD_REQUEST: ApiError = {
@@ -67,6 +70,8 @@ export function creditRoutes(db: Db, sessionSecret: string) {
     .use('/gallery', requireUser(db, sessionSecret))
 
     .get('/credits', async (c) => {
+      // Users from before D-045 get their zone the next time the app checks its balance.
+      await rememberTimeZone(db, c.var.userId, validTimeZone(c.req.header(TIME_ZONE_HEADER)));
       const body = await withMessages(c.var.userId, await getCredits(db, c.var.userId));
       return body ? c.json(body) : c.json(GONE, 401);
     })

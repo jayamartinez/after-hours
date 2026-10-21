@@ -108,11 +108,9 @@ function Profile({ companion }: { companion: PublicCharacter }) {
 
             <SettingsCard
               companion={companion}
-              onUnavailable={toast.show}
               onClear={() => void clearConversation()}
               clearing={clear.isPending}
             />
-
           </View>
         </View>
       </ScrollView>

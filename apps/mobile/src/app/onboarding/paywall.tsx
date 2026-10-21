@@ -88,13 +88,6 @@ export default function PaywallScreen() {
             </Text>
           </Pressable>
         </StaggerIn>
-        <StaggerIn order={6} style={styles.links}>
-          {['Restore', 'Terms', 'Privacy'].map((link) => (
-            <Text key={link} style={styles.link}>
-              {link}
-            </Text>
-          ))}
-        </StaggerIn>
       </View>
     </OnboardingScreen>
   );
@@ -239,6 +232,4 @@ const styles = StyleSheet.create({
   },
   notNow: { minHeight: 32, justifyContent: 'center', paddingHorizontal: spacing.lg },
   notNowText: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 18, color: colors.text },
-  links: { flexDirection: 'row', gap: spacing.xl, paddingTop: 2 },
-  link: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 16, color: colors.textMuted },
 });

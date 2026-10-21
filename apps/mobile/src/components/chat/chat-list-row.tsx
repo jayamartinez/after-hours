@@ -2,25 +2,12 @@ import type { PublicCharacter } from '@after-hours/contracts';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { messagePreview } from '@/chat/preview';
 import { formatClock } from '@/chat/thread';
-import type { ChatMessage } from '@/chat/types';
 import { useConversationPreview } from '@/chat/use-conversation';
 import { CompanionImage } from '@/components/companion-image';
+import { useNotifications } from '@/notifications/use-notifications';
 import { colors, fonts, layout, radius, spacing } from '@/theme/tokens';
-
-function preview(message: ChatMessage | undefined, name: string): string {
-  if (!message) return '';
-  const prefix = message.role === 'user' ? 'You: ' : '';
-  switch (message.kind) {
-    case 'image':
-      return `${prefix}${message.image?.source === 'web' ? 'Picture' : 'Photo'}`;
-    case 'voice':
-      return `${prefix}Voice note`;
-    case 'text':
-      return `${prefix}${message.content}`;
-  }
-  return name;
-}
 
 /**
  * One companion conversation: avatar, name, last message, time. Opens the chat. Renders
@@ -28,18 +15,22 @@ function preview(message: ChatMessage | undefined, name: string): string {
  */
 export function ChatListRow({ companion }: { companion: PublicCharacter }) {
   const { last, isTyping } = useConversationPreview(companion);
+  const unread = useNotifications((s) => s.unread[companion.id] ?? 0);
   if (!last && !isTyping) return null;
-  const subtitle = isTyping ? 'typing…' : last ? preview(last, companion.name) : '';
+  const subtitle = isTyping ? 'typing…' : messagePreview(last);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${companion.name}. ${subtitle}`}
+      accessibilityLabel={`${companion.name}${unread ? `, ${unread} unread` : ''}. ${subtitle}`}
       accessibilityHint="Opens the conversation"
       onPress={() => router.push({ pathname: '/chat/[id]', params: { id: companion.id } })}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <CompanionImage companion={companion} slot="avatar" style={styles.avatar} />
+      <View>
+        <CompanionImage companion={companion} slot="avatar" style={styles.avatar} />
+        {unread > 0 ? <View style={styles.unreadDot} /> : null}
+      </View>
       <View style={styles.text}>
         <View style={styles.top}>
           <View style={styles.nameRow}>
@@ -69,6 +60,17 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
   avatar: { width: 52, height: 52, borderRadius: radius.pill },
+  unreadDot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 14,
+    height: 14,
+    borderRadius: radius.pill,
+    borderWidth: 2.5,
+    borderColor: colors.bg,
+    backgroundColor: colors.accent,
+  },
   text: { flex: 1, minWidth: 0, gap: 2 },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   nameRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

@@ -5,6 +5,7 @@ import type { ApiResponse, ApiTransport } from '@/chat/api-source';
 
 import { API_URL } from './config';
 import { authedFetch } from './session';
+import { timeZoneHeader } from './time-zone';
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -29,7 +30,7 @@ export const apiTransport: ApiTransport = {
       withTimeout(
         (signal) =>
           fetch(`${API_URL}${path}`, {
-            headers: { authorization: `Bearer ${token}` },
+            headers: { authorization: `Bearer ${token}`, ...timeZoneHeader() },
             signal,
           }) as Promise<ApiResponse>,
       ),
@@ -68,6 +69,7 @@ export async function apiRequest(method: string, path: string, body?: unknown): 
           method,
           headers: {
             authorization: `Bearer ${token}`,
+            ...timeZoneHeader(),
             ...(body === undefined ? {} : { 'content-type': 'application/json' }),
           },
           body: body === undefined ? undefined : JSON.stringify(body),

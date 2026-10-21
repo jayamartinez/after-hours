@@ -1,10 +1,11 @@
-import type { ApiError, SessionResponse } from '@after-hours/contracts';
+import { TIME_ZONE_HEADER, type ApiError, type SessionResponse } from '@after-hours/contracts';
 import { Hono } from 'hono';
 
 import { issueSessionToken } from '../auth/session';
 import type { Db } from '../db/client';
 import type { DemoLimits } from '../config';
 import { takeNetworkSession } from '../db/demo-limits';
+import { validTimeZone } from '../chat/time-zone';
 import { createUser } from '../db/users';
 import { clientAddress, networkKey } from '../limits/network';
 import { createRateLimiter } from '../limits/rate-limit';
@@ -35,7 +36,8 @@ export function sessionRoutes(db: Db, secret: string, limits: DemoLimits) {
       };
       return c.json(error, 429);
     }
-    const userId = await createUser(db);
+    // The device's zone, so the daily allowance resets at the user's midnight (D-045).
+    const userId = await createUser(db, validTimeZone(c.req.header(TIME_ZONE_HEADER)));
     const body: SessionResponse = { token: await issueSessionToken(secret, userId), userId };
     return c.json(body, 201);
   });

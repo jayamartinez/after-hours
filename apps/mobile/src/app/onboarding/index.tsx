@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { OnboardingButton } from '@/components/onboarding/buttons';
@@ -19,7 +18,6 @@ const GLOW_STOPS = [
 /** 01 · Welcome. */
 export default function WelcomeScreen() {
   const { width, height } = useWindowDimensions();
-  const [accountNote, setAccountNote] = useState(false);
 
   return (
     <OnboardingScreen
@@ -48,19 +46,7 @@ export default function WelcomeScreen() {
             <OnboardingButton label="Begin" onPress={() => goToNext('index')} />
           </StaggerIn>
           <StaggerIn order={4}>
-            <OnboardingButton
-              label="I already have an account"
-              variant="secondary"
-              accessibilityHint="Accounts are coming soon"
-              onPress={() => setAccountNote(true)}
-            />
-          </StaggerIn>
-          <StaggerIn order={5}>
-            <Text style={styles.caption} accessibilityLiveRegion="polite">
-              {accountNote
-                ? 'Accounts are coming soon. Tap Begin to start.'
-                : 'AI-generated parody characters. 18+.'}
-            </Text>
+            <Text style={styles.caption}>AI-generated parody characters. 18+.</Text>
           </StaggerIn>
         </View>
       </View>

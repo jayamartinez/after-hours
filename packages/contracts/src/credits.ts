@@ -12,13 +12,13 @@ import { CompanionIdSchema } from './companion';
 /** Photo credits every new user starts with: photos need a pack or Plus (D-036). */
 export const FREE_STARTING_CREDITS = 0;
 
-/** Messages a free user can send per UTC day, across companions. */
+/** Messages a free user can send per day (their local day, D-045), across companions. */
 export const FREE_DAILY_MESSAGES = 10;
-/** Messages included with demo Plus per UTC day (D-041). */
+/** Messages included with demo Plus per local day (D-041, D-045). */
 export const PLUS_DAILY_MESSAGES = 300;
 /** Bonus messages one (demo) ad grants. */
 export const AD_REWARD_MESSAGES = 5;
-/** Ads a user can watch per UTC day. */
+/** Ads a user can watch per local day. */
 export const MAX_ADS_PER_DAY = 3;
 /** Highest bonus message balance reachable through demo purchases and ads. */
 export const MAX_BONUS_MESSAGES = 9_999;
@@ -57,7 +57,7 @@ export const MessageAllowanceSchema = z.object({
   /** Bought or earned messages, spent after the free ones. */
   bonus: z.number().int().min(0),
   adsLeftToday: z.number().int().min(0),
-  /** Next UTC midnight, when the daily allowance and ads reset (ISO 8601). */
+  /** The user's next local midnight (D-045), when the daily allowance and ads reset (ISO 8601). */
   resetsAt: z.iso.datetime({ offset: true }),
 });
 

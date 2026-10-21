@@ -13,21 +13,21 @@ export type MatchableCompanion = Pick<PublicCharacter, 'id'> & {
  */
 const LOOKING_FOR_KEYWORDS: Record<LookingFor, readonly string[]> = {
   unwind: ['supportive', 'calm', 'warm'],
-  banter: ['teasing', 'sarcastic', 'banter'],
-  think: ['honest', 'blunt'],
-  story: ['charismatic', 'mysterious'],
+  banter: ['banter', 'playful', 'irreverent', 'quick'],
+  think: ['honest', 'blunt', 'opinionated'],
+  story: ['charismatic', 'mysterious', 'perceptive'],
   curious: [],
 };
 
 const VALUE_KEYWORDS: Record<CompanionValue, readonly string[]> = {
-  remembers: ['supportive', 'attentive'],
-  laugh: ['sarcastic', 'chaotic', 'funny'],
-  honest: ['blunt', 'honest'],
-  curious: ['curious', 'charismatic'],
-  calm: ['calm', 'gentle'],
+  remembers: ['attentive', 'loyal'],
+  laugh: ['funny', 'chaotic', 'irreverent', 'playful'],
+  honest: ['honest', 'blunt', 'sincere'],
+  curious: ['curious'],
+  calm: ['calm', 'gentle', 'warm'],
   challenges: ['competitive', 'provocative', 'blunt'],
   flirty: ['flirt'],
-  listener: ['listener', 'supportive'],
+  listener: ['listener', 'supportive', 'perceptive'],
 };
 
 /** Earlier picks on "what matters" count more. */
@@ -61,11 +61,11 @@ export function scoreCompanion(
   prefs.values.forEach((value, rank) => {
     score += (VALUE_RANK_WEIGHTS[rank] ?? 1) * keywordScore(companion, VALUE_KEYWORDS[value]);
   });
-  // Teasing side of the pad pulls toward teasing/flirty characters, gentle side toward supportive.
+  // Teasing side of the pad pulls toward characters with an edge, gentle side toward soft ones.
   if (prefs.dynamic.x > 0)
-    score += 2 * prefs.dynamic.x * keywordScore(companion, ['teasing', 'flirt']);
+    score += 2 * prefs.dynamic.x * keywordScore(companion, ['teasing', 'irreverent']);
   if (prefs.dynamic.x < 0)
-    score += 2 * -prefs.dynamic.x * keywordScore(companion, ['supportive', 'gentle']);
+    score += 2 * -prefs.dynamic.x * keywordScore(companion, ['supportive', 'gentle', 'sincere']);
   // Short texts suit companions with instant pace; long texts suit slower ones.
   const { meters } = companion.publicProfile;
   score -= Math.abs(meters.depth - depthTarget(prefs)) / 2;

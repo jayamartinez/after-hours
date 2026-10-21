@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  castEyebrow,
-  castNumber,
-  iMessageLabel,
-  memoriesSubline,
-  mightOpenWith,
-  proactiveSubline,
-} from './companion-copy';
+import { castEyebrow, castNumber, memoriesSubline, mightOpenWith } from './companion-copy';
 
 const her = {
   name: 'Roya',
@@ -18,8 +11,6 @@ describe('companion copy frames', () => {
   it('fills sentence frames from config pronouns and fields', () => {
     expect(mightOpenWith(her)).toBe('She might open with');
     expect(memoriesSubline(her)).toBe('Only what you’ve told her. Edit or forget anything.');
-    expect(proactiveSubline(her)).toBe('She can text you first, sometimes');
-    expect(iMessageLabel(her)).toBe('Text her on iMessage');
   });
 
   it('formats cast numbers and the weekday eyebrow', () => {

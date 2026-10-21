@@ -25,11 +25,6 @@ export const memoriesEmpty = (c: CopySubject) => ({
 export const clearConversationSubline = (c: CopySubject) =>
   `Deletes your messages with ${c.name}. Memories stay.`;
 
-export const proactiveSubline = (c: CopySubject) =>
-  `${capitalize(c.pronouns.subject)} can text you first, sometimes`;
-
-export const iMessageLabel = (c: CopySubject) => `Text ${c.pronouns.object} on iMessage`;
-
 export const startTalking = (c: CopySubject) => `Start talking to ${c.name}`;
 
 /** "Tonight’s cast · Thursday" (uppercased by the label style). */
@@ -58,10 +53,7 @@ export const LABELS = {
   voiceNote: 'Voice note',
   photos: 'Photos',
   seeGallery: 'See gallery',
-  proactive: 'Proactive messages',
-  iMessageValue: 'Off',
   clearConversation: 'Clear conversation',
   callSoon: 'Calls are coming soon.',
   voiceNoteSoon: 'Voice notes are coming soon.',
-  iMessageSoon: 'The iMessage bridge is coming soon.',
 } as const;

@@ -1,18 +1,18 @@
 import type { PublicCharacter } from '@after-hours/contracts';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { useCreditSignals } from '@/api/credits';
 import { useStarters } from '@/api/starters';
-import type { ChatMessage } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { ChatView } from '@/components/chat/chat-view';
 import { StarterChips } from '@/components/chat/starter-chips';
 import { OnboardingScreen } from '@/components/onboarding/screen';
-import { firstChatPhase, userMessageCount } from '@/onboarding/first-chat';
+import { firstChatPhase } from '@/onboarding/first-chat';
 import { goBack, goToNext, showWelcome } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
+import { useActiveChat } from '@/notifications/use-notifications';
 import { onboardingStore, useOnboarding } from '@/onboarding/use-onboarding';
 import { colors, fonts, layout, radius, spacing } from '@/theme/tokens';
 
@@ -32,8 +32,9 @@ export default function FirstMessageScreen() {
 function FirstConversation({ companion }: { companion: PublicCharacter }) {
   const { messages, isTyping, isLoading, isDemo, notice, send, retry, toggleReaction } =
     useConversation(companion.id, { fresh: true });
-  const priorSent = usePriorSent(messages, isLoading);
-  const { phase, left } = firstChatPhase(messages, isTyping, priorSent);
+  useActiveChat(companion.id);
+  const sent = useOnboarding((s) => s.firstChatSent);
+  const { phase, left } = firstChatPhase(messages, isTyping, sent);
   const answered = phase === 'answered';
   const profilePending = useOnboarding((s) => s.profilePending);
   const subscribed = useOnboarding((s) => s.demoPurchase !== null);
@@ -58,8 +59,12 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
   }, [answered, continueOn]);
 
   const onSend = (text: string) => {
-    if (left === 0) continueOn();
-    else send(text);
+    if (left === 0) {
+      continueOn();
+      return;
+    }
+    onboardingStore.getState().countFirstChatSend();
+    send(text);
   };
 
   const used = new Set(messages.filter((m) => m.role === 'user').map((m) => m.content));
@@ -100,15 +105,6 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
       profileLink={false}
     />
   );
-}
-
-/** User messages already in the thread when it finished loading (server history). */
-function usePriorSent(messages: readonly ChatMessage[], isLoading: boolean) {
-  const [prior, setPrior] = useState<number | null>(null);
-  const count = userMessageCount(messages);
-  // Captured once, during render (no effect round-trip).
-  if (!isLoading && prior === null) setPrior(count);
-  return prior ?? count;
 }
 
 const styles = StyleSheet.create({

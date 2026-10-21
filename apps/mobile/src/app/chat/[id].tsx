@@ -15,6 +15,7 @@ import { StarterChips } from '@/components/chat/starter-chips';
 import { closeChat } from '@/components/discovery/chat-link';
 import { CreditsSheet } from '@/components/credits/credits-sheet';
 import { MessagesSheet } from '@/components/credits/messages-sheet';
+import { useActiveChat } from '@/notifications/use-notifications';
 import { colors, spacing, type } from '@/theme/tokens';
 
 /** Chat A "Lamplight". Companion identity from config; messages from `useConversation`. */
@@ -23,6 +24,8 @@ export default function ChatScreen() {
   const { companion, messages, isTyping, isLoading, isDemo, notice, send, retry, toggleReaction } =
     useConversation(id);
   const insets = useSafeAreaInsets();
+  // On screen: its replies are read as they arrive (no unread count, no banner).
+  useActiveChat(companion?.id);
   const { remember } = useMemoryActions(companion?.id ?? '');
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);

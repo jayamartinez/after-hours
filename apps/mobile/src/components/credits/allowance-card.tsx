@@ -10,15 +10,18 @@ interface AllowanceCardProps {
   detail: string;
   onPress: () => void;
   accessibilityHint: string;
+  /** Trailing action text. */
+  action?: string;
 }
 
-/** You tab row for an allowance (photos, messages): icon, balance, detail, "Get more". */
+/** You tab row for an allowance (plan, photos, messages): icon, balance, detail, action. */
 export function AllowanceCard({
   icon,
   title,
   detail,
   onPress,
   accessibilityHint,
+  action = 'Get more',
 }: AllowanceCardProps) {
   return (
     <View style={styles.card}>
@@ -37,7 +40,7 @@ export function AllowanceCard({
           )}
           <Text style={styles.subtitle}>{detail}</Text>
         </View>
-        <Text style={styles.action}>Get more</Text>
+        <Text style={styles.action}>{action}</Text>
       </Pressable>
     </View>
   );

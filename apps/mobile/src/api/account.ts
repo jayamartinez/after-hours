@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { CONVERSATIONS_QUERY_KEY, forgetConversations } from '@/chat/use-conversation';
+import { notificationsStore } from '@/notifications/instance';
 import { onboardingStore } from '@/onboarding/use-onboarding';
 
 import { CREDITS_QUERY_KEY, GALLERY_QUERY_KEY } from './credits';
@@ -18,6 +19,7 @@ export function useClearConversation(companionId: string) {
     mutationFn: () => apiRequest('DELETE', `/conversations/${companionId}`),
     onSuccess: async () => {
       forgetConversations(companionId);
+      notificationsStore.getState().clearUnread(companionId);
       await queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
     },
   });
@@ -36,6 +38,7 @@ export function useDeleteAccount() {
       onboardingStore.getState().resetDemoPurchase();
       await resetSession();
       forgetConversations();
+      notificationsStore.getState().clearAllUnread();
       // Reset, not remove: a screen still showing one of these (the You tab's balance)
       // refetches for the new session instead of keeping a query that never loads.
       await Promise.all(
