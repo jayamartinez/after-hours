@@ -91,7 +91,7 @@ export function matchCompanion(
   return best?.id ?? null;
 }
 
-/** The first companion that is not `id` — the reveal's "Not feeling it? See …" target. */
+/** The first companion that is not `id`, the reveal's "Not feeling it? See …" target. */
 export function otherCompanion<T extends { id: string }>(
   companions: readonly T[],
   id: string | null,

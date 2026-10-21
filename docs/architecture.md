@@ -1,4 +1,4 @@
-# After Hours — Architecture
+# After Hours, Architecture
 
 Status: **Milestone 4 built**: workspace, contracts, companions, server `/health` + `/companions` + private assets, app shell, configurable character system (presets, overrides, prompt assembly, dev editor), real chat (anonymous sessions, Postgres/PGlite persistence, streamed replies over SSE; D-023), long-term memory with user controls (D-025), and photos with demo credits (placeholder images; D-026). Image generation, voice, and the bridge are still proposed. Items marked *open* need a `docs/decisions.md` entry before implementation.
 
@@ -77,6 +77,15 @@ Built in Milestone 4 (`chat/memory-extract.ts`, `chat/remember.ts`, `routes/memo
 - **Retrieval:** all of this companion's memories for this user, pinned first, then newest, capped at `memory.maxRetrieved`, as a volatile system block (`chat/context.ts`). No embeddings yet.
 - **User controls:** `GET/POST /memories/:companionId`, `PATCH|DELETE /memories/:companionId/:memoryId` (edit text, pin), `DELETE /memories/:companionId` (forget all), `DELETE /conversations/:companionId` (clear messages), `DELETE /account` (user row; everything cascades). Deletes are hard deletes, so forgotten text is gone, not hidden.
 
+### Getting to know the user
+
+Built in D-032 (`chat/relationship.ts`, `chat/starters.ts`, `routes/profile.ts`):
+
+- **Onboarding profile:** once the questions are done (matching onward), the app sends the user's answers (looking for, values, dynamic, texting length) with `PUT /profile` (Zod-validated, stored in `users.profile`, deleted with the account). A persisted `profilePending` flag retries unsaved answers on the next launch, and the onboarding chat's starters wait for the save. Skipped onboarding sends nothing.
+- **Adapting to the answers (D-033):** `chat/profile.ts` turns the answers into concrete behavior in a "Tuned to them" section of the character prompt (values first, then what they are looking for, vibe, depth, texting length), within the character's own personality and rules. A gentle vibe lowers the roast level; answers never raise a level. The section is per user and stable, so the prompt still caches.
+- **Pacing:** each turn's volatile context gets a relationship stage from the thread's user-message count and how many memories this companion has: `new` (≤ 6 messages and < 4 memories: short replies, one specific question about the user's life, little self-disclosure, teasing and flirting held back), `warming` (≤ 30 and < 10: occasional follow-ups, usual length), then `familiar` (usual style). Memories count so a cleared thread does not start over. 
+- **Starters:** `GET /conversations/:companionId/starters` asks `MEMORY_MODEL` for 4 tap-to-send lines in the user's voice from their profile and this companion's memories, cached in-process per user × companion until either changes (rate-limited per user). Without a memory model, under the kill switch, when rate-limited, or on failure, the companion's default `publicProfile.starters` are returned. The app shows them in the onboarding chat and in any empty thread (new or cleared).
+
 ### Tool calls
 
 Built (D-026): chat offers exactly one tool, `send_photo` (`chat/photo-tool.ts`), declared `strict` and re-validated with Zod. `streamReply` runs one round of tool use per reply: if the model stops on tool calls, they run after every earlier bubble is delivered, and the model continues once with the results and `tool_choice: none`, with its own content blocks (thinking included) echoed back unchanged. At most one photo per reply; extra or invalid calls get error results and spend nothing. Later candidates (`web_search`, image generation) follow the same allowlist pattern.
@@ -96,13 +105,13 @@ Defined in `apps/server/src/providers/types.ts`; implementation chosen by env at
 
 | Interface | Proposed default (*open*) | Alternatives |
 | --- | --- | --- |
-| `ChatModel` (primary) | Anthropic Claude | — |
+| `ChatModel` (primary) | Anthropic Claude | - |
 | `ChatModel` (fallback) | OpenAI-compatible endpoint (e.g., OpenRouter) | Any OpenAI-compatible API |
-| `ChatModel` (local, opt-in) | Ollama / OpenAI-compatible local URL | — |
+| `ChatModel` (local, opt-in) | Ollama / OpenAI-compatible local URL | - |
 | `ImageModel` | fal.ai with character reference image | Replicate; fixed seed + LoRA |
 | `SpeechToText` | OpenAI Whisper-class | Deepgram |
 | `TextToSpeech` | ElevenLabs | OpenAI TTS |
-| `WebSearch` | Any search API behind the interface | — |
+| `WebSearch` | Any search API behind the interface | - |
 | Voice calls (P2) | WebRTC via LiveKit | Provider realtime speech API |
 
 **Fallback ≠ offline.** The fallback provider is another hosted API used automatically on primary failure. Local inference is a separate provider selected explicitly by the deployer; it is never an automatic fallback.
@@ -119,18 +128,18 @@ Postgres via Drizzle ORM (D-023). Schema in `apps/server/src/db/schema.ts`; SQL 
 
 - **Targets:** `DATABASE_URL` set → node-postgres (hosted Supabase, session pooler URI). Unset → PGlite (in-process Postgres, no Docker) persisted to `PGLITE_DIR` (default `local-data/pglite`, git-ignored) and migrated at server startup. Tests use in-memory PGlite. PGlite is single-process; a pid `.lock` file next to the directory stops a second process (e.g. `db:migrate` during `pnpm dev`) from opening it.
 - **Scoping:** every query filters by `userId` (or a conversation id resolved through it). RLS is enabled on every table with no policies: the server connects as the table owner, and Supabase's public PostgREST roles see nothing. Route tests prove two users and two companions stay isolated.
-- **Built now:** `users` (id, image_credits, plus_plan, plus_since, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
+- **Built now:** `users` (id, image_credits, plus_plan, plus_since, profile jsonb, created_at); `credit_events` (id, user_id, kind `purchase`/`spend`/`plus_grant`, amount, ref unique per user, created_at); `conversations` (id, user_id, companion_id; unique per user × companion); `messages` (id, seq, conversation_id, role, kind, content, status `sent`/`read`/`failed`, client_id unique per conversation, reply_to, reactions, media, created_at); `memories` (id, user_id, companion_id, content, category, pinned, source_message_id, created/updated_at; hard deletes). The rest of the table below is proposed.
 
 | Table | Key columns |
 | --- | --- |
 | `users` | id (= auth uid), display_name, preferences (jsonb: texting style, pacing), age_confirmed_at, onboarding_completed_at, created_at |
-| `companions` | id (slug), name, version — seeded from `packages/companions` |
+| `companions` | id (slug), name, version, seeded from `packages/companions` |
 | `conversations` | id, user_id, companion_id (unique pair), last_read_message_id, created_at |
 | `messages` | id, conversation_id, role (user/assistant/system), content, kind (text/voice/image), source (app/imessage), external_id (unique, nullable), status (sending/sent/delivered/read/failed), reactions (jsonb), created_at |
 | `memories` | id, user_id, companion_id, content, category, source_message_id, pinned, embedding (vector, optional), created_at, updated_at |
 | `media_assets` | id, user_id, companion_id, message_id, storage_path, prompt, provider, created_at |
 | `voice_assets` | id, user_id, message_id, storage_path, duration_s, direction (in/out), transcript |
-| `entitlements` | user_id, plan (free/demo_plus), demo_purchased_at — demo state only, no billing |
+| `entitlements` | user_id, plan (free/demo_plus), demo_purchased_at, demo state only, no billing |
 | `usage_ledger` | user_id, day, tokens_in, tokens_out, images, audio_seconds, est_cost |
 | `imessage_links` | id, user_id, companion_id, handle, bridge_id, verified_at, proactive_enabled, quiet_hours |
 
@@ -203,7 +212,7 @@ Reference: `docs/companions.md`.
   - Offline or invalid response: the app falls back to the bundled presets. Metro inlines the preset JSON imports at build time on iOS and web, and the app projects them to `PublicCharacter`. Every image slot is then empty (loading pulse). Local overrides are never bundled; they arrive only through the server.
   - Images: there are no bundled images (D-030). Overrides are http(s) URLs served by the server or hosted elsewhere (iOS and web). The client never reads arbitrary filesystem paths.
   - The whole preset file is in the bundle (the repo is public anyway), so presets must never hold secrets.
-- **Prompt assembly:** `buildChatRequest(character, { history, memories, prefs, now })` (`chat/request.ts`) is the one path from config to a model request. `buildSystemPrompt(character, prefs?)` puts the app-level safety preamble (`chat/safety.ts`, not configurable) first, then renders identity and `persona` plus the app-level conversation and memory rules (including: never claim accomplishments, companies, famous acquaintances, or past events as facts); it is byte-stable and sent as the cached system block. `buildTurnContext` (`chat/context.ts`) adds the volatile part (current time, this companion's memories only) as a second system block. `ChatModel` (`providers/types.ts`, Anthropic implementation in `providers/anthropic.ts`) streams the reply; `splitBubbles` / `createBubbleSplitter` turn blank-line-separated texts into bubbles. Onboarding preferences can lower flirtation or roast levels, never raise them. Unit tests prove that config changes alter the request and that config cannot remove the preamble. The chat route (see "Chat pipeline") uses this path; `pnpm --filter @after-hours/server eval` exercises it against the real model.
+- **Prompt assembly:** `buildChatRequest(character, { history, memories, prefs, now })` (`chat/request.ts`) is the one path from config to a model request. `buildSystemPrompt(character, prefs?)` puts the app-level safety preamble (`chat/safety.ts`, not configurable) first, then renders identity and `persona` plus the app-level conversation and memory rules (including: never claim accomplishments, companies, famous acquaintances, or past events as facts); it is byte-stable and sent as the cached system block. `buildTurnContext` (`chat/context.ts`) adds the volatile part (current time, relationship stage and onboarding profile, this companion's memories only) as a second system block. `ChatModel` (`providers/types.ts`, Anthropic implementation in `providers/anthropic.ts`) streams the reply; `splitBubbles` / `createBubbleSplitter` turn blank-line-separated texts into bubbles. Onboarding preferences can lower flirtation or roast levels, never raise them. Unit tests prove that config changes alter the request and that config cannot remove the preamble. The chat route (see "Chat pipeline") uses this path; `pnpm --filter @after-hours/server eval` exercises it against the real model.
 - **Dev editor:** `GET`/`PUT /dev/companions/:id` exists only with `DEV_EDITOR=true` and only for loopback connections to a local host name with no proxy headers. It writes only the overrides file, atomically (temp file + rename). The mobile route `/dev/companions` redirects home unless `EXPO_PUBLIC_DEV_EDITOR=true` at bundle time.
 
 ## Environment variables
@@ -255,7 +264,7 @@ Bridge-side: `BRIDGE_SERVER_URL`, `BRIDGE_TOKEN`, `BRIDGE_POLL_MS`.
 ## Testing strategy
 
 - **Unit:** prompt assembly (per companion and preferences), memory extraction parsing/dedupe/merge, retrieval scoring, provider fallback (pre/post first token), rate/budget logic, tool allowlist and caps, bridge dedup and loop prevention, contract schemas.
-- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table. `routes/memories.test.ts` adds a scripted `StructuredModel`: extraction after a reply, "Remember this", every memory control, clear history, account deletion, and that a second user can never list, edit, pin, delete, or remember from the first user's data. `routes/photos.test.ts` covers the photo tool (sent, out of credits, one per reply, invalid input, idempotent replay), purchases, Plus periods, and per-user isolation of photos, balances, and the ledger.
+- **Integration:** Hono routes via `app.request` against in-memory PGlite with the migrations applied and the `ChatModel` replaced by a scripted double (`routes/conversations.test.ts`): SSE event order, persistence, idempotency, two-user and Roy/Roya isolation, memory scoping, rate limit, kill switch, refusal, retry before the first token, and RLS enabled on every table. `routes/memories.test.ts` adds a scripted `StructuredModel`: extraction after a reply, "Remember this", every memory control, clear history, account deletion, and that a second user can never list, edit, pin, delete, or remember from the first user's data. `routes/starters.test.ts` covers `PUT /profile` validation, per-user starters (caching, regeneration after a new memory, fallbacks, two-user isolation), and stage pacing in real sends. `routes/photos.test.ts` covers the photo tool (sent, out of credits, one per reply, invalid input, idempotent replay), purchases, Plus periods, and per-user isolation of photos, balances, and the ledger.
 - **Streaming:** SSE event sequence tests, including mid-stream failure; client SSE parser and API source tests (`apps/mobile/src/chat/*.test.ts`).
 - **Persona regression:** fixed transcript prompts per companion checked for style params (casing, length, bursts) with a mocked or recorded model.
 - **UI:** verify on web and iOS Simulator; screenshots for meaningful visual changes.

@@ -1,4 +1,4 @@
-# After Hours — implementation plan
+# After Hours, implementation plan
 
 Status as of 2026-10-18. Phases 1–3 built (scaffold, UI shell, real streamed chat on hosted Supabase). Phase 4 (memory, `feat/memory`) and the revised Phase 5 photos and credits (`feat/photo-credits`, D-026) are built and ready for manual testing; voice messages and real image generation remain. Gate A approved 2026-10-15; Gate A2 (revision v3) approved 2026-10-16.
 
@@ -10,7 +10,7 @@ Scope and rules: see `AGENTS.md`. Decisions: `docs/decisions.md`. Visual baselin
 - Priority: a polished core (onboarding → discovery → chat with memory) over breadth.
 - Build order follows the gates below. Nothing in Phases 1–8 starts before Gate A is recorded.
 
-## Phase 0 — Setup, docs, design exploration
+## Phase 0, Setup, docs, design exploration
 
 Status: **done**
 
@@ -22,14 +22,14 @@ Status: **done**
 - Done when: the developer has reviewed the Paper directions and both direction pairs are presented for decision.
 - Validation evidence: Paper screenshots per artboard; no application code exists.
 
-## GATE A — Design direction approval
+## GATE A, Design direction approval
 
 - Status: **approved 2026-10-15**. Chat Lamplight (A); discovery The Cast List (B); Spotlight card for the reveal and hero.
 - Recorded in `docs/decisions.md` (D-014 and D-006).
 - **GATE A2 (approved 2026-10-16, D-016):** revised Roy & Roya designs, revision v3.
 - Implementation authorized after Gate A2.
 
-## Phase 1 — Baseline and scaffold
+## Phase 1, Baseline and scaffold
 
 - Goal: freeze the design baseline, finalize architecture, scaffold the monorepo, and set up CI.
 - Deliverables:
@@ -43,7 +43,7 @@ Status: **done**
   - `grep` finds no provider SDK imports in `apps/mobile`.
 - Validation evidence: CI run link, health-route response, web screenshot of the placeholder route.
 
-## Phase 2 — Navigation, UI shell, onboarding, discovery, chat (mock)
+## Phase 2, Navigation, UI shell, onboarding, discovery, chat (mock)
 
 - Goal: a navigable app that matches the frozen baseline, with local mock data clearly labeled.
 - Deliverables:
@@ -61,7 +61,7 @@ Status: **done**
   - Screens match the baseline at 393 × 852 on web (iOS Simulator only when available; see Phase 7).
 - Validation evidence: web screenshots per core screen; navigation and onboarding-state test output.
 
-## Phase 3 — Real AI chat
+## Phase 3, Real AI chat
 
 - Goal: real, persisted, streamed conversations with each companion.
 - Deliverables:
@@ -77,7 +77,7 @@ Status: **done**
   - Prompt assembly and provider fallback have unit tests; routes are tested against a real local database.
 - Validation evidence: test output, streamed-response recording, two-user isolation test result.
 
-## Phase 4 — Long-term memory
+## Phase 4, Long-term memory
 
 - Goal: companions remember durable details, and the user controls what is remembered.
 - Deliverables:
@@ -90,7 +90,7 @@ Status: **done**
   - Extraction and retrieval have unit tests.
 - Validation evidence: test output; before/after screenshots of the memory list.
 
-## Phase 5 — Photos, image credits, gallery, voice messages
+## Phase 5, Photos, image credits, gallery, voice messages
 
 Revised 2026-10-18 (D-026): real image generation is deferred. A companion "sends a photo" through an allowlisted tool, which spends one image credit and sends a clearly labeled placeholder card describing the shot (no real image). Users start with free credits, can buy more through demo packs (no real charge), and the demo Plus purchase grants monthly credits. The deliverables below that mention generation apply once a provider is chosen (D-011).
 
@@ -105,7 +105,7 @@ Revised 2026-10-18 (D-026): real image generation is deferred. A companion "send
   - A voice message round-trips to a text transcript and an audio reply.
 - Validation evidence: gallery screenshot; budget-limit test output; transcript and audio check.
 
-## Phase 6 — Demo paywall, limits, public web
+## Phase 6, Demo paywall, limits, public web
 
 - Goal: a public browser demo with safe spend.
 - Deliverables:
@@ -119,7 +119,7 @@ Revised 2026-10-18 (D-026): real image generation is deferred. A companion "send
   - The public URL serves the demo; the built client contains no provider keys (bundle check).
 - Validation evidence: limit and kill-switch test output; deployed URL; bundle scan result.
 
-## Phase 7 — macOS validation and optional iMessage bridge
+## Phase 7, macOS validation and optional iMessage bridge
 
 - Goal: confirm the iOS build on a real simulator; optionally add the bridge.
 - Deliverables:
@@ -130,7 +130,7 @@ Revised 2026-10-18 (D-026): real image generation is deferred. A companion "send
   - If built: bridge deduplicates messages and prevents reply loops (tests); off by default.
 - Validation evidence: simulator screenshots; bridge test output.
 
-## Phase 8 — Stretch, documentation, open-source prep
+## Phase 8, Stretch, documentation, open-source prep
 
 - Goal: a stranger can run the project; licensing is settled by the developer.
 - Deliverables:

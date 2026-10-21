@@ -1,6 +1,6 @@
 /**
  * Public client config. `EXPO_PUBLIC_*` values are inlined into the bundle and are
- * visible to anyone — never put secrets here.
+ * visible to anyone, never put secrets here.
  */
 const DEFAULT_API_URL = 'http://localhost:8787';
 

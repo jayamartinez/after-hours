@@ -1,13 +1,13 @@
-# After Hours — agent instructions
+# After Hours, agent instructions
 
 After Hours is an open-source AI companion app: an ongoing text, voice, and image relationship with a distinct, clearly disclosed fictional AI character. It targets iPhone first (Expo / React Native) with a public browser demo built from the same app.
 
 Read before changing anything:
 
 1. This file.
-2. `docs/PRD.md` — what we are building and why.
-3. `docs/design-brief.md` — visual identity, tokens, approved screens.
-4. `docs/implementation-plan.md` — current phase, milestones, gates.
+2. `docs/PRD.md`, what we are building and why.
+3. `docs/design-brief.md`, visual identity, tokens, approved screens.
+4. `docs/implementation-plan.md`, current phase, milestones, gates.
 5. `docs/architecture.md` and `docs/decisions.md` when touching structure, data, or providers.
 
 ## Phase gates (hard rules)
@@ -23,7 +23,7 @@ In scope: messaging with streaming replies, exactly two companions (Roy and Roya
 
 Out of scope: more than two companions, real billing, explicit content, real-person likeness or impersonation, minors as characters, a separate Next.js web app, microservices.
 
-## Repository layout (target — do not scaffold before the design gate)
+## Repository layout (target, do not scaffold before the design gate)
 
 ```
 apps/mobile            Expo Router app (iOS + web). UI only; talks to apps/server.

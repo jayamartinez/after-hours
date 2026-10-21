@@ -1,15 +1,24 @@
 import type { PublicCharacter } from '@after-hours/contracts';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCompanions } from '@/api/companions';
+import { openChat } from '@/components/discovery/chat-link';
 import { DiscoveryHeader } from '@/components/discovery/discovery-header';
+import { MessageIcon } from '@/components/discovery/icons';
 import { SpotlightCarousel } from '@/components/discovery/spotlight-carousel';
 import { SpotlightDots } from '@/components/discovery/spotlight-dots';
 import { PrimaryButton } from '@/components/primary-button';
-import { colors, layout, spacing, type } from '@/theme/tokens';
+import { colors, layout, radius, spacing, type } from '@/theme/tokens';
 
 /** The app stays phone-shaped on wide web windows. */
 const MAX_PAGE_WIDTH = 430;
@@ -52,11 +61,23 @@ export default function CompanionsScreen() {
             />
             <View style={styles.footer}>
               <SpotlightDots count={companions.length} active={active} />
-              <PrimaryButton
-                label={current.publicProfile.copy.spotlightCta}
-                accessibilityHint={`Shows more about ${current.name}`}
-                onPress={() => openSheet(current)}
-              />
+              <View style={styles.actions}>
+                <PrimaryButton
+                  label={current.publicProfile.copy.spotlightCta}
+                  accessibilityHint={`Shows more about ${current.name}`}
+                  onPress={() => openSheet(current)}
+                  style={styles.cta}
+                />
+                {/* Straight into the chat, skipping the preview (D-035). */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Message ${current.name}`}
+                  onPress={() => openChat(current.id)}
+                  style={({ pressed }) => [styles.message, pressed && styles.pressed]}
+                >
+                  <MessageIcon size={22} color={colors.text} />
+                </Pressable>
+              </View>
             </View>
           </>
         )}
@@ -71,4 +92,17 @@ const styles = StyleSheet.create({
   offline: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.sm },
   loading: { marginTop: spacing.huge },
   footer: { gap: 18, paddingTop: 18, paddingHorizontal: spacing.gutter },
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  cta: { flex: 1 },
+  message: {
+    width: layout.ctaHeight,
+    height: layout.ctaHeight,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: { opacity: 0.85 },
 });

@@ -4,11 +4,14 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { useCompanion } from '@/api/companions';
 import { emitCreditSignal } from '@/api/credits';
+import { queryClient } from '@/api/query-client';
 import { apiTransport } from '@/api/transport';
 
 import { createApiConversationSource, fromDto } from './api-source';
 import { createDemoConversationSource } from './demo-source';
 import type { ChatMessage, Reaction } from './types';
+
+export const CONVERSATIONS_QUERY_KEY = ['conversations'] as const;
 
 /**
  * The app's one conversation source: the server (history + SSE replies), falling back to
@@ -18,9 +21,9 @@ const source = createApiConversationSource({
   transport: apiTransport,
   fallback: createDemoConversationSource(),
   onCredits: emitCreditSignal,
+  // Tab screens stay mounted: refresh the Chats list once a thread has new stored messages.
+  onStored: () => void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY }),
 });
-
-export const CONVERSATIONS_QUERY_KEY = ['conversations'] as const;
 
 /** Drops cached threads (one companion, or all) so screens reload them from the server. */
 export function forgetConversations(companionId?: string): void {
@@ -98,17 +101,22 @@ export function useIsDemoConversations() {
   return source.isDemo;
 }
 
+/** Stored thread summaries (`GET /conversations`), shared by the Chats tab and its rows. */
+export function useConversationSummaries() {
+  return useQuery({
+    queryKey: CONVERSATIONS_QUERY_KEY,
+    queryFn: () => source.fetchSummaries(),
+    staleTime: 0,
+  });
+}
+
 /**
  * Chats tab row: the live thread once it is loaded in this session, otherwise the last
  * stored message from `GET /conversations`. A new thread has no preview until the user writes.
  */
 export function useConversationPreview(companion: PublicCharacter) {
   const state = useSourceState(companion.id);
-  const summaries = useQuery({
-    queryKey: CONVERSATIONS_QUERY_KEY,
-    queryFn: () => source.fetchSummaries(),
-    staleTime: 0,
-  });
+  const summaries = useConversationSummaries();
 
   const isDemo = source.isDemo;
   useEffect(() => {

@@ -4,7 +4,7 @@ import type {
   GalleryPhoto,
   ReactionId,
 } from '@after-hours/contracts';
-import { and, asc, desc, eq, inArray, lte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lte } from 'drizzle-orm';
 
 import type { Db } from './client';
 import { isUuid } from './ids';
@@ -84,6 +84,21 @@ export async function listMessages(
     .orderBy(desc(messages.seq))
     .limit(options.limit);
   return newest.reverse();
+}
+
+/** User messages in a thread up to and including `uptoSeq` (all when unset). */
+export async function countUserMessages(
+  db: Db,
+  conversationId: string,
+  uptoSeq?: number,
+): Promise<number> {
+  const conditions = [eq(messages.conversationId, conversationId), eq(messages.role, 'user')];
+  if (uptoSeq) conditions.push(lte(messages.seq, uptoSeq));
+  const [row] = await db
+    .select({ n: count() })
+    .from(messages)
+    .where(and(...conditions));
+  return row?.n ?? 0;
 }
 
 /** Last message per existing conversation of this user. */

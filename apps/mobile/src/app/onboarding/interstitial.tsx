@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useEntranceSettled } from '@/components/onboarding/buttons';
 import { Glow } from '@/components/onboarding/glow';
 import { gradient } from '@/components/onboarding/palette';
 import { QuestionHeader } from '@/components/onboarding/question-header';
@@ -17,6 +18,7 @@ const GLOW_STOPS = [
 
 /** 02 · Interstitial (typographic). Tap anywhere to continue. */
 export default function InterstitialScreen() {
+  const ready = useEntranceSettled();
   return (
     <OnboardingScreen
       background={
@@ -30,6 +32,8 @@ export default function InterstitialScreen() {
         style={styles.tapArea}
         accessibilityRole="button"
         accessibilityLabel="Continue"
+        accessibilityState={{ disabled: !ready }}
+        disabled={!ready}
         onPress={() => goToNext('interstitial')}
       >
         <View style={styles.copy}>

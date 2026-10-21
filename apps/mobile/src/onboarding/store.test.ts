@@ -85,6 +85,32 @@ describe('onboarding store', () => {
     expect(s.demoPurchase).toEqual({ plan: 'annual', purchasedAt: '2026-10-16T00:00:00.000Z' });
   });
 
+  it('marks changed answers for saving until the server has the latest ones', () => {
+    const { storage, data } = memoryStorage();
+    const store = createOnboardingStore(storage);
+    expect(store.getState().profilePending).toBe(false);
+    store.getState().toggleValue('honest');
+    const sent = store.getState().preferences;
+    expect(store.getState().profilePending).toBe(true);
+    expect(saved(data).profilePending).toBe(true);
+
+    // Changed again while the save was in flight: the older answers do not count.
+    store.getState().toggleValue('calm');
+    store.getState().markProfileSaved(sent);
+    expect(store.getState().profilePending).toBe(true);
+
+    store.getState().markProfileSaved(store.getState().preferences);
+    expect(store.getState().profilePending).toBe(false);
+    expect(saved(data).profilePending).toBe(false);
+  });
+
+  it('skip leaves nothing to save', () => {
+    const store = createOnboardingStore(memoryStorage().storage);
+    store.getState().toggleValue('flirty');
+    store.getState().skip();
+    expect(store.getState().profilePending).toBe(false);
+  });
+
   it('demo purchase sets and resets the local entitlement', () => {
     const { storage, data } = memoryStorage();
     const store = createOnboardingStore(storage);

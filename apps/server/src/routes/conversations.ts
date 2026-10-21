@@ -5,6 +5,7 @@ import {
   type ChatStreamEvent,
   type ConversationsResponse,
   type MessagesResponse,
+  type StartersResponse,
 } from '@after-hours/contracts';
 import { Hono } from 'hono';
 import { streamSSE, type SSEStreamingApi } from 'hono/streaming';
@@ -15,12 +16,20 @@ import { HISTORY_MESSAGES, toHistoryTurns } from '../chat/history';
 import { streamReply } from '../chat/reply';
 import { runPhotoCalls, type PhotoOutcome, type SendPhotoInput } from '../chat/photo-tool';
 import { rememberFromExchange } from '../chat/remember';
+import { prefsFromProfile } from '../chat/profile';
 import { buildChatRequest } from '../chat/request';
+import {
+  createStarterCache,
+  generateStarters,
+  startersFingerprint,
+  type StarterInput,
+} from '../chat/starters';
 import { validTimeZone } from '../chat/time-zone';
 import type { Db } from '../db/client';
 import { spendCredit } from '../db/credits';
 import {
   deleteConversation,
+  countUserMessages,
   getOrCreateConversation,
   insertAssistantBubble,
   insertAssistantPhoto,
@@ -33,6 +42,7 @@ import {
 } from '../db/conversations';
 import { listMemories } from '../db/memories';
 import type { MessageRow } from '../db/schema';
+import { getProfile } from '../db/users';
 import { createRateLimiter } from '../limits/rate-limit';
 import {
   ChatModelError,
@@ -48,7 +58,10 @@ export interface ConversationRoutesOptions {
   sessionSecret: string;
   killSwitch: boolean;
   rateLimitPerMin: number;
-  /** Extracts memories after each delivered reply. Unset: no automatic memories. */
+  /**
+   * Extracts memories after each delivered reply and writes per-user starters. Unset: no
+   * automatic memories, and starters are the companion's defaults.
+   */
   memoryModel?: StructuredModel;
   /**
    * Receives background work (memory extraction) that outlives the response. Default:
@@ -86,6 +99,38 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
   const limiter = createRateLimiter(options.rateLimitPerMin);
   /** `conversationId:clientId` of replies being generated right now. */
   const inFlight = new Set<string>();
+  const starterModel = options.killSwitch ? undefined : options.memoryModel;
+  const starterLimiter = createRateLimiter(options.rateLimitPerMin);
+  const starterCache = createStarterCache();
+
+  /**
+   * Starters written for this user (D-032), cached until their profile or memories change.
+   * The companion's default starters stand in when the model is off, busy, or fails.
+   */
+  const startersFor = async (character: CharacterConfig, userId: string): Promise<string[]> => {
+    const fallback = character.publicProfile.starters;
+    if (!starterModel) return fallback;
+    const input: StarterInput = {
+      profile: await getProfile(db, userId),
+      memories: character.memory.enabled ? await listMemories(db, userId, character.id) : [],
+    };
+    const key = `${userId}:${character.id}`;
+    const fingerprint = startersFingerprint(input);
+    const cached = starterCache.get(key, fingerprint);
+    if (cached) return cached;
+    if (!starterLimiter.take(userId)) return fallback;
+    try {
+      const starters = await generateStarters(starterModel, character, input);
+      if (starters.length === 0) return fallback;
+      starterCache.set(key, fingerprint, starters);
+      return starters;
+    } catch (error) {
+      log(
+        `[starters] generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return fallback;
+    }
+  };
 
   const companionFor = (id: string): CharacterConfig | undefined => store.get(id);
 
@@ -103,14 +148,20 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
         return c.json(body);
       })
 
+      .get('/conversations/:companionId/starters', async (c) => {
+        const character = companionFor(c.req.param('companionId'));
+        if (!character) return c.json(apiError('not_found', 'No such companion.', false), 404);
+        const body: StartersResponse = {
+          companionId: character.id,
+          starters: await startersFor(character, c.var.userId),
+        };
+        return c.json(body);
+      })
+
       .get('/conversations/:companionId/messages', async (c) => {
         const character = companionFor(c.req.param('companionId'));
         if (!character) return c.json(apiError('not_found', 'No such companion.', false), 404);
-        const conversationId = await getOrCreateConversation(
-          db,
-          c.var.userId,
-          character.id,
-        );
+        const conversationId = await getOrCreateConversation(db, c.var.userId, character.id);
         const rows = await listMessages(db, conversationId, { limit: 200 });
         const body: MessagesResponse = {
           companionId: character.id,
@@ -151,11 +202,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
           );
         }
 
-        const conversationId = await getOrCreateConversation(
-          db,
-          userId,
-          character.id,
-        );
+        const conversationId = await getOrCreateConversation(db, userId, character.id);
         const key = `${conversationId}:${clientId}`;
         if (inFlight.has(key)) {
           return c.json(apiError('conflict', 'Already sending that message.', true), 409);
@@ -196,13 +243,17 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
             }
 
             await send({ type: 'typing' });
-            const [rows, memories] = await Promise.all([
+            const [rows, memories, userMessages, profile] = await Promise.all([
               listMessages(db, conversationId, { limit: HISTORY_MESSAGES, uptoSeq: userRow.seq }),
               listMemories(db, userId, character.id),
+              countUserMessages(db, conversationId, userRow.seq),
+              getProfile(db, userId),
             ]);
             const request = buildChatRequest(character, {
               history: toHistoryTurns(rows, userRow.id),
               memories,
+              userMessages,
+              prefs: prefsFromProfile(profile),
               timeZone: validTimeZone(parsed.data.timeZone),
               photos: true,
             });

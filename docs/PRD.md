@@ -1,4 +1,4 @@
-# After Hours — Product Requirements
+# After Hours, Product Requirements
 
 Status: draft for the prototype. Decisions and reversals are recorded in `docs/decisions.md`.
 
@@ -8,7 +8,7 @@ After Hours is a **deliberately polished, limited-scope demo**, not a commercial
 
 ## Problem and vision
 
-Most AI chat apps feel like a tool: a blank prompt box, generic voice, no continuity. After Hours makes an AI companion feel like texting someone you have an ongoing relationship with — a distinct character who remembers what matters, writes in a recognizable style, sends voice notes and photos, and is always honest about being a fictional AI parody.
+Most AI chat apps feel like a tool: a blank prompt box, generic voice, no continuity. After Hours makes an AI companion feel like texting someone you have an ongoing relationship with, a distinct character who remembers what matters, writes in a recognizable style, sends voice notes and photos, and is always honest about being a fictional AI parody.
 
 The demo must prove that this feeling is achievable with a small, maintainable codebase: one Expo app (iPhone first, plus a public browser demo from the same code) and one Node API.
 
@@ -36,7 +36,7 @@ Use cases:
 
 ## Feature list
 
-### P0 — core demo
+### P0, core demo
 
 | Feature | Notes |
 | --- | --- |
@@ -52,7 +52,7 @@ Use cases:
 | Public web demo | Same Expo app exported for web, protected by rate and spend limits. |
 | Demo limits | Per-user rate limits, daily budgets, global kill switch. |
 
-### P1 — next
+### P1, next
 
 | Feature | Notes |
 | --- | --- |
@@ -63,7 +63,7 @@ Use cases:
 | Web search tool | For time-sensitive questions only; allowlisted and capped. |
 | Account data deletion | Delete all user data across both companions. |
 
-### P2 — later
+### P2, later
 
 | Feature | Notes |
 | --- | --- |
@@ -87,6 +87,8 @@ Each companion is a data record in `packages/companions` (spec: `docs/companions
 | Public profile | Portrait, name, age, actions, memories, photos, settings (D-024; no badge after onboarding, D-029) | Same |
 
 Onboarding answers set user-level preferences (texting style, pacing, companion match) that the prompt assembler combines with companion style params.
+
+Companions get to know the user before they open up (D-032): early replies are short and curious about the user's life, plans, and interests, and warm up as the conversation and memories grow. Each user gets their own first questions and starter lines, written from their onboarding answers and what that companion remembers; nothing is shared across users.
 
 ### Configurable characters
 

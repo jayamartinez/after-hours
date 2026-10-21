@@ -1,16 +1,20 @@
 import type { TabListProps, TabTriggerSlotProps } from 'expo-router/ui';
+import type { ComponentType } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CardsIcon, MessageIcon, PersonIcon, PhotoIcon } from '@/components/discovery/icons';
 import { colors, fonts, layout, radius, spacing } from '@/theme/tokens';
 
-/** Tab order and labels. Routes live in src/app/(tabs). */
+type TabIcon = ComponentType<{ size?: number; color?: string }>;
+
+/** Tab order, labels, and icons (D-035). Routes live in src/app/(tabs). */
 export const TABS = [
-  { name: 'chats', href: '/chats', label: 'Chats' },
-  { name: 'index', href: '/', label: 'Companions' },
-  { name: 'gallery', href: '/gallery', label: 'Gallery' },
-  { name: 'you', href: '/you', label: 'You' },
-] as const;
+  { name: 'chats', href: '/chats', label: 'Chats', icon: MessageIcon },
+  { name: 'index', href: '/', label: 'Companions', icon: CardsIcon },
+  { name: 'gallery', href: '/gallery', label: 'Gallery', icon: PhotoIcon },
+  { name: 'you', href: '/you', label: 'You', icon: PersonIcon },
+] as const satisfies readonly { name: string; href: string; label: string; icon: TabIcon }[];
 
 /**
  * Floating pill tab bar pieces (design brief, Components). expo-router/ui discovers tabs only
@@ -32,7 +36,14 @@ export function TabBarPill({ children, style, ...props }: TabListProps) {
 }
 
 // `ref` is dropped: TabTriggerSlotProps types it for View, which Pressable's ref type rejects.
-export function TabBarButton({ children, isFocused, ref: _ref, ...props }: TabTriggerSlotProps) {
+export function TabBarButton({
+  children,
+  isFocused,
+  icon: Icon,
+  ref: _ref,
+  ...props
+}: TabTriggerSlotProps & { icon: TabIcon }) {
+  const color = isFocused ? colors.text : colors.textMuted;
   return (
     <Pressable
       {...props}
@@ -40,7 +51,8 @@ export function TabBarButton({ children, isFocused, ref: _ref, ...props }: TabTr
       aria-selected={isFocused}
       style={[styles.tab, isFocused && styles.tabFocused]}
     >
-      <Text style={[styles.label, isFocused && styles.labelFocused]}>{children}</Text>
+      <Icon size={20} color={color} />
+      <Text style={[styles.label, { color }]}>{children}</Text>
     </Pressable>
   );
 }
@@ -69,12 +81,13 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    minHeight: layout.tapTarget,
+    minHeight: layout.tapTarget + 8,
+    gap: 2,
+    paddingVertical: 6,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabFocused: { backgroundColor: colors.surface },
-  label: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
-  labelFocused: { color: colors.text },
+  label: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 13 },
 });

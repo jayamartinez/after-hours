@@ -189,3 +189,17 @@ export const WAVES = {
   pill: 'M1 6v4M6 3v10M11 5v6M16 1v14M21 4v8M26 6v4M31 7v2',
   sheet: 'M2 8v4M8 5v10M14 2v16M20 6v8M26 3v14M32 7v6M38 4v12M44 8v4M50 5v10M56 7v6M62 9v2',
 } as const;
+
+/** Two overlapping profile cards (Companions tab). */
+export function CardsIcon({ size = 22, color = colors.text }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={7.5} y={3.5} width={12} height={16} rx={2} stroke={color} {...stroke} />
+      <Path
+        d="M5.5 6.5h-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-0"
+        stroke={color}
+        {...stroke}
+      />
+    </Svg>
+  );
+}

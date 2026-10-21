@@ -10,7 +10,7 @@ import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { Label } from '@/components/onboarding/text';
 import { TopBar } from '@/components/onboarding/top-bar';
 import { DEMO_PLANS, PLUS_FEATURES, type DemoPlanOption } from '@/onboarding/demo-data';
-import { finishOnboarding, stepHref } from '@/onboarding/flow';
+import { showWelcome, stepHref } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
 import { onboardingStore } from '@/onboarding/use-onboarding';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -19,12 +19,12 @@ const NUMERALS = ['i.', 'ii.', 'iii.', 'iv.', 'v.'] as const;
 
 /** 13 · Paywall (mock). Purchase only sets a local demo flag; nothing is charged. */
 export default function PaywallScreen() {
-  const { companions, companion } = useMatch();
+  const { companions } = useMatch();
   const [planId, setPlanId] = useState<DemoPlanOption['id']>('annual');
   const plan = DEMO_PLANS.find((p) => p.id === planId) ?? DEMO_PLANS[0];
   const names = companions.map((c) => c.name).join(' & ');
 
-  const notNow = () => finishOnboarding(companion?.id ?? null);
+  const notNow = showWelcome;
   const purchase = () => {
     onboardingStore.getState().purchaseDemo(planId);
     // Plus adds monthly photo credits on the server; offline, the local demo flag still holds.

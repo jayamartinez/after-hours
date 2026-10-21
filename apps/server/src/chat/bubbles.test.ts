@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBubbleSplitter, MAX_BUBBLES, splitBubbles } from './bubbles';
+import { createBubbleSplitter, MAX_BUBBLES, splitBubbles, withoutEmDashes } from './bubbles';
 
 describe('splitBubbles', () => {
   it.each([
@@ -63,5 +63,14 @@ describe('createBubbleSplitter', () => {
     expect(splitter.push('first text')).toEqual([]);
     expect(splitter.push('\n\nsecond')).toEqual(['first text']);
     expect(splitter.finish()).toEqual(['second']);
+  });
+});
+
+describe('withoutEmDashes', () => {
+  it('turns em dashes into commas and drops dangling ones', () => {
+    expect(withoutEmDashes('honestly \u2014 no')).toBe('honestly, no');
+    expect(withoutEmDashes('wait\u2014what')).toBe('wait, what');
+    expect(withoutEmDashes('\u2014 so anyway \u2014')).toBe('so anyway');
+    expect(withoutEmDashes('plain text')).toBe('plain text');
   });
 });

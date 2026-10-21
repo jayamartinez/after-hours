@@ -116,7 +116,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     fontFamily: fonts.display,
     fontSize: 64,
-    lineHeight: 64,
+    // Taller than the font size: at 64/64 iOS clipped the top of capitals ("R" in Roya).
+    lineHeight: 74,
     letterSpacing: -0.02 * 64,
     color: colors.text,
   },

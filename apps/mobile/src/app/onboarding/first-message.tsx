@@ -1,24 +1,27 @@
 import type { PublicCharacter } from '@after-hours/contracts';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { useStarters } from '@/api/starters';
 import type { ChatMessage } from '@/chat/types';
 import { useConversation } from '@/chat/use-conversation';
 import { ChatView } from '@/components/chat/chat-view';
-import { BrassPill } from '@/components/onboarding/chip';
+import { StarterChips } from '@/components/chat/starter-chips';
 import { OnboardingScreen } from '@/components/onboarding/screen';
-import { Label } from '@/components/onboarding/text';
 import { firstChatPhase, userMessageCount } from '@/onboarding/first-chat';
-import { finishOnboarding, goToNext } from '@/onboarding/flow';
+import { goBack, goToNext, showWelcome } from '@/onboarding/flow';
 import { useMatch } from '@/onboarding/use-match';
-import { onboardingStore } from '@/onboarding/use-onboarding';
+import { onboardingStore, useOnboarding } from '@/onboarding/use-onboarding';
 import { colors, fonts, layout, radius, spacing } from '@/theme/tokens';
 
 /** Let the last reply land before the paywall slides up. */
 const PAYWALL_DELAY_MS = 1600;
 
-/** 12 · First message: the real chat, free for a couple of messages, then the paywall. */
+/**
+ * 12 · First message: the real chat. The reply to the last free message (FREE_MESSAGES) ends
+ * onboarding: the paywall (unless already subscribed), then the welcome screen (D-034).
+ */
 export default function FirstMessageScreen() {
   const { companion } = useMatch();
   if (!companion) return <OnboardingScreen>{null}</OnboardingScreen>;
@@ -31,12 +34,16 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
   const priorSent = usePriorSent(messages, isLoading);
   const { phase, left } = firstChatPhase(messages, isTyping, priorSent);
   const answered = phase === 'answered';
+  const profilePending = useOnboarding((s) => s.profilePending);
+  const subscribed = useOnboarding((s) => s.demoPurchase !== null);
+  // Written from the answers just given, so they wait for those to save (useProfileSync).
+  const allStarters = useStarters(companion, { enabled: !profilePending, isDemo });
 
-  // Already "subscribed" (demo): skip the paywall and go straight to the chat.
+  // Already "subscribed" (demo): skip the paywall.
   const continueOn = useCallback(() => {
-    if (onboardingStore.getState().demoPurchase) finishOnboarding(companion.id);
+    if (onboardingStore.getState().demoPurchase) showWelcome();
     else goToNext('first-message');
-  }, [companion.id]);
+  }, []);
 
   useEffect(() => {
     if (!answered) return;
@@ -50,7 +57,7 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
   };
 
   const used = new Set(messages.filter((m) => m.role === 'user').map((m) => m.content));
-  const starters = companion.publicProfile.starters.filter((s) => !used.has(s));
+  const starters = allStarters.filter((s) => !used.has(s));
 
   let accessory = null;
   if (answered) {
@@ -61,27 +68,14 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
           onPress={continueOn}
           style={({ pressed }) => [styles.keepTalking, pressed && styles.pressed]}
         >
-          <Text style={styles.keepTalkingText}>Keep talking with After Hours Plus</Text>
+          <Text style={styles.keepTalkingText}>
+            {subscribed ? 'Continue' : 'Keep talking with After Hours Plus'}
+          </Text>
         </Pressable>
       </Animated.View>
     );
   } else if (phase === 'open') {
-    accessory = (
-      <Animated.View entering={FadeIn.duration(300)} style={styles.accessory}>
-        <Label style={styles.label}>Tap to reply</Label>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.replyRow}
-        >
-          {starters.map((starter) => (
-            <Pressable key={starter} accessibilityRole="button" onPress={() => onSend(starter)}>
-              <BrassPill height={40}>{starter}</BrassPill>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </Animated.View>
-    );
+    accessory = <StarterChips starters={starters} onPick={onSend} />;
   }
 
   return (
@@ -96,6 +90,8 @@ function FirstConversation({ companion }: { companion: PublicCharacter }) {
       onRetry={retry}
       onToggleReaction={toggleReaction}
       accessory={accessory}
+      onBack={goBack}
+      profileLink={false}
     />
   );
 }
@@ -111,8 +107,6 @@ function usePriorSent(messages: readonly ChatMessage[], isLoading: boolean) {
 
 const styles = StyleSheet.create({
   accessory: { gap: 10, paddingTop: spacing.sm },
-  label: { paddingHorizontal: spacing.gutter },
-  replyRow: { gap: spacing.sm, paddingHorizontal: spacing.md },
   keepTalking: {
     minHeight: layout.tapTarget,
     marginHorizontal: spacing.md,

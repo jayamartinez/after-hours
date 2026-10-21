@@ -13,7 +13,7 @@ export default function TabsLayout() {
         <TabBarPill>
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-              <TabBarButton>{tab.label}</TabBarButton>
+              <TabBarButton icon={tab.icon}>{tab.label}</TabBarButton>
             </TabTrigger>
           ))}
         </TabBarPill>

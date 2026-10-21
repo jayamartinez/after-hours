@@ -15,6 +15,7 @@ import { devCompanionRoutes, type DevCompanionRoutesOptions } from './routes/dev
 import { healthRoutes } from './routes/health';
 import { memoryRoutes } from './routes/memories';
 import { privateAssetRoutes } from './routes/private-assets';
+import { profileRoutes } from './routes/profile';
 import { sessionRoutes } from './routes/session';
 
 /** Persistence and the chat model. Without them only the read-only routes exist. */
@@ -110,6 +111,7 @@ export function createApp(
         }),
       )
       .route('/', creditRoutes(db, sessionSecret))
+      .route('/', profileRoutes(db, sessionSecret))
       .route('/', accountRoutes(db, sessionSecret));
   }
   return app;

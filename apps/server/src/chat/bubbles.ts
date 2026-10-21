@@ -1,3 +1,14 @@
+/**
+ * The app never shows em dashes (D-035); models still write them. A dash between words
+ * becomes a comma, and a leading or trailing one is dropped.
+ */
+export function withoutEmDashes(text: string): string {
+  return text
+    .replace(/^\s*\u2014\s*/, '')
+    .replace(/\s*\u2014\s*$/, '')
+    .replace(/\s*\u2014\s*/g, ', ');
+}
+
 /** Most bubbles one reply may become; anything past this is folded into the last bubble. */
 export const MAX_BUBBLES = 4;
 

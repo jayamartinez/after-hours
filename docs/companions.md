@@ -1,4 +1,4 @@
-# After Hours — Companion configuration
+# After Hours, Companion configuration
 
 Roy and Roya are the only companions in scope. Both are fictional adult AI parody characters. Everything that makes them distinct is data: identity, copy, personality, texting style, examples, voice, memory focus, and image slots. App and server logic never branch on a companion id.
 

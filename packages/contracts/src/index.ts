@@ -5,3 +5,4 @@ export * from './health';
 export * from './memory';
 export * from './chat';
 export * from './credits';
+export * from './profile';

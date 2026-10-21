@@ -1,13 +1,13 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { OnboardingButton } from '@/components/onboarding/buttons';
-import { DemoPill } from '@/components/onboarding/demo-pill';
 import { Glow } from '@/components/onboarding/glow';
 import { CheckIcon } from '@/components/onboarding/icons';
 import { gradient } from '@/components/onboarding/palette';
 import { OnboardingScreen } from '@/components/onboarding/screen';
 import { StaggerIn } from '@/components/onboarding/stagger-in';
 import { finishOnboarding } from '@/onboarding/flow';
+import { useOnboarding } from '@/onboarding/use-onboarding';
 import { useMatch } from '@/onboarding/use-match';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
@@ -17,9 +17,16 @@ const GLOW_STOPS = [
   { offset: 0.7, color: gradient.brass, opacity: 0 },
 ] as const;
 
-/** 14 · Demo purchase confirmed. */
+/**
+ * 14 · Welcome: the end of onboarding (D-034), after the paywall or "Not now". Confirms
+ * the demo purchase when there was one. "Enter After Hours" lands on the Chats tab.
+ */
 export default function ConfirmedScreen() {
   const { companion } = useMatch();
+  const subscribed = useOnboarding((s) => s.demoPurchase !== null);
+  const pickUp = companion
+    ? `${companion.name}'s in your chats, right where you left ${companion.pronouns.object}.`
+    : 'Your chats are waiting.';
   const { width, height } = useWindowDimensions();
   const glowR = Math.hypot(width / 2, height) / Math.max(width, height);
 
@@ -35,28 +42,22 @@ export default function ConfirmedScreen() {
         </StaggerIn>
         <StaggerIn order={1}>
           <Text accessibilityRole="header" style={styles.title}>
-            You're in.
+            {subscribed ? "You're in." : 'Welcome in.'}
           </Text>
         </StaggerIn>
         <StaggerIn order={2}>
-          <Text style={styles.lede}>
-            {companion
-              ? `Plus is on. ${companion.name}'s right where you left ${companion.pronouns.object}.`
-              : 'Plus is on.'}
-          </Text>
+          <Text style={styles.lede}>{subscribed ? `Plus is on. ${pickUp}` : pickUp}</Text>
         </StaggerIn>
       </View>
       <View style={styles.footer}>
-        <StaggerIn order={3} style={styles.notice}>
-          <DemoPill label="Demo" size="sm" />
-          <Text style={styles.noticeText}>This is a demo purchase. No payment was taken.</Text>
+        <StaggerIn order={3}>
+          <OnboardingButton label="Enter After Hours" onPress={finishOnboarding} />
         </StaggerIn>
-        <StaggerIn order={4}>
-          <OnboardingButton
-            label="Enter After Hours"
-            onPress={() => finishOnboarding(companion?.id ?? null)}
-          />
-        </StaggerIn>
+        {subscribed ? (
+          <StaggerIn order={4}>
+            <Text style={styles.notice}>Demo purchase. No payment was taken.</Text>
+          </StaggerIn>
+        ) : null}
       </View>
     </OnboardingScreen>
   );
@@ -88,23 +89,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.textMuted,
   },
-  footer: { gap: spacing.xl, paddingHorizontal: spacing.gutter },
+  footer: { gap: spacing.md, paddingHorizontal: spacing.gutter },
   notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.hairline,
-  },
-  noticeText: {
-    flex: 1,
     fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.textMuted,
+    textAlign: 'center',
   },
 });

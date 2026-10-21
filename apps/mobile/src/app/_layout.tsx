@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 
 import { queryClient } from '@/api/query-client';
 import { OnboardingGate } from '@/components/onboarding/onboarding-gate';
+import { useProfileSync } from '@/onboarding/use-profile-sync';
 import { colors } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -29,6 +30,12 @@ const navigationTheme = {
     notification: colors.live,
   },
 };
+
+/** Inside the query provider: saves onboarding answers the server does not have yet. */
+function ProfileSync() {
+  useProfileSync();
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -62,6 +69,7 @@ export default function RootLayout() {
           <Stack.Screen name="cast-list" />
         </Stack>
         <OnboardingGate />
+        <ProfileSync />
       </ThemeProvider>
     </QueryClientProvider>
   );

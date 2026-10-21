@@ -46,7 +46,7 @@ export default function MemoryScreen() {
         <StaggerIn order={5}>
           <Text style={styles.hint}>
             {notes.length > 0
-              ? 'Swipe or tap × and it’s gone — no hard feelings.'
+              ? 'Swipe or tap × and it’s gone, no hard feelings.'
               : 'All gone. That’s how easy it is.'}
           </Text>
         </StaggerIn>

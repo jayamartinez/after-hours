@@ -22,9 +22,13 @@ function preview(message: ChatMessage | undefined, name: string): string {
   return name;
 }
 
-/** One companion conversation: avatar, name, last message, time. Opens the chat. */
+/**
+ * One companion conversation: avatar, name, last message, time. Opens the chat. Renders
+ * nothing until the thread has a message (D-035): new chats start from the "+".
+ */
 export function ChatListRow({ companion }: { companion: PublicCharacter }) {
   const { last, isTyping } = useConversationPreview(companion);
+  if (!last && !isTyping) return null;
   const subtitle = isTyping ? 'typing…' : last ? preview(last, companion.name) : '';
 
   return (
