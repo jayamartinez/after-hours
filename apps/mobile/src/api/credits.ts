@@ -94,7 +94,7 @@ export function useBuyCredits() {
  */
 export function useMessageCharLimit(): number {
   const { data } = useCredits();
-  return data?.messages.unlimited ? MAX_MESSAGE_CHARS : FREE_MAX_MESSAGE_CHARS;
+  return data?.messages.plan === 'plus' ? MAX_MESSAGE_CHARS : FREE_MAX_MESSAGE_CHARS;
 }
 
 const store = (credits: CreditsResponse) => queryClient.setQueryData(CREDITS_QUERY_KEY, credits);

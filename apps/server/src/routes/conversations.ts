@@ -13,7 +13,7 @@ import { streamSSE, type SSEStreamingApi } from 'hono/streaming';
 
 import { requireUser, type AuthEnv } from '../auth/session';
 import type { CharacterStore } from '../characters/store';
-import { HISTORY_MESSAGES, toHistoryTurns } from '../chat/history';
+import { HISTORY_MAX_MESSAGES, historyWindow, toHistoryTurns } from '../chat/history';
 import { streamReply } from '../chat/reply';
 import { runPhotoCalls, type PhotoOutcome, type SendPhotoInput } from '../chat/photo-tool';
 import { rememberFromExchange } from '../chat/remember';
@@ -35,6 +35,7 @@ import {
 import type { Db } from '../db/client';
 import { spendCredit } from '../db/credits';
 import {
+  countMessages,
   countUserMessages,
   deleteConversation,
   findUserMessage,
@@ -50,13 +51,15 @@ import {
   toMessageDto,
 } from '../db/conversations';
 import { listMemories } from '../db/memories';
-import { spendMessage } from '../db/message-allowance';
+import { addSpend, spendMessage } from '../db/message-allowance';
+import { billedCostMicroUsd } from '../chat/costs';
 import type { MessageRow } from '../db/schema';
 import { getProfile, isPlus } from '../db/users';
 import { addWebLookups, remainingWebLookups } from '../db/web-usage';
 import { createRateLimiter } from '../limits/rate-limit';
 import {
   ChatModelError,
+  type BilledRequest,
   type ChatModel,
   type StructuredModel,
   type ToolCall,
@@ -250,7 +253,7 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               return c.json(
                 apiError(
                   'messages_required',
-                  'You’re out of free messages for today. Get more to keep talking.',
+                  'You’re out of messages for today. Get more to keep talking.',
                   true,
                 ),
                 402,
@@ -288,15 +291,20 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
             }
 
             await send({ type: 'typing' });
-            const [rows, memories, userMessages, profile, webLeft] = await Promise.all([
-              listMessages(db, conversationId, { limit: HISTORY_MESSAGES, uptoSeq: userRow.seq }),
-              listMemories(db, userId, character.id),
-              countUserMessages(db, conversationId, userRow.seq),
-              getProfile(db, userId),
-              options.webAccess ? remainingWebLookups(db, userId) : Promise.resolve(0),
-            ]);
+            const [rows, threadLength, memories, userMessages, profile, webLeft] =
+              await Promise.all([
+                listMessages(db, conversationId, {
+                  limit: HISTORY_MAX_MESSAGES,
+                  uptoSeq: userRow.seq,
+                }),
+                countMessages(db, conversationId, userRow.seq),
+                listMemories(db, userId, character.id),
+                countUserMessages(db, conversationId, userRow.seq),
+                getProfile(db, userId),
+                options.webAccess ? remainingWebLookups(db, userId) : Promise.resolve(0),
+              ]);
             const request = buildChatRequest(character, {
-              history: toHistoryTurns(rows, userRow.id),
+              history: toHistoryTurns(rows.slice(-historyWindow(threadLength)), userRow.id),
               memories,
               userMessages,
               prefs: prefsFromProfile(profile),
@@ -326,6 +334,18 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               await send({ type: 'credits', balance });
               return { kind: 'sent' };
             };
+            /** Counts the reply's lookups and estimated cost against today's limits. */
+            const recordUsage = async (requests: readonly BilledRequest[], pictures: number) => {
+              try {
+                const lookups = requests.reduce((sum, r) => sum + r.webRequests, 0);
+                await addWebLookups(db, userId, lookups + pictures);
+                await addSpend(db, userId, billedCostMicroUsd(requests));
+              } catch (error) {
+                log(
+                  `[chat] usage not recorded: ${error instanceof Error ? error.message : String(error)}`,
+                );
+              }
+            };
             /** Shows a picture found on the web (D-038). */
             let picturesShared = 0;
             const shareImage = async (image: {
@@ -340,11 +360,13 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               await send({ type: 'bubble', message: toMessageDto(row) });
               return { kind: 'sent' };
             };
-            let webRequests = 0;
+            /** Every provider request of this reply, delivered or not (D-041). */
+            const billed: BilledRequest[] = [];
             /** One photo and one picture per reply, across tool rounds. */
             const replyTools = { photoAttempted: false, pictureShared: false };
             try {
-              const { result } = await streamReply(replyModel, request, {
+              await streamReply(replyModel, request, {
+                onBilled: (entry) => billed.push(entry),
                 onDelta: (delta) => void send({ type: 'delta', text: delta }),
                 onBubble: async (bubbleText) => {
                   const row = await insertAssistantBubble(
@@ -371,7 +393,6 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
                   )),
                 ],
               });
-              webRequests = result.webRequests ?? 0;
               if (saved.length === 0) {
                 throw new ChatModelError('api', 'The model returned an empty reply.', true);
               }
@@ -390,9 +411,11 @@ export function conversationRoutes(options: ConversationRoutesOptions) {
               );
               await send({ type: 'error', error: failure });
               return;
+            } finally {
+              // Failed, refused, and empty replies were billed too, and so is every retry.
+              await recordUsage(billed, picturesShared);
             }
 
-            await addWebLookups(db, userId, webRequests + picturesShared);
             await setMessageStatus(db, conversationId, [userRow.id], 'read');
             await send({ type: 'done', userMessageId: userRow.id, messageIds: saved });
 

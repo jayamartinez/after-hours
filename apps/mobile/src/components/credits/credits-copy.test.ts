@@ -12,19 +12,27 @@ describe('creditsLabel', () => {
 
 describe('messagesLeftLabel', () => {
   const base = {
-    unlimited: false,
-    freeLeftToday: 7,
+    plan: 'free' as const,
+    dailyIncluded: 10,
+    includedLeftToday: 7,
     bonus: 0,
     adsLeftToday: 3,
     resetsAt: '2026-10-21T00:00:00.000Z',
   };
   it('reports free and extra messages', () => {
     expect(messagesLeftLabel(base)).toBe('7 free messages left today');
-    expect(messagesLeftLabel({ ...base, freeLeftToday: 1 })).toBe('1 free message left today');
-    expect(messagesLeftLabel({ ...base, freeLeftToday: 0, bonus: 20 })).toBe(
+    expect(messagesLeftLabel({ ...base, includedLeftToday: 1 })).toBe('1 free message left today');
+    expect(messagesLeftLabel({ ...base, includedLeftToday: 0, bonus: 20 })).toBe(
       'No free messages left today · 20 extra',
     );
-    expect(messagesLeftLabel({ ...base, unlimited: true })).toBe('Unlimited messages');
+  });
+  it('reports Plus messages without "free"', () => {
+    const plus = { ...base, plan: 'plus' as const, dailyIncluded: 300 };
+    expect(messagesLeftLabel({ ...plus, includedLeftToday: 250 })).toBe('250 messages left today');
+    expect(messagesLeftLabel({ ...plus, includedLeftToday: 0 })).toBe('No messages left today');
+    expect(messagesLeftLabel({ ...plus, includedLeftToday: 0, bonus: 5 })).toBe(
+      'No messages left today · 5 extra',
+    );
   });
 });
 
@@ -32,10 +40,10 @@ describe('resetsInLabel', () => {
   it('rounds up to hours or minutes', () => {
     const resetsAt = '2026-10-21T00:00:00.000Z';
     expect(resetsInLabel(resetsAt, new Date('2026-10-20T19:30:00Z'))).toBe(
-      'Free messages come back in 5h.',
+      'Messages come back in 5h.',
     );
     expect(resetsInLabel(resetsAt, new Date('2026-10-20T23:59:30Z'))).toBe(
-      'Free messages come back in 1m.',
+      'Messages come back in 1m.',
     );
   });
 });

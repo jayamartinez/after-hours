@@ -1,7 +1,15 @@
-import type { ChatModel, ChatRequest, ChatResult, ToolCall, ToolResult } from '../providers/types';
+import type {
+  BilledRequest,
+  ChatModel,
+  ChatRequest,
+  ChatResult,
+  ToolCall,
+  ToolResult,
+} from '../providers/types';
 import { addWebUsage, ChatModelError } from '../providers/types';
 
 import { createBubbleSplitter, isToolMarkup, withoutEmDashes } from './bubbles';
+import { addUsage } from './costs';
 
 /**
  * Tool rounds per reply: a second round lets a failed picture be retried with another page.
@@ -19,6 +27,11 @@ export interface StreamReplyHandlers {
    * Unset: tool calls are ignored and the reply ends there.
    */
   onToolCalls?: (calls: ToolCall[]) => Promise<ToolResult[]>;
+  /**
+   * Every provider request the reply was billed for, as it ends: retried attempts, tool
+   * rounds, and requests that failed after reading or writing tokens included.
+   */
+  onBilled?: (billed: BilledRequest) => void;
 }
 
 export interface StreamReplyResult {
@@ -62,9 +75,13 @@ export async function streamReply(
         handlers.onDelta?.(delta);
         deliver(splitter.push(delta));
       });
+      for (const billed of result.billed) handlers.onBilled?.(billed);
       deliver(splitter.finish());
       return result;
     } catch (error) {
+      if (error instanceof ChatModelError) {
+        for (const billed of error.billed) handlers.onBilled?.(billed);
+      }
       if (!received && error instanceof ChatModelError && error.retryable) {
         throw new RetryBeforeFirstToken(error);
       }
@@ -95,7 +112,7 @@ export async function streamReply(
     ) {
       await chain;
       const toolResults = await handlers.onToolCalls(result.toolCalls);
-      const earlierWeb = result.webRequests ?? 0;
+      const earlier = result;
       const earlierUsed = addWebUsage(undefined, result.webUsed);
       history = [
         ...history,
@@ -113,10 +130,13 @@ export async function streamReply(
         messages: history,
         webUsedBefore: earlierUsed,
       });
+      // One reply's usage and lookups cover every round.
       result = {
         ...continued,
-        webRequests: earlierWeb + (continued.webRequests ?? 0),
+        usage: addUsage(earlier.usage, continued.usage),
+        webRequests: (earlier.webRequests ?? 0) + (continued.webRequests ?? 0),
         webUsed: addWebUsage(earlierUsed, continued.webUsed),
+        billed: [...earlier.billed, ...continued.billed],
       };
     }
     await chain;

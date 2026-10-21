@@ -45,8 +45,8 @@ export interface ToolResult {
 export interface ChatRequest {
   /**
    * `stable` is the character prompt: byte-identical across turns so providers can cache it.
-   * `context` is volatile per-turn context (memories, current time); it goes after the
-   * cached part.
+   * `context` is volatile per-turn context (memories, current time); providers place it
+   * after the cached conversation, so it never invalidates the cached prefix.
    */
   system: { stable: string; context?: string };
   /** Conversation history, oldest first, ending with the user's latest message. */
@@ -102,8 +102,17 @@ export interface ChatUsage {
   cacheCreationInputTokens: number;
 }
 
+/** One billed provider request: the model that served it, its tokens, and its lookups. */
+export interface BilledRequest {
+  model: string;
+  usage: ChatUsage;
+  /** Web searches and link reads the provider ran in this request. */
+  webRequests: number;
+}
+
 export interface ChatResult {
   text: string;
+  /** Summed over every request of the reply. */
   usage: ChatUsage;
   stopReason: string | null;
   /** The model that actually served the reply (may differ after a server-side fallback). */
@@ -114,22 +123,31 @@ export interface ChatResult {
   webRequests?: number;
   /** The same, by tool: what a continuation subtracts from `ChatRequest.web`. */
   webUsed?: WebUsage;
+  /** Every request this reply was billed for, each priced at its own model (D-041). */
+  billed: BilledRequest[];
   /** This turn as the provider recorded it; pass back as `ChatTurn.raw` to continue. */
   raw: unknown;
 }
 
 export type ChatErrorKind = 'rate_limit' | 'connection' | 'refusal' | 'auth' | 'api';
 
-/** Typed provider failure. `retryable` drives the "retry" action in the UI. */
+/**
+ * Typed provider failure. `retryable` drives the "retry" action in the UI. `billed` lists
+ * the requests that were charged before the failure (a refusal after output, a stream that
+ * broke mid-reply), so their cost still counts.
+ */
 export class ChatModelError extends Error {
+  readonly billed: readonly BilledRequest[];
+
   constructor(
     readonly kind: ChatErrorKind,
     message: string,
     readonly retryable: boolean,
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; billed?: readonly BilledRequest[] },
   ) {
     super(message, options);
     this.name = 'ChatModelError';
+    this.billed = options?.billed ?? [];
   }
 }
 
