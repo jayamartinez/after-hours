@@ -10,9 +10,11 @@ import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 import { queryClient } from '@/api/query-client';
 import { DesktopFrame, SHOW_DESKTOP_FRAME } from '@/components/desktop-frame';
+import { installMouseDragScroll } from '@/web/mouse-drag-scroll';
 import { ReplyBannerHost } from '@/components/notifications/reply-banner';
 import { OnboardingGate } from '@/components/onboarding/onboarding-gate';
 import { useProfileSync } from '@/onboarding/use-profile-sync';
@@ -60,6 +62,9 @@ function AppRoot() {
     Inter_600SemiBold,
   });
   const ready = fontsLoaded || fontError !== null;
+
+  // Web: a mouse can drag to scroll and swipe, like a finger (D-049).
+  useEffect(() => (Platform.OS === 'web' ? installMouseDragScroll() : undefined), []);
 
   useEffect(() => {
     if (fontError) console.warn('[fonts] Falling back to system fonts.', fontError);
