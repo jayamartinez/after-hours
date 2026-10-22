@@ -1,6 +1,6 @@
 import { usePathname } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import {
   type Banner,
 } from '@/notifications/use-notifications';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
+import { DRAG_OWNER } from '@/web/mouse-drag-scroll';
 
 /** How long a banner stays up; a newer message restarts the clock. */
 const VISIBLE_MS = 4000;
@@ -70,6 +71,7 @@ function ReplyBanner({ banner }: { banner: Banner }) {
       exiting={SlideOutUp.duration(200)}
       style={styles.card}
       {...swipe.panHandlers}
+      {...(Platform.OS === 'web' ? DRAG_OWNER : {})}
     >
       <Pressable
         accessibilityRole="button"

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts, layout, radius } from '@/theme/tokens';
+import { DRAG_OWNER } from '@/web/mouse-drag-scroll';
 
 import { CloseIcon, TrashIcon } from './icons';
 
@@ -60,6 +61,7 @@ export function MemoryCard({ text, source, onForget, initiallyOpen = false }: Me
       <Animated.View
         style={[styles.card, open && styles.cardOpen, { transform: [{ translateX: x }] }]}
         {...responder.panHandlers}
+        {...(Platform.OS === 'web' ? DRAG_OWNER : {})}
       >
         <View style={[styles.bar, open && styles.barOpen]} />
         <View style={styles.text}>

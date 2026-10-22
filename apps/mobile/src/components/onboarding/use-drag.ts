@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   PanResponder,
+  Platform,
   type GestureResponderEvent,
   type PanResponderGestureState,
 } from 'react-native';
+
+import { DRAG_OWNER } from '@/web/mouse-drag-scroll';
 
 export interface DragHandlers {
   /** Touch down at (x, y) in the responder view's coordinates. */
@@ -48,5 +51,6 @@ export function useDrag(handlers: DragHandlers) {
     });
   });
 
-  return responder.panHandlers;
+  // Web: mouse drags on this view move the control, never the page around it.
+  return { ...responder.panHandlers, ...(Platform.OS === 'web' ? DRAG_OWNER : {}) };
 }
