@@ -9,7 +9,9 @@ export default function TabsLayout() {
   const unread = useTotalUnread();
   return (
     <Tabs style={styles.root}>
-      <TabSlot />
+      {/* expo-router's slot never shrinks (flexShrink 0): on web it grew to the content's
+          height, so tab screens (Companions, You) could not scroll. Keep it window-sized. */}
+      <TabSlot style={styles.slot} />
       {/* TabList must be a direct child of Tabs so its triggers register as routes. */}
       <TabList asChild>
         <TabBarPill>
@@ -28,4 +30,5 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  slot: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 },
 });
